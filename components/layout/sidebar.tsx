@@ -2,21 +2,24 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { useState } from 'react'
-import { 
-  LayoutDashboard, 
-  Users, 
-  Calendar, 
-  DollarSign, 
-  FileText, 
-  Settings, 
+import { useState, useEffect } from 'react'
+import {
+  LayoutDashboard,
+  Users,
+  Calendar,
+  DollarSign,
+  FileText,
+  Settings,
   LogOut,
   ChevronDown,
   Menu,
   X,
   Home,
   ClipboardList,
-  BarChart3
+  BarChart3,
+  ShieldCheck,
+  Shield,
+  UserCheck
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/client'
@@ -70,6 +73,23 @@ const navItems: NavItem[] = [
     href: '/reportes',
   },
   {
+    icon: <ShieldCheck className="h-5 w-5" />,
+    label: 'Ministerios y Roles',
+    href: '/ministerios',
+    children: [
+      {
+        icon: <Shield className="h-4 w-4" />,
+        label: 'Roles del Sistema',
+        href: '/ministerios/roles',
+      },
+      {
+        icon: <UserCheck className="h-4 w-4" />,
+        label: 'Asignaciones',
+        href: '/ministerios/asignaciones',
+      },
+    ],
+  },
+  {
     icon: <Settings className="h-5 w-5" />,
     label: 'Configuración',
     href: '/settings',
@@ -82,6 +102,15 @@ export function Sidebar() {
   const supabase = createClient()
   const [isOpen, setIsOpen] = useState(false)
   const [expandedItems, setExpandedItems] = useState<string[]>([])
+  const [userEmail, setUserEmail] = useState<string | null>(null)
+
+  useEffect(() => {
+    const loadUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      setUserEmail(user?.email ?? null)
+    }
+    loadUser()
+  }, [])
 
   const handleSignOut = async () => {
     await supabase.auth.signOut()
@@ -192,8 +221,11 @@ export function Sidebar() {
             ))}
           </nav>
 
-          {/* Sign out */}
-          <div className="border-t border-border p-4">
+          {/* User + Sign out */}
+          <div className="border-t border-border p-4 space-y-2">
+            {userEmail && (
+              <p className="px-3 text-xs text-muted-foreground truncate">{userEmail}</p>
+            )}
             <Button
               onClick={handleSignOut}
               variant="ghost"
