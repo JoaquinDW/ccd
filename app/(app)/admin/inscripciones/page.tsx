@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 import { Calendar, User } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { createClient } from "@/lib/supabase/server"
