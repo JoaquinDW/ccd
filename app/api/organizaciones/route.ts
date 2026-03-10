@@ -29,6 +29,8 @@ export async function POST(request: Request) {
   if (body.localidad) insertData.localidad = body.localidad
   if (body.provincia) insertData.provincia = body.provincia
   if (body.notas) insertData.notas = body.notas
+  if (body.telefono_1) insertData.telefono_1 = body.telefono_1
+  if (body.telefono_2) insertData.telefono_2 = body.telefono_2
 
   const { error } = await supabase.from('organizaciones').insert(insertData)
 

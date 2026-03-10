@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import Image from "next/image"
 import { useState, useEffect } from "react"
 import { Menu, X, User, LogOut } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -35,9 +36,7 @@ export function Header() {
     <header className="sticky top-0 z-50 w-full border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60">
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
         <Link href="/" className="flex items-center gap-2">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-            <span className="text-lg font-bold">C</span>
-          </div>
+          <Image src="/logoccd.jpeg" alt="Convivencia con Dios" width={36} height={36} className="rounded-lg" />
           <span className="text-lg font-semibold text-foreground">Convivencia con Dios</span>
         </Link>
 

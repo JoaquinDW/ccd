@@ -34,6 +34,8 @@ export async function PATCH(
     localidad: body.localidad || null,
     provincia: body.provincia || null,
     notas: body.notas || null,
+    telefono_1: body.telefono_1 || null,
+    telefono_2: body.telefono_2 || null,
   }
 
   // Soft delete if state changed to inactiva

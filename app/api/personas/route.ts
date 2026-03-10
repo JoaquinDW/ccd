@@ -33,6 +33,13 @@ export async function POST(request: Request) {
   if (body.localidad) insertData.localidad = body.localidad
   if (body.provincia) insertData.provincia = body.provincia
   if (body.pais) insertData.pais = body.pais
+  if (body.estado_eclesial) insertData.estado_eclesial = body.estado_eclesial
+  if (body.diocesis) insertData.diocesis = body.diocesis
+  if (body.categoria_persona) insertData.categoria_persona = body.categoria_persona
+  if (body.parroquia) insertData.parroquia = body.parroquia
+  if (body.socio_asociacion !== undefined) insertData.socio_asociacion = body.socio_asociacion
+  if (body.referente_comunidad !== undefined) insertData.referente_comunidad = body.referente_comunidad
+  if (body.cecista_dedicado !== undefined) insertData.cecista_dedicado = body.cecista_dedicado
 
   const { data: persona, error: personaError } = await supabase
     .from('personas')

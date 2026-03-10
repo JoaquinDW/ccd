@@ -26,6 +26,8 @@ export default function NewOrganizacionPage() {
     provincia: '',
     pais: 'Argentina',
     notas: '',
+    telefono_1: '',
+    telefono_2: '',
   })
 
   useEffect(() => {
@@ -184,6 +186,30 @@ export default function NewOrganizacionPage() {
                   name="pais"
                   placeholder="Argentina"
                   value={formData.pais}
+                  onChange={handleChange}
+                />
+              </div>
+            </div>
+
+            {/* Teléfonos */}
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="telefono_1">Teléfono</Label>
+                <Input
+                  id="telefono_1"
+                  name="telefono_1"
+                  placeholder="+54 9 11 1234 5678"
+                  value={formData.telefono_1}
+                  onChange={handleChange}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="telefono_2">Teléfono 2</Label>
+                <Input
+                  id="telefono_2"
+                  name="telefono_2"
+                  placeholder="+54 9 11 8765 4321"
+                  value={formData.telefono_2}
                   onChange={handleChange}
                 />
               </div>

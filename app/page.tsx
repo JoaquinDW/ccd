@@ -1,12 +1,20 @@
-'use client'
+"use client"
 
 import Link from "next/link"
+import Image from "next/image"
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
 import { Heart, Mail, Lock } from "lucide-react"
+
 import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
 
@@ -47,18 +55,20 @@ export default function LoginPage() {
       <div className="flex w-full flex-col items-center justify-center px-4 py-12 md:w-1/2">
         <div className="w-full max-w-md">
           {/* Logo */}
-          <div className="mb-8 flex items-center justify-center gap-2">
-            <Heart className="h-8 w-8 text-primary" />
-            <h1 className="text-2xl font-bold text-foreground">Convivencia</h1>
+          <div className="mb-8 flex flex-col items-center gap-3">
+            {/* <Image src="/logoccd.jpeg" alt="Convivencia con Dios" width={80} height={80} className="rounded-xl" /> */}
+            <h1 className="text-xl font-bold text-foreground">
+              Convivencia con Dios
+            </h1>
           </div>
 
           {/* Form Card */}
           <Card className="border-border bg-card">
             <CardHeader className="space-y-2 text-center">
-              <CardTitle className="text-2xl text-foreground">Bienvenido</CardTitle>
-              <CardDescription>
-                Inicia sesión en tu cuenta
-              </CardDescription>
+              <CardTitle className="text-2xl text-foreground">
+                Bienvenido
+              </CardTitle>
+              <CardDescription>Inicia sesión en tu cuenta</CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleLogin} className="space-y-4">
@@ -104,11 +114,7 @@ export default function LoginPage() {
                   </div>
                 </div>
 
-                <Button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full"
-                >
+                <Button type="submit" disabled={loading} className="w-full">
                   {loading ? "Iniciando sesión..." : "Iniciar Sesión"}
                 </Button>
               </form>
@@ -116,7 +122,10 @@ export default function LoginPage() {
               <div className="mt-6 space-y-3 text-center text-sm">
                 <p className="text-muted-foreground">
                   ¿No tienes cuenta?{" "}
-                  <Link href="/auth/sign-up" className="text-primary hover:underline font-medium">
+                  <Link
+                    href="/auth/sign-up"
+                    className="text-primary hover:underline font-medium"
+                  >
                     Regístrate aquí
                   </Link>
                 </p>
@@ -130,56 +139,15 @@ export default function LoginPage() {
         </div>
       </div>
 
-      {/* Right side - Background */}
+      {/* Right side - Logo */}
       <div className="hidden md:flex w-1/2 bg-gradient-to-br from-primary/20 via-primary/10 to-accent/20 items-center justify-center">
-        <div className="max-w-lg space-y-8 text-center">
-          <div className="space-y-4">
-            <h2 className="text-4xl font-bold text-foreground">
-              Convivencia con Dios
-            </h2>
-            <p className="text-lg text-foreground/70">
-              Gestión integral de retiros y convivencias espirituales para la comunidad católica.
-            </p>
-          </div>
-
-          <div className="space-y-4">
-            <div className="flex items-start gap-4">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-primary/20">
-                <Heart className="h-6 w-6 text-primary" />
-              </div>
-              <div className="text-left">
-                <h3 className="font-semibold text-foreground">Experiencias Espirituales</h3>
-                <p className="text-sm text-foreground/60">
-                  Conecta con retiros y convivencias transformadoras
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-start gap-4">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-primary/20">
-                <Heart className="h-6 w-6 text-primary" />
-              </div>
-              <div className="text-left">
-                <h3 className="font-semibold text-foreground">Gestión Simplificada</h3>
-                <p className="text-sm text-foreground/60">
-                  Organiza eventos con facilidad y eficiencia
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-start gap-4">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-primary/20">
-                <Heart className="h-6 w-6 text-primary" />
-              </div>
-              <div className="text-left">
-                <h3 className="font-semibold text-foreground">Comunidad Unida</h3>
-                <p className="text-sm text-foreground/60">
-                  Fortalece los lazos espirituales de tu comunidad
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
+        <Image
+          src="/logoccd.jpeg"
+          alt="Convivencia con Dios"
+          width={400}
+          height={400}
+          className="rounded-2xl shadow-2xl opacity-90"
+        />
       </div>
     </div>
   )

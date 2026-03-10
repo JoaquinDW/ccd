@@ -41,7 +41,7 @@ export default async function OrganizacionDetailPage({
   const [{ data: org, error }, { data: eventos }, { data: ministerios }] = await Promise.all([
     supabase
       .from('organizaciones')
-      .select('id, nombre, tipo, codigo, estado, pais, provincia, localidad, notas, fecha_baja, parent:organizaciones!parent_id(id, nombre, tipo)')
+      .select('id, nombre, tipo, codigo, estado, pais, provincia, localidad, notas, telefono_1, telefono_2, fecha_baja, parent:organizaciones!parent_id(id, nombre, tipo)')
       .eq('id', id)
       .single(),
     supabase
@@ -132,6 +132,18 @@ export default async function OrganizacionDetailPage({
               <div className="flex justify-between">
                 <span className="text-muted-foreground">País</span>
                 <span className="text-foreground">{org.pais}</span>
+              </div>
+            )}
+            {org.telefono_1 && (
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Teléfono</span>
+                <span className="text-foreground">{org.telefono_1}</span>
+              </div>
+            )}
+            {org.telefono_2 && (
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Teléfono 2</span>
+                <span className="text-foreground">{org.telefono_2}</span>
               </div>
             )}
             {org.notas && (

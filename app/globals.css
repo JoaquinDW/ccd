@@ -3,7 +3,12 @@
 
 @custom-variant dark (&:is(.dark *));
 
+html {
+  font-size: calc(16px * var(--font-scale, 1));
+}
+
 :root {
+  --font-scale: 1;
   --background: oklch(0.985 0.002 90);
   --foreground: oklch(0.25 0.02 250);
   --card: oklch(1 0 0);
@@ -122,4 +127,9 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* Hide action buttons when capturing PDF */
+.is-exporting [data-export-hide] {
+  display: none !important;
 }

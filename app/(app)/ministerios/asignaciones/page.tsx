@@ -24,20 +24,15 @@ export default async function AsignacionesPage({
     .eq('activo', true)
     .order('nivel_acceso', { ascending: false })
 
-  // Cargar asignaciones activas con joins
-  // Soporta tanto el modelo nuevo (persona_id directo) como el legado (via perfiles_usuario)
+  // Paso 1: cargar asignaciones activas
   let query = supabase
     .from('usuario_roles')
     .select(`
       id,
       fecha_inicio,
-      fecha_fin,
-      activo,
-      organizacion_id,
       persona_id,
       organizacion:organizaciones!organizacion_id(nombre),
-      rol_sistema:roles_sistema!rol_sistema_id(nombre, nivel_acceso),
-      persona:personas!persona_id(nombre, apellido, email)
+      rol_sistema:roles_sistema!rol_sistema_id(nombre, nivel_acceso)
     `)
     .eq('activo', true)
     .order('fecha_inicio', { ascending: false })
@@ -48,16 +43,31 @@ export default async function AsignacionesPage({
 
   const { data: asignaciones } = await query
 
+  // Paso 2: cargar datos de personas por sus IDs
+  const personaIds = [...new Set(
+    (asignaciones ?? []).map((a: any) => a.persona_id).filter(Boolean)
+  )]
+
+  const personasPorId: Record<string, { nombre: string; apellido: string; email: string | null }> = {}
+  if (personaIds.length > 0) {
+    const { data: personasData } = await supabase
+      .from('personas')
+      .select('id, nombre, apellido, email')
+      .in('id', personaIds)
+    for (const p of personasData ?? []) {
+      personasPorId[p.id] = p
+    }
+  }
+
   // Filtrar por nombre si hay búsqueda
-  const asignacionesFiltradas = q
-    ? (asignaciones ?? []).filter((a: any) => {
-        const persona = a.persona
-        if (!persona) return false
-        const nombre = `${persona.nombre} ${persona.apellido}`.toLowerCase()
-        const email = (persona.email ?? '').toLowerCase()
-        return nombre.includes(q.toLowerCase()) || email.includes(q.toLowerCase())
-      })
-    : (asignaciones ?? [])
+  const asignacionesFiltradas = (asignaciones ?? []).filter((a: any) => {
+    if (!q) return true
+    const persona = personasPorId[a.persona_id]
+    if (!persona) return false
+    const nombre = `${persona.nombre} ${persona.apellido}`.toLowerCase()
+    const email = (persona.email ?? '').toLowerCase()
+    return nombre.includes(q.toLowerCase()) || email.includes(q.toLowerCase())
+  })
 
   return (
     <div className="space-y-8">
@@ -128,7 +138,7 @@ export default async function AsignacionesPage({
                 </thead>
                 <tbody>
                   {asignacionesFiltradas.map((a: any) => {
-                    const persona = a.persona
+                    const persona = personasPorId[a.persona_id]
                     const nombreCompleto = persona
                       ? `${persona.nombre} ${persona.apellido}`
                       : 'Persona no encontrada'

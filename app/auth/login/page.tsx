@@ -4,6 +4,7 @@ import React from "react"
 
 import { useState } from "react"
 import Link from "next/link"
+import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { Eye, EyeOff, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -47,10 +48,9 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-background px-4 py-12">
       <Card className="w-full max-w-md border-border">
         <CardHeader className="text-center">
-          <Link href="/" className="mx-auto mb-4 flex items-center gap-2">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-              <span className="text-xl font-bold">C</span>
-            </div>
+          <Link href="/" className="mx-auto mb-4 flex flex-col items-center gap-2">
+            <Image src="/logoccd.jpeg" alt="Convivencia con Dios" width={64} height={64} className="rounded-lg" />
+            <span className="text-sm font-semibold text-foreground">Convivencia con Dios</span>
           </Link>
           <CardTitle className="text-2xl text-foreground">Iniciar Sesión</CardTitle>
           <CardDescription>

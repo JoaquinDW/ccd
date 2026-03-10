@@ -25,6 +25,13 @@ type Persona = {
   pais: string | null
   acepta_comunicaciones: boolean | null
   notas: string | null
+  estado_eclesial: string | null
+  diocesis: string | null
+  categoria_persona: string | null
+  parroquia: string | null
+  socio_asociacion: boolean | null
+  referente_comunidad: boolean | null
+  cecista_dedicado: boolean | null
 }
 
 type ModoActual = { id: string; modo: string; fecha_inicio: string } | null
@@ -57,6 +64,25 @@ type HistorialAsignacion = {
 type Ministerio = { id: string; nombre: string; tipo: string; nivel: string }
 type Organizacion = { id: string; nombre: string; tipo: string }
 
+type RolActivo = {
+  id: string
+  fecha_inicio: string
+  organizacion_id: string | null
+  rol_sistema: { id: string; nombre: string; nivel_acceso: number } | null
+  organizacion: { nombre: string } | null
+} | null
+
+type HistorialRol = {
+  id: string
+  fecha_inicio: string
+  fecha_fin: string | null
+  activo: boolean
+  rol_sistema: { nombre: string } | null
+  organizacion: { nombre: string } | null
+}
+
+type RolSistema = { id: string; nombre: string; nivel_acceso: number }
+
 interface Props {
   persona: Persona
   modoActual: ModoActual
@@ -65,6 +91,10 @@ interface Props {
   historialAsignaciones: HistorialAsignacion[]
   ministerios: Ministerio[]
   organizaciones: Organizacion[]
+  rolActivo: RolActivo
+  historialRoles: HistorialRol[]
+  rolesSistema: RolSistema[]
+  canAssignRoles: boolean
 }
 
 const modoLabels: Record<string, string> = {
@@ -84,6 +114,10 @@ export function EditPersonaForm({
   historialAsignaciones,
   ministerios,
   organizaciones,
+  rolActivo,
+  historialRoles,
+  rolesSistema,
+  canAssignRoles,
 }: Props) {
   const router = useRouter()
   const today = new Date().toISOString().split("T")[0]
@@ -103,6 +137,13 @@ export function EditPersonaForm({
     pais: persona.pais ?? "Argentina",
     acepta_comunicaciones: persona.acepta_comunicaciones ?? true,
     notas: persona.notas ?? "",
+    estado_eclesial: persona.estado_eclesial ?? "laico",
+    diocesis: persona.diocesis ?? "",
+    categoria_persona: persona.categoria_persona ?? "",
+    parroquia: persona.parroquia ?? "",
+    socio_asociacion: persona.socio_asociacion ?? false,
+    referente_comunidad: persona.referente_comunidad ?? false,
+    cecista_dedicado: persona.cecista_dedicado ?? false,
   })
   const [basicLoading, setBasicLoading] = useState(false)
   const [basicError, setBasicError] = useState<string | null>(null)
@@ -113,6 +154,13 @@ export function EditPersonaForm({
   const [motivoFin, setMotivoFin] = useState("")
   const [modoLoading, setModoLoading] = useState(false)
   const [modoError, setModoError] = useState<string | null>(null)
+
+  // Section D: System role
+  const [newRolId, setNewRolId] = useState("")
+  const [newRolOrgId, setNewRolOrgId] = useState("")
+  const [rolLoading, setRolLoading] = useState(false)
+  const [rolError, setRolError] = useState<string | null>(null)
+  const [rolSuccess, setRolSuccess] = useState(false)
 
   // Section C: Ministry assignments
   const [newAsig, setNewAsig] = useState({
@@ -207,6 +255,49 @@ export function EditPersonaForm({
       router.refresh()
     }
     setClosingId(null)
+  }
+
+  const handleRolSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!newRolId) return
+    setRolError(null)
+    setRolSuccess(false)
+    setRolLoading(true)
+
+    const supabase = createClient()
+
+    if (rolActivo) {
+      const { error: closeError } = await supabase
+        .from("usuario_roles")
+        .update({ activo: false, fecha_fin: today })
+        .eq("id", rolActivo.id)
+
+      if (closeError) {
+        setRolError(closeError.message)
+        setRolLoading(false)
+        return
+      }
+    }
+
+    const insertPayload: Record<string, unknown> = {
+      persona_id: persona.id,
+      rol_sistema_id: newRolId,
+      fecha_inicio: today,
+      activo: true,
+    }
+    if (newRolOrgId) insertPayload.organizacion_id = newRolOrgId
+
+    const { error: insertError } = await supabase.from("usuario_roles").insert(insertPayload)
+
+    if (insertError) {
+      setRolError(insertError.message)
+    } else {
+      setNewRolId("")
+      setNewRolOrgId("")
+      setRolSuccess(true)
+      router.refresh()
+    }
+    setRolLoading(false)
   }
 
   const handleAsigSubmit = async (e: React.FormEvent) => {
@@ -347,6 +438,110 @@ export function EditPersonaForm({
                 disabled={basicLoading}
                 className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground text-sm"
               />
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="estado_eclesial">Estado Eclesiástico</Label>
+                <select
+                  id="estado_eclesial"
+                  name="estado_eclesial"
+                  value={basicData.estado_eclesial}
+                  onChange={handleBasicChange}
+                  disabled={basicLoading}
+                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground text-sm"
+                >
+                  <option value="laico">Laico</option>
+                  <option value="religioso">Religioso/a</option>
+                  <option value="diacono">Diácono</option>
+                  <option value="sacerdote">Sacerdote</option>
+                  <option value="obispo">Obispo</option>
+                  <option value="cardenal">Cardenal</option>
+                </select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="diocesis">Diócesis</Label>
+                <Input
+                  id="diocesis"
+                  name="diocesis"
+                  placeholder="Ej: Diócesis de Corrientes"
+                  value={basicData.diocesis}
+                  onChange={handleBasicChange}
+                  disabled={basicLoading}
+                />
+              </div>
+            </div>
+
+            {/* Categoría y Parroquia */}
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="categoria_persona">Categoría</Label>
+                <select
+                  id="categoria_persona"
+                  name="categoria_persona"
+                  value={basicData.categoria_persona}
+                  onChange={handleBasicChange}
+                  disabled={basicLoading}
+                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground text-sm"
+                >
+                  <option value="">Sin especificar</option>
+                  <option value="cecista">Cecista</option>
+                  <option value="no_cecista">No Cecista</option>
+                </select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="parroquia">Parroquia</Label>
+                <Input
+                  id="parroquia"
+                  name="parroquia"
+                  placeholder="Ej: Parroquia San José"
+                  value={basicData.parroquia}
+                  onChange={handleBasicChange}
+                  disabled={basicLoading}
+                />
+              </div>
+            </div>
+
+            {/* Flags institucionales */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <input
+                  id="socio_asociacion"
+                  name="socio_asociacion"
+                  type="checkbox"
+                  checked={basicData.socio_asociacion}
+                  onChange={handleBasicChange}
+                  disabled={basicLoading}
+                  className="h-4 w-4 rounded border-border"
+                />
+                <Label htmlFor="socio_asociacion">Socio de la asociación</Label>
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  id="referente_comunidad"
+                  name="referente_comunidad"
+                  type="checkbox"
+                  checked={basicData.referente_comunidad}
+                  onChange={handleBasicChange}
+                  disabled={basicLoading}
+                  className="h-4 w-4 rounded border-border"
+                />
+                <Label htmlFor="referente_comunidad">Referente de comunidad</Label>
+              </div>
+              {basicData.categoria_persona === "cecista" && (
+                <div className="flex items-center gap-2">
+                  <input
+                    id="cecista_dedicado"
+                    name="cecista_dedicado"
+                    type="checkbox"
+                    checked={basicData.cecista_dedicado}
+                    onChange={handleBasicChange}
+                    disabled={basicLoading}
+                    className="h-4 w-4 rounded border-border"
+                  />
+                  <Label htmlFor="cecista_dedicado">Cecista dedicado</Label>
+                </div>
+              )}
             </div>
 
             <div className="flex items-center gap-2">
@@ -611,6 +806,118 @@ export function EditPersonaForm({
           )}
         </CardContent>
       </Card>
+
+      {/* Section D: System role — only visible to users with roles.assign */}
+      {canAssignRoles && (
+        <Card className="border-border">
+          <CardHeader>
+            <CardTitle className="text-foreground">Rol de Acceso al Sistema</CardTitle>
+            <CardDescription>Controla qué puede ver y hacer esta persona en la aplicación</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {rolError && (
+              <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{rolError}</div>
+            )}
+            {rolSuccess && (
+              <div className="rounded-md bg-green-50 p-3 text-sm text-green-800">Rol actualizado correctamente</div>
+            )}
+
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-muted-foreground">Rol actual:</span>
+              {rolActivo ? (
+                <>
+                  <span className="inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-sm font-medium text-primary">
+                    {rolActivo.rol_sistema?.nombre ?? "—"}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    desde {rolActivo.fecha_inicio}
+                    {rolActivo.organizacion && ` · ${rolActivo.organizacion.nombre}`}
+                  </span>
+                </>
+              ) : (
+                <span className="text-sm text-muted-foreground italic">Sin rol asignado</span>
+              )}
+            </div>
+
+            <form onSubmit={handleRolSubmit} className="space-y-4">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="newRolId">{rolActivo ? "Cambiar a rol" : "Asignar rol"}</Label>
+                  <select
+                    id="newRolId"
+                    value={newRolId}
+                    onChange={e => setNewRolId(e.target.value)}
+                    disabled={rolLoading}
+                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground text-sm"
+                  >
+                    <option value="">Seleccionar rol...</option>
+                    {rolesSistema.map(r => (
+                      <option key={r.id} value={r.id}>
+                        {r.nombre} (nivel {r.nivel_acceso})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="newRolOrgId">Organización (opcional)</Label>
+                  <select
+                    id="newRolOrgId"
+                    value={newRolOrgId}
+                    onChange={e => setNewRolOrgId(e.target.value)}
+                    disabled={rolLoading}
+                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground text-sm"
+                  >
+                    <option value="">Global (sin restricción)</option>
+                    {organizaciones.map(o => (
+                      <option key={o.id} value={o.id}>
+                        {o.nombre} ({o.tipo})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <Button type="submit" variant="outline" disabled={rolLoading || !newRolId}>
+                {rolLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Actualizando...
+                  </>
+                ) : (
+                  rolActivo ? "Cambiar Rol" : "Asignar Rol"
+                )}
+              </Button>
+            </form>
+
+            {historialRoles.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-foreground">Historial de Acceso</p>
+                <div className="rounded-md border border-border overflow-hidden">
+                  <table className="w-full text-sm">
+                    <thead className="bg-muted">
+                      <tr>
+                        <th className="px-4 py-2 text-left font-medium text-muted-foreground">Rol</th>
+                        <th className="px-4 py-2 text-left font-medium text-muted-foreground">Organización</th>
+                        <th className="px-4 py-2 text-left font-medium text-muted-foreground">Desde</th>
+                        <th className="px-4 py-2 text-left font-medium text-muted-foreground">Hasta</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {historialRoles.map(r => (
+                        <tr key={r.id}>
+                          <td className="px-4 py-2 text-foreground">{r.rol_sistema?.nombre ?? "—"}</td>
+                          <td className="px-4 py-2 text-muted-foreground">{r.organizacion?.nombre ?? "Global"}</td>
+                          <td className="px-4 py-2 text-muted-foreground">{r.fecha_inicio}</td>
+                          <td className="px-4 py-2 text-muted-foreground">{r.fecha_fin ?? "—"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 }

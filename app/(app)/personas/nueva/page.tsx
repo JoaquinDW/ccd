@@ -47,6 +47,13 @@ export default function NewPersonaPage() {
     modo_inicial: '',
     rol_sistema_id: '',
     organizacion_id: '',
+    estado_eclesial: 'laico',
+    diocesis: '',
+    categoria_persona: '',
+    parroquia: '',
+    socio_asociacion: false,
+    referente_comunidad: false,
+    cecista_dedicado: false,
   })
 
   useEffect(() => {
@@ -295,6 +302,104 @@ export default function NewPersonaPage() {
                 <option value="orante">Orante</option>
                 <option value="intercesor">Intercesor</option>
               </select>
+            </div>
+
+            {/* Estado Eclesiástico y Diócesis */}
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="estado_eclesial">Estado Eclesiástico</Label>
+                <select
+                  id="estado_eclesial"
+                  name="estado_eclesial"
+                  value={formData.estado_eclesial}
+                  onChange={handleChange}
+                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground text-sm"
+                >
+                  <option value="laico">Laico</option>
+                  <option value="religioso">Religioso/a</option>
+                  <option value="diacono">Diácono</option>
+                  <option value="sacerdote">Sacerdote</option>
+                  <option value="obispo">Obispo</option>
+                  <option value="cardenal">Cardenal</option>
+                </select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="diocesis">Diócesis</Label>
+                <Input
+                  id="diocesis"
+                  name="diocesis"
+                  placeholder="Ej: Diócesis de Corrientes"
+                  value={formData.diocesis}
+                  onChange={handleChange}
+                />
+              </div>
+            </div>
+
+            {/* Categoría de Persona */}
+            <div className="space-y-2">
+              <Label htmlFor="categoria_persona">Categoría</Label>
+              <select
+                id="categoria_persona"
+                name="categoria_persona"
+                value={formData.categoria_persona}
+                onChange={handleChange}
+                className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground text-sm"
+              >
+                <option value="">Sin especificar</option>
+                <option value="cecista">Cecista</option>
+                <option value="no_cecista">No Cecista</option>
+              </select>
+            </div>
+
+            {/* Parroquia */}
+            <div className="space-y-2">
+              <Label htmlFor="parroquia">Parroquia</Label>
+              <Input
+                id="parroquia"
+                name="parroquia"
+                placeholder="Ej: Parroquia San José"
+                value={formData.parroquia}
+                onChange={handleChange}
+              />
+            </div>
+
+            {/* Flags institucionales */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <input
+                  id="socio_asociacion"
+                  name="socio_asociacion"
+                  type="checkbox"
+                  checked={formData.socio_asociacion}
+                  onChange={handleChange}
+                  className="h-4 w-4 rounded border-border"
+                />
+                <Label htmlFor="socio_asociacion">Socio de la asociación</Label>
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  id="referente_comunidad"
+                  name="referente_comunidad"
+                  type="checkbox"
+                  checked={formData.referente_comunidad}
+                  onChange={handleChange}
+                  className="h-4 w-4 rounded border-border"
+                />
+                <Label htmlFor="referente_comunidad">Referente de comunidad</Label>
+              </div>
+              {formData.categoria_persona === 'cecista' && (
+                <div className="flex items-center gap-2">
+                  <input
+                    id="cecista_dedicado"
+                    name="cecista_dedicado"
+                    type="checkbox"
+                    checked={formData.cecista_dedicado}
+                    onChange={handleChange}
+                    className="h-4 w-4 rounded border-border"
+                  />
+                  <Label htmlFor="cecista_dedicado">Cecista dedicado</Label>
+                </div>
+              )}
             </div>
 
             {/* Acepta Comunicaciones */}

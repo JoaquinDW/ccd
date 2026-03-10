@@ -1,14 +1,39 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Settings, Bell, Lock, Database } from 'lucide-react'
+import { cn } from '@/lib/utils'
+
+type FontSize = 'small' | 'medium' | 'large'
+
+const FONT_SCALES: Record<FontSize, number> = {
+  small: 1,
+  medium: 1.125,
+  large: 1.25,
+}
+
+const FONT_SIZE_OPTIONS: { value: FontSize; label: string; preview: string }[] = [
+  { value: 'small', label: 'Pequeño', preview: 'A' },
+  { value: 'medium', label: 'Mediano', preview: 'A' },
+  { value: 'large', label: 'Grande', preview: 'A' },
+]
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState('general')
+  const [fontSize, setFontSize] = useState<FontSize>('small')
+
+  useEffect(() => {
+    const saved = localStorage.getItem('font-size-preference') as FontSize | null
+    if (saved && saved in FONT_SCALES) setFontSize(saved)
+  }, [])
+
+  function applyFontSize(size: FontSize) {
+    setFontSize(size)
+    localStorage.setItem('font-size-preference', size)
+    document.documentElement.style.setProperty('--font-scale', String(FONT_SCALES[size]))
+  }
 
   return (
     <div className="space-y-8">
@@ -18,7 +43,7 @@ export default function SettingsPage() {
           Configuración
         </h1>
         <p className="mt-2 text-muted-foreground">
-          Administra la configuración del sistema
+          Preferencias de tu cuenta
         </p>
       </div>
 
@@ -70,37 +95,38 @@ export default function SettingsPage() {
       {activeTab === 'general' && (
         <Card className="border-border bg-card max-w-2xl">
           <CardHeader>
-            <CardTitle className="text-foreground">Configuración General</CardTitle>
-            <CardDescription>Ajusta la configuración general del sistema</CardDescription>
+            <CardTitle className="text-foreground">Apariencia</CardTitle>
+            <CardDescription>Personaliza cómo se ve la aplicación</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            <div className="space-y-2">
-              <Label htmlFor="nombreSistema" className="text-foreground">Nombre del Sistema</Label>
-              <Input
-                id="nombreSistema"
-                placeholder="Convivencia con Dios"
-                defaultValue="Convivencia con Dios"
-              />
+            <div className="space-y-3">
+              <p className="text-sm font-medium text-foreground">Tamaño de texto</p>
+              <div className="flex gap-3">
+                {FONT_SIZE_OPTIONS.map((opt, i) => {
+                  const previewSizes = ['text-base', 'text-xl', 'text-2xl']
+                  return (
+                    <button
+                      key={opt.value}
+                      onClick={() => applyFontSize(opt.value)}
+                      className={cn(
+                        'flex flex-col items-center gap-2 px-6 py-4 rounded-lg border-2 transition-colors',
+                        fontSize === opt.value
+                          ? 'border-primary bg-primary/5 text-primary'
+                          : 'border-border text-muted-foreground hover:border-primary/40 hover:text-foreground'
+                      )}
+                    >
+                      <span className={cn('font-semibold leading-none', previewSizes[i])}>
+                        {opt.preview}
+                      </span>
+                      <span className="text-xs">{opt.label}</span>
+                    </button>
+                  )
+                })}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                El cambio se aplica de inmediato y se recuerda al volver.
+              </p>
             </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="emailContacto" className="text-foreground">Email de Contacto</Label>
-              <Input
-                id="emailContacto"
-                type="email"
-                placeholder="contacto@convivencia.org"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="telefonoContacto" className="text-foreground">Teléfono de Contacto</Label>
-              <Input
-                id="telefonoContacto"
-                placeholder="+34 123 456 789"
-              />
-            </div>
-
-            <Button>Guardar Cambios</Button>
           </CardContent>
         </Card>
       )}

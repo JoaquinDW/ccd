@@ -94,7 +94,7 @@ export default function NuevaAsignacionPage() {
       .from('perfiles_usuario')
       .select('id')
       .eq('persona_id', form.persona_id)
-      .single()
+      .maybeSingle()
 
     const usuarioId = perfil?.id ?? null
 

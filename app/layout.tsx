@@ -36,7 +36,10 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: `(function(){var s=localStorage.getItem('font-size-preference')||'small';var m={small:1,medium:1.125,large:1.25};document.documentElement.style.setProperty('--font-scale',m[s]||1);})();` }} />
+      </head>
       <body className={`font-sans antialiased`}>
         {children}
         <Analytics />
