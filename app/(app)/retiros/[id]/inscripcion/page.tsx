@@ -1,7 +1,4 @@
-export const dynamic = 'force-dynamic'
-
 "use client"
-
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useRouter, useParams } from "next/navigation"
