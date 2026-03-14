@@ -2,7 +2,6 @@
 
 export const dynamic = 'force-dynamic'
 
-
 import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
@@ -15,8 +14,15 @@ interface Asignacion {
   id: string
   fecha_inicio: string | null
   organizacion: { nombre: string } | null
-  rol_sistema: { nombre: string; nivel_acceso: number } | null
+  ministerio: { nombre: string; tipo: string } | null
   persona: { nombre: string; apellido: string; email: string | null } | null
+}
+
+const tipoLabel: Record<string, string> = {
+  conduccion: 'Conducción',
+  pastoral: 'Pastoral',
+  servicio: 'Servicio',
+  sistema: 'Sistema',
 }
 
 export default function RevocarAsignacionPage() {
@@ -33,11 +39,11 @@ export default function RevocarAsignacionPage() {
   useEffect(() => {
     const load = async () => {
       const { data } = await supabase
-        .from('usuario_roles')
+        .from('asignaciones_ministerio')
         .select(`
           id, fecha_inicio,
           organizacion:organizaciones!organizacion_id(nombre),
-          rol_sistema:roles_sistema!rol_sistema_id(nombre, nivel_acceso),
+          ministerio:ministerios!ministerio_id(nombre, tipo),
           persona:personas!persona_id(nombre, apellido, email)
         `)
         .eq('id', id)
@@ -54,8 +60,8 @@ export default function RevocarAsignacionPage() {
 
     const hoy = new Date().toISOString().split('T')[0]
     const { error: err } = await supabase
-      .from('usuario_roles')
-      .update({ activo: false, fecha_fin: hoy })
+      .from('asignaciones_ministerio')
+      .update({ estado: 'inactivo', fecha_fin: hoy })
       .eq('id', id)
 
     if (err) {
@@ -89,7 +95,7 @@ export default function RevocarAsignacionPage() {
   const persona = asignacion.persona
   const nombreCompleto = persona
     ? `${persona.nombre} ${persona.apellido}`
-    : 'Usuario sin perfil'
+    : 'Persona sin perfil'
 
   return (
     <div className="space-y-8">
@@ -111,13 +117,13 @@ export default function RevocarAsignacionPage() {
             <CardTitle className="text-foreground">Confirmar Revocación</CardTitle>
           </div>
           <CardDescription>
-            Esta acción cerrará la asignación de rol. El registro histórico se conservará.
+            Esta acción cerrará la asignación de ministerio. El registro histórico se conservará.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="rounded-lg border border-border p-4 space-y-2">
             <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Usuario</span>
+              <span className="text-muted-foreground">Persona</span>
               <span className="font-medium text-foreground">{nombreCompleto}</span>
             </div>
             {persona?.email && (
@@ -127,9 +133,14 @@ export default function RevocarAsignacionPage() {
               </div>
             )}
             <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Rol</span>
+              <span className="text-muted-foreground">Ministerio</span>
               <span className="font-medium text-foreground">
-                {asignacion.rol_sistema?.nombre ?? '—'}
+                {asignacion.ministerio?.nombre ?? '—'}
+                {asignacion.ministerio?.tipo && (
+                  <span className="ml-1 font-normal text-muted-foreground">
+                    ({tipoLabel[asignacion.ministerio.tipo] ?? asignacion.ministerio.tipo})
+                  </span>
+                )}
               </span>
             </div>
             <div className="flex justify-between text-sm">

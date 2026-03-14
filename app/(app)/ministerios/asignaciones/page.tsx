@@ -11,41 +11,41 @@ import { getUserContext, canPerform } from '@/lib/auth/context'
 export default async function AsignacionesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; rol?: string }>
+  searchParams: Promise<{ q?: string; ministerio?: string }>
 }) {
-  const [{ q, rol: rolFiltro }, ctx] = await Promise.all([searchParams, getUserContext()])
+  const [{ q, ministerio: ministerioFiltro }, ctx] = await Promise.all([searchParams, getUserContext()])
   if (!ctx) redirect('/auth/login')
   if (!canPerform(ctx, 'roles.assign')) redirect('/dashboard')
 
   const supabase = await createClient()
 
-  // Cargar roles para el filtro
-  const { data: roles } = await supabase
-    .from('roles_sistema')
-    .select('id, nombre')
+  // Cargar ministerios para el filtro
+  const { data: ministerios } = await supabase
+    .from('ministerios')
+    .select('id, nombre, tipo')
     .eq('activo', true)
-    .order('nivel_acceso', { ascending: false })
+    .order('nombre')
 
-  // Paso 1: cargar asignaciones activas
+  // Cargar asignaciones activas desde asignaciones_ministerio
   let query = supabase
-    .from('usuario_roles')
+    .from('asignaciones_ministerio')
     .select(`
       id,
       fecha_inicio,
       persona_id,
       organizacion:organizaciones!organizacion_id(nombre),
-      rol_sistema:roles_sistema!rol_sistema_id(nombre, nivel_acceso)
+      ministerio:ministerios!ministerio_id(nombre, tipo, nivel_acceso)
     `)
-    .eq('activo', true)
+    .eq('estado', 'activo')
     .order('fecha_inicio', { ascending: false })
 
-  if (rolFiltro) {
-    query = query.eq('rol_sistema_id', rolFiltro)
+  if (ministerioFiltro) {
+    query = query.eq('ministerio_id', ministerioFiltro)
   }
 
   const { data: asignaciones } = await query
 
-  // Paso 2: cargar datos de personas por sus IDs
+  // Cargar datos de personas
   const personaIds = [...new Set(
     (asignaciones ?? []).map((a: any) => a.persona_id).filter(Boolean)
   )]
@@ -71,15 +71,22 @@ export default async function AsignacionesPage({
     return nombre.includes(q.toLowerCase()) || email.includes(q.toLowerCase())
   })
 
+  const tipoLabel: Record<string, string> = {
+    conduccion: 'Conducción',
+    pastoral: 'Pastoral',
+    servicio: 'Servicio',
+    sistema: 'Sistema',
+  }
+
   return (
     <div className="space-y-8">
       <div>
         <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
           <UserCheck className="h-8 w-8 text-primary" />
-          Asignaciones de Roles
+          Asignaciones de Ministerios
         </h1>
         <p className="mt-2 text-muted-foreground">
-          Usuarios con roles del sistema asignados
+          Personas con ministerios activos asignados
         </p>
       </div>
 
@@ -87,7 +94,7 @@ export default async function AsignacionesPage({
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
             <CardTitle className="text-foreground">Asignaciones Activas</CardTitle>
-            <CardDescription>Gestiona el acceso de los usuarios al sistema</CardDescription>
+            <CardDescription>Gestiona los ministerios asignados a cada persona</CardDescription>
           </div>
           <Link href="/ministerios/asignaciones/nueva">
             <Button className="gap-2">
@@ -113,13 +120,13 @@ export default async function AsignacionesPage({
               </button>
             </div>
             <select
-              name="rol"
-              defaultValue={rolFiltro ?? ''}
+              name="ministerio"
+              defaultValue={ministerioFiltro ?? ''}
               className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
             >
-              <option value="">Todos los roles</option>
-              {(roles ?? []).map((r: any) => (
-                <option key={r.id} value={r.id}>{r.nombre}</option>
+              <option value="">Todos los ministerios</option>
+              {(ministerios ?? []).map((m: any) => (
+                <option key={m.id} value={m.id}>{m.nombre} ({tipoLabel[m.tipo] ?? m.tipo})</option>
               ))}
             </select>
             <Button type="submit" variant="secondary" size="sm">Filtrar</Button>
@@ -131,8 +138,8 @@ export default async function AsignacionesPage({
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-border">
-                    <th className="text-left py-3 px-4 font-semibold text-foreground">Usuario</th>
-                    <th className="text-left py-3 px-4 font-semibold text-foreground">Rol</th>
+                    <th className="text-left py-3 px-4 font-semibold text-foreground">Persona</th>
+                    <th className="text-left py-3 px-4 font-semibold text-foreground">Ministerio</th>
                     <th className="text-left py-3 px-4 font-semibold text-foreground">Organización</th>
                     <th className="text-left py-3 px-4 font-semibold text-foreground">Desde</th>
                     <th className="text-center py-3 px-4 font-semibold text-foreground">Acciones</th>
@@ -154,11 +161,11 @@ export default async function AsignacionesPage({
                         </td>
                         <td className="py-3 px-4">
                           <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-primary/10 text-primary">
-                            {a.rol_sistema?.nombre ?? '—'}
+                            {a.ministerio?.nombre ?? '—'}
                           </span>
-                          {a.rol_sistema?.nivel_acceso && (
+                          {a.ministerio?.tipo && (
                             <span className="ml-1 text-xs text-muted-foreground">
-                              (nivel {a.rol_sistema.nivel_acceso})
+                              ({tipoLabel[a.ministerio.tipo] ?? a.ministerio.tipo})
                             </span>
                           )}
                         </td>
@@ -185,14 +192,14 @@ export default async function AsignacionesPage({
             <div className="py-12 text-center">
               <UserCheck className="mx-auto h-12 w-12 text-muted-foreground" />
               <h3 className="mt-4 text-lg font-semibold text-foreground">
-                {q || rolFiltro ? 'No se encontraron asignaciones' : 'No hay asignaciones activas'}
+                {q || ministerioFiltro ? 'No se encontraron asignaciones' : 'No hay asignaciones activas'}
               </h3>
               <p className="mt-2 text-muted-foreground">
-                {q || rolFiltro
+                {q || ministerioFiltro
                   ? 'Ajusta los filtros de búsqueda'
-                  : 'Asigna un rol a un usuario para comenzar'}
+                  : 'Asigna un ministerio a una persona para comenzar'}
               </p>
-              {!q && !rolFiltro && (
+              {!q && !ministerioFiltro && (
                 <Link href="/ministerios/asignaciones/nueva" className="mt-4 inline-block">
                   <Button className="gap-2">
                     <Plus className="h-4 w-4" />

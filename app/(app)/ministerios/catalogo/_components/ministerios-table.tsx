@@ -1,0 +1,235 @@
+'use client'
+
+import { useState } from 'react'
+import Link from 'next/link'
+import { Settings, Trash2 } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { createClient } from '@/lib/supabase/client'
+
+interface Ministerio {
+  id: string
+  nombre: string
+  tipo: string
+  nivel: string
+  nivel_acceso: number
+  activo: boolean
+  asignaciones: number
+}
+
+const tipoLabel: Record<string, string> = {
+  conduccion: 'Conducción',
+  pastoral: 'Pastoral',
+  servicio: 'Servicio',
+  sistema: 'Sistema',
+}
+
+const tipoColor: Record<string, string> = {
+  conduccion: 'bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400',
+  pastoral: 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400',
+  servicio: 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400',
+  sistema: 'bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-400',
+}
+
+const nivelLabel: Record<number, { label: string; color: string }> = {
+  100: { label: 'Máximo', color: 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400' },
+  80: { label: 'Alto', color: 'bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-400' },
+  60: { label: 'Medio', color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400' },
+  50: { label: 'Básico', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400' },
+  10: { label: 'Solo lectura', color: 'bg-muted text-muted-foreground' },
+}
+
+export function MinisteriosTable({ ministerios: initial }: { ministerios: Ministerio[] }) {
+  const supabase = createClient()
+  const [ministerios, setMinisterios] = useState(initial)
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [deleting, setDeleting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const allIds = ministerios.map(m => m.id)
+  const allSelected = allIds.length > 0 && allIds.every(id => selected.has(id))
+  const someSelected = selected.size > 0
+
+  const toggleAll = () => {
+    if (allSelected) {
+      setSelected(new Set())
+    } else {
+      setSelected(new Set(allIds))
+    }
+  }
+
+  const toggleOne = (id: string) => {
+    setSelected(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const handleDeleteSelected = async () => {
+    // Verificar que ninguno tenga asignaciones activas
+    const conAsignaciones = ministerios.filter(m => selected.has(m.id) && m.asignaciones > 0)
+    if (conAsignaciones.length > 0) {
+      setError(
+        `No se pueden desactivar ministerios con asignaciones activas: ${conAsignaciones.map(m => m.nombre).join(', ')}`
+      )
+      return
+    }
+
+    // Proteger admin_general
+    const protegidos = ministerios.filter(m => selected.has(m.id) && m.nombre === 'admin_general')
+    if (protegidos.length > 0) {
+      setError('El ministerio admin_general no se puede desactivar porque es requerido por el sistema de autenticación.')
+      return
+    }
+
+    setDeleting(true)
+    setError(null)
+
+    const ids = [...selected]
+
+    // Soft delete: marcar como inactivo (preserva historial y FK constraints)
+    const { error: err } = await supabase
+      .from('ministerios')
+      .update({ activo: false })
+      .in('id', ids)
+
+    if (err) {
+      setError(`Error al desactivar: [${err.code}] ${err.message}`)
+    } else {
+      setMinisterios(prev => prev.map(m =>
+        selected.has(m.id) ? { ...m, activo: false } : m
+      ))
+      setSelected(new Set())
+    }
+
+    setDeleting(false)
+  }
+
+  return (
+    <div className="space-y-3">
+      {/* Barra de acciones bulk */}
+      {someSelected && (
+        <div className="flex items-center gap-3 rounded-lg border border-border bg-muted/50 px-4 py-2">
+          <span className="text-sm text-muted-foreground">
+            {selected.size} seleccionado{selected.size !== 1 ? 's' : ''}
+          </span>
+          <Button
+            size="sm"
+            variant="destructive"
+            className="gap-2 ml-auto"
+            disabled={deleting}
+            onClick={handleDeleteSelected}
+          >
+            <Trash2 className="h-4 w-4" />
+            {deleting ? 'Desactivando...' : 'Desactivar seleccionados'}
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => setSelected(new Set())}
+            disabled={deleting}
+          >
+            Cancelar
+          </Button>
+        </div>
+      )}
+
+      {error && (
+        <div className="rounded-md bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          {error}
+        </div>
+      )}
+
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          <thead>
+            <tr className="border-b border-border">
+              <th className="py-3 px-4 w-10">
+                <input
+                  type="checkbox"
+                  checked={allSelected}
+                  onChange={toggleAll}
+                  className="h-4 w-4 rounded border-border accent-primary cursor-pointer"
+                />
+              </th>
+              <th className="text-left py-3 px-4 font-semibold text-foreground">Nombre</th>
+              <th className="text-left py-3 px-4 font-semibold text-foreground">Tipo</th>
+              <th className="text-left py-3 px-4 font-semibold text-foreground">Nivel</th>
+              <th className="text-left py-3 px-4 font-semibold text-foreground">Acceso al Sistema</th>
+              <th className="text-left py-3 px-4 font-semibold text-foreground">Asignaciones Activas</th>
+              <th className="text-left py-3 px-4 font-semibold text-foreground">Estado</th>
+              <th className="text-center py-3 px-4 font-semibold text-foreground">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            {ministerios.map((m) => {
+              const nivel = nivelLabel[m.nivel_acceso] ?? (
+                m.nivel_acceso > 0
+                  ? { label: `Nivel ${m.nivel_acceso}`, color: 'bg-muted text-muted-foreground' }
+                  : null
+              )
+              const isSelected = selected.has(m.id)
+              return (
+                <tr
+                  key={m.id}
+                  className={`border-b border-border transition-colors ${isSelected ? 'bg-primary/5' : 'hover:bg-muted/50'}`}
+                >
+                  <td className="py-3 px-4">
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => toggleOne(m.id)}
+                      className="h-4 w-4 rounded border-border accent-primary cursor-pointer"
+                    />
+                  </td>
+                  <td className="py-3 px-4 font-medium">
+                    <Link href={`/ministerios/catalogo/${m.id}`} className="text-foreground hover:text-primary">
+                      {m.nombre}
+                    </Link>
+                  </td>
+                  <td className="py-3 px-4">
+                    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${tipoColor[m.tipo] ?? 'bg-muted text-muted-foreground'}`}>
+                      {tipoLabel[m.tipo] ?? m.tipo}
+                    </span>
+                  </td>
+                  <td className="py-3 px-4 text-sm text-muted-foreground capitalize">
+                    {m.nivel}
+                  </td>
+                  <td className="py-3 px-4">
+                    {nivel ? (
+                      <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${nivel.color}`}>
+                        {nivel.label} ({m.nivel_acceso})
+                      </span>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">Sin acceso técnico</span>
+                    )}
+                  </td>
+                  <td className="py-3 px-4 text-muted-foreground">
+                    {m.asignaciones}
+                  </td>
+                  <td className="py-3 px-4">
+                    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                      m.activo
+                        ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
+                        : 'bg-muted text-muted-foreground'
+                    }`}>
+                      {m.activo ? 'Activo' : 'Inactivo'}
+                    </span>
+                  </td>
+                  <td className="py-3 px-4 text-center">
+                    <Link href={`/ministerios/catalogo/${m.id}`}>
+                      <Button size="sm" variant="ghost" className="h-8 w-8 p-0">
+                        <Settings className="h-4 w-4" />
+                      </Button>
+                    </Link>
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}

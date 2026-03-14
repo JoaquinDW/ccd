@@ -21,9 +21,6 @@ export default async function EditPersonaPage({ params }: { params: Promise<{ id
     { data: historialAsignaciones },
     { data: ministerios },
     { data: organizaciones },
-    { data: rolActivo },
-    { data: historialRoles },
-    { data: rolesSistema },
   ] = await Promise.all([
     supabase.from("personas").select("*").eq("id", id).single(),
     supabase
@@ -47,30 +44,11 @@ export default async function EditPersonaPage({ params }: { params: Promise<{ id
       .select("id, fecha_inicio, fecha_fin, estado, ministerio:ministerios!ministerio_id(nombre), organizacion:organizaciones!organizacion_id(nombre)")
       .eq("persona_id", id)
       .order("fecha_inicio", { ascending: false }),
-    supabase.from("ministerios").select("id, nombre, tipo, nivel").eq("activo", true).order("nombre"),
+    supabase.from("ministerios").select("id, nombre, tipo, nivel").eq("activo", true).order("tipo").order("nombre"),
     supabase.from("organizaciones").select("id, nombre, tipo").is("fecha_baja", null).order("nombre"),
-    supabase
-      .from("usuario_roles")
-      .select("id, fecha_inicio, organizacion_id, rol_sistema:roles_sistema!rol_sistema_id(id, nombre, nivel_acceso), organizacion:organizaciones!organizacion_id(nombre)")
-      .eq("persona_id", id)
-      .eq("activo", true)
-      .is("fecha_fin", null)
-      .maybeSingle(),
-    supabase
-      .from("usuario_roles")
-      .select("id, fecha_inicio, fecha_fin, activo, rol_sistema:roles_sistema!rol_sistema_id(nombre), organizacion:organizaciones!organizacion_id(nombre)")
-      .eq("persona_id", id)
-      .order("fecha_inicio", { ascending: false }),
-    supabase
-      .from("roles_sistema")
-      .select("id, nombre, nivel_acceso")
-      .eq("activo", true)
-      .order("nivel_acceso", { ascending: false }),
   ])
 
   if (!persona) notFound()
-
-  const canAssignRoles = canPerform(ctx, 'roles.assign')
 
   return (
     <EditPersonaForm
@@ -81,10 +59,6 @@ export default async function EditPersonaPage({ params }: { params: Promise<{ id
       historialAsignaciones={historialAsignaciones ?? []}
       ministerios={ministerios ?? []}
       organizaciones={organizaciones ?? []}
-      rolActivo={rolActivo ?? null}
-      historialRoles={historialRoles ?? []}
-      rolesSistema={rolesSistema ?? []}
-      canAssignRoles={canAssignRoles}
     />
   )
 }

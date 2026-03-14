@@ -19,12 +19,13 @@ import {
   ClipboardList,
   BarChart3,
   ShieldCheck,
-  Shield,
+  Briefcase,
   UserCheck,
   UserPlus,
   List,
   Building2,
   PlusCircle,
+  Hotel,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { createClient } from "@/lib/supabase/client"
@@ -57,6 +58,23 @@ const navItems: NavItem[] = [
         icon: <PlusCircle className="h-4 w-4" />,
         label: "Nueva organización",
         href: "/organizaciones/nueva",
+      },
+    ],
+  },
+  {
+    icon: <Hotel className="h-5 w-5" />,
+    label: "Casas de Retiro",
+    href: "/casas-retiro",
+    children: [
+      {
+        icon: <Building2 className="h-4 w-4" />,
+        label: "Lista de casas",
+        href: "/casas-retiro",
+      },
+      {
+        icon: <PlusCircle className="h-4 w-4" />,
+        label: "Nueva casa de retiro",
+        href: "/casas-retiro/nueva",
       },
     ],
   },
@@ -104,17 +122,17 @@ const navItems: NavItem[] = [
   },
   {
     icon: <ShieldCheck className="h-5 w-5" />,
-    label: "Roles y Permisos",
+    label: "Ministerios",
     href: "/ministerios",
     children: [
       {
-        icon: <Shield className="h-4 w-4" />,
-        label: "Roles del Sistema",
-        href: "/ministerios/roles",
+        icon: <Briefcase className="h-4 w-4" />,
+        label: "Catálogo de Ministerios",
+        href: "/ministerios/catalogo",
       },
       {
         icon: <UserCheck className="h-4 w-4" />,
-        label: "Asignaciones de Acceso",
+        label: "Asignaciones",
         href: "/ministerios/asignaciones",
       },
     ],

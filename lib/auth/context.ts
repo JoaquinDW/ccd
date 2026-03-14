@@ -83,14 +83,12 @@ export async function getUserContext(): Promise<UserContext | null> {
     .filter(r => r.organizacion_id !== null)
     .map(r => r.organizacion_id as string)
 
-  // Cargar permisos desde rol_permisos (migración 005).
-  // Si la tabla no existe o está vacía, db_permissions queda [] y canPerform()
-  // usará el mapa hardcodeado como fallback.
+  // Path A: Cargar permisos desde rol_permisos (legacy, migración 005).
   const rolSistemaIds = (roles ?? [])
     .map((r: any) => r.rol_sistema_id)
     .filter(Boolean) as string[]
 
-  let db_permissions: string[] = []
+  let legacyPermissions: string[] = []
   if (rolSistemaIds.length > 0) {
     const { data: permsData } = await supabase
       .from('rol_permisos')
@@ -98,18 +96,62 @@ export async function getUserContext(): Promise<UserContext | null> {
       .in('rol_sistema_id', rolSistemaIds)
       .eq('activo', true)
 
-    db_permissions = (permsData ?? [])
+    legacyPermissions = (permsData ?? [])
       .map((p: any) => p.permiso?.clave)
       .filter(Boolean) as string[]
   }
 
+  // Path B: Cargar permisos desde asignaciones_ministerio → ministerio_permisos (migración 007).
+  let ministerioPermissions: string[] = []
+  let ministerioNivelMax = 0
+  let ministerioIsAdmin = false
+  let ministerioOrgIds: string[] = []
+
+  const persona_id = perfil?.persona_id ?? null
+  if (persona_id) {
+    const { data: asignaciones } = await supabase
+      .from('asignaciones_ministerio')
+      .select(`
+        organizacion_id,
+        ministerio:ministerios!ministerio_id(
+          nombre,
+          nivel_acceso,
+          ministerio_permisos(permiso:permisos!permiso_id(clave))
+        )
+      `)
+      .eq('persona_id', persona_id)
+      .eq('estado', 'activo')
+      .or(`fecha_fin.is.null,fecha_fin.gt.${hoy}`)
+
+    for (const a of asignaciones ?? []) {
+      const min = a.ministerio as any
+      if (!min) continue
+      const nivelAcceso = min.nivel_acceso ?? 0
+      ministerioNivelMax = Math.max(ministerioNivelMax, nivelAcceso)
+      if (nivelAcceso >= 100) ministerioIsAdmin = true
+      if (a.organizacion_id) ministerioOrgIds.push(a.organizacion_id as string)
+      for (const mp of min.ministerio_permisos ?? []) {
+        const clave = (mp as any).permiso?.clave
+        if (clave && !ministerioPermissions.includes(clave)) {
+          ministerioPermissions.push(clave)
+        }
+      }
+    }
+  }
+
+  // Merge ambos paths
+  const merged_nivel_max = Math.max(nivel_max, ministerioNivelMax)
+  const merged_is_admin = is_admin || ministerioIsAdmin
+  const merged_org_ids = [...new Set([...org_ids, ...ministerioOrgIds])]
+  const db_permissions = [...new Set([...legacyPermissions, ...ministerioPermissions])]
+
   return {
     auth_user_id: user.id,
-    persona_id: perfil?.persona_id ?? null,
+    persona_id,
     roles: userRoles,
-    org_ids,
-    is_admin,
-    nivel_max,
+    org_ids: merged_org_ids,
+    is_admin: merged_is_admin,
+    nivel_max: merged_nivel_max,
     db_permissions,
   }
 }

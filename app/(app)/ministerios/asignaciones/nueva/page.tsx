@@ -2,7 +2,6 @@
 
 export const dynamic = 'force-dynamic'
 
-
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -20,9 +19,10 @@ interface Persona {
   email: string | null
 }
 
-interface Rol {
+interface Ministerio {
   id: string
   nombre: string
+  tipo: string
   nivel_acceso: number
 }
 
@@ -31,18 +31,25 @@ interface Org {
   nombre: string
 }
 
+const tipoLabel: Record<string, string> = {
+  conduccion: 'Conducción',
+  pastoral: 'Pastoral',
+  servicio: 'Servicio',
+  sistema: 'Sistema',
+}
+
 export default function NuevaAsignacionPage() {
   const router = useRouter()
   const supabase = createClient()
 
   const [personas, setPersonas] = useState<Persona[]>([])
-  const [roles, setRoles] = useState<Rol[]>([])
+  const [ministerios, setMinisterios] = useState<Ministerio[]>([])
   const [organizaciones, setOrganizaciones] = useState<Org[]>([])
   const [loadingData, setLoadingData] = useState(true)
 
   const [form, setForm] = useState({
     persona_id: '',
-    rol_sistema_id: '',
+    ministerio_id: '',
     organizacion_id: '',
     fecha_inicio: new Date().toISOString().split('T')[0],
   })
@@ -51,7 +58,7 @@ export default function NuevaAsignacionPage() {
 
   useEffect(() => {
     const load = async () => {
-      const [{ data: personasData, error: personasError }, { data: rolesData }, { data: orgsData }] = await Promise.all([
+      const [{ data: personasData, error: personasError }, { data: ministeriosData }, { data: orgsData }] = await Promise.all([
         supabase
           .from('personas')
           .select('id, nombre, apellido, email')
@@ -59,10 +66,11 @@ export default function NuevaAsignacionPage() {
           .order('apellido')
           .order('nombre'),
         supabase
-          .from('roles_sistema')
-          .select('id, nombre, nivel_acceso')
+          .from('ministerios')
+          .select('id, nombre, tipo, nivel_acceso')
           .eq('activo', true)
-          .order('nivel_acceso', { ascending: false }),
+          .order('tipo')
+          .order('nombre'),
         supabase
           .from('organizaciones')
           .select('id, nombre')
@@ -71,7 +79,7 @@ export default function NuevaAsignacionPage() {
       ])
       if (personasError) console.error('Error cargando personas:', personasError)
       setPersonas(personasData ?? [])
-      setRoles(rolesData ?? [])
+      setMinisterios(ministeriosData ?? [])
       setOrganizaciones(orgsData ?? [])
       setLoadingData(false)
     }
@@ -83,8 +91,8 @@ export default function NuevaAsignacionPage() {
     setLoading(true)
     setError(null)
 
-    if (!form.persona_id || !form.rol_sistema_id) {
-      setError('Debes seleccionar una persona y un rol')
+    if (!form.persona_id || !form.ministerio_id) {
+      setError('Debes seleccionar una persona y un ministerio')
       setLoading(false)
       return
     }
@@ -92,27 +100,13 @@ export default function NuevaAsignacionPage() {
     const orgId = form.organizacion_id || null
     const hoy = new Date().toISOString().split('T')[0]
 
-    // Buscar si la persona ya tiene perfiles_usuario (cuenta activa)
-    const { data: perfil } = await supabase
-      .from('perfiles_usuario')
-      .select('id')
-      .eq('persona_id', form.persona_id)
-      .maybeSingle()
-
-    const usuarioId = perfil?.id ?? null
-
     // Cerrar asignación activa existente para la misma combinación (patrón histórico)
-    // Buscar tanto por persona_id como por usuario_id
-    const closeFilters: Record<string, any> = {
-      rol_sistema_id: form.rol_sistema_id,
-      activo: true,
-    }
-
     let closeQuery = supabase
-      .from('usuario_roles')
-      .update({ activo: false, fecha_fin: hoy })
-      .eq('rol_sistema_id', form.rol_sistema_id)
-      .eq('activo', true)
+      .from('asignaciones_ministerio')
+      .update({ estado: 'inactivo', fecha_fin: hoy })
+      .eq('persona_id', form.persona_id)
+      .eq('ministerio_id', form.ministerio_id)
+      .eq('estado', 'activo')
 
     if (orgId) {
       closeQuery = closeQuery.eq('organizacion_id', orgId)
@@ -120,37 +114,17 @@ export default function NuevaAsignacionPage() {
       closeQuery = closeQuery.is('organizacion_id', null)
     }
 
-    // Cerrar por persona_id
-    await closeQuery.eq('persona_id', form.persona_id)
+    await closeQuery
 
-    // También cerrar por usuario_id si tiene cuenta
-    if (usuarioId) {
-      let closeByUser = supabase
-        .from('usuario_roles')
-        .update({ activo: false, fecha_fin: hoy })
-        .eq('usuario_id', usuarioId)
-        .eq('rol_sistema_id', form.rol_sistema_id)
-        .eq('activo', true)
-
-      if (orgId) {
-        closeByUser = closeByUser.eq('organizacion_id', orgId)
-      } else {
-        closeByUser = closeByUser.is('organizacion_id', null)
-      }
-
-      await closeByUser
-    }
-
-    // Insertar nueva asignación con persona_id (y usuario_id si tiene cuenta)
+    // Insertar nueva asignación
     const { error: insertError } = await supabase
-      .from('usuario_roles')
+      .from('asignaciones_ministerio')
       .insert({
         persona_id: form.persona_id,
-        usuario_id: usuarioId,
-        rol_sistema_id: form.rol_sistema_id,
+        ministerio_id: form.ministerio_id,
         organizacion_id: orgId,
         fecha_inicio: form.fecha_inicio || hoy,
-        activo: true,
+        estado: 'activo',
       })
 
     if (insertError) {
@@ -179,10 +153,10 @@ export default function NuevaAsignacionPage() {
         </Link>
         <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
           <UserCheck className="h-8 w-8 text-primary" />
-          Nueva Asignación de Rol
+          Nueva Asignación de Ministerio
         </h1>
         <p className="mt-2 text-muted-foreground">
-          Asigna un rol del sistema a una persona
+          Asigna un ministerio a una persona. Los permisos de sistema del ministerio se activan automáticamente.
         </p>
       </div>
 
@@ -190,8 +164,7 @@ export default function NuevaAsignacionPage() {
         <CardHeader>
           <CardTitle className="text-foreground">Datos de la Asignación</CardTitle>
           <CardDescription>
-            Podés asignar roles a cualquier persona, incluso si aún no tiene cuenta en el sistema.
-            Cuando haga su primer login, los roles se activarán automáticamente.
+            Podés asignar ministerios a cualquier persona. Si el ministerio tiene permisos de sistema configurados, se aplicarán al hacer login.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -215,18 +188,18 @@ export default function NuevaAsignacionPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="rol_sistema_id">Rol *</Label>
+              <Label htmlFor="ministerio_id">Ministerio *</Label>
               <select
-                id="rol_sistema_id"
+                id="ministerio_id"
                 required
-                value={form.rol_sistema_id}
-                onChange={e => setForm(f => ({ ...f, rol_sistema_id: e.target.value }))}
+                value={form.ministerio_id}
+                onChange={e => setForm(f => ({ ...f, ministerio_id: e.target.value }))}
                 className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
               >
-                <option value="">Selecciona un rol...</option>
-                {roles.map(r => (
-                  <option key={r.id} value={r.id}>
-                    {r.nombre} (nivel {r.nivel_acceso})
+                <option value="">Selecciona un ministerio...</option>
+                {ministerios.map(m => (
+                  <option key={m.id} value={m.id}>
+                    {m.nombre} — {tipoLabel[m.tipo] ?? m.tipo}{m.nivel_acceso > 0 ? ` (acceso nivel ${m.nivel_acceso})` : ''}
                   </option>
                 ))}
               </select>
@@ -246,7 +219,7 @@ export default function NuevaAsignacionPage() {
                 ))}
               </select>
               <p className="text-xs text-muted-foreground">
-                Dejar vacío para acceso global; seleccionar para limitar el acceso a una organización específica.
+                Dejar vacío para acceso global; seleccionar para limitar el ministerio a una organización específica.
               </p>
             </div>
 
@@ -265,7 +238,7 @@ export default function NuevaAsignacionPage() {
 
             <div className="flex gap-3 pt-2">
               <Button type="submit" disabled={loading}>
-                {loading ? 'Asignando...' : 'Asignar Rol'}
+                {loading ? 'Asignando...' : 'Asignar Ministerio'}
               </Button>
               <Link href="/ministerios/asignaciones">
                 <Button type="button" variant="outline">Cancelar</Button>

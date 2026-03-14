@@ -23,6 +23,25 @@ export async function PATCH(
   const body = await request.json()
   const supabase = await createClient()
 
+  // Scope check: si no es admin y tiene orgs asignadas, la persona debe pertenecer
+  // a al menos una de ellas (via asignaciones_ministerio activas)
+  if (!ctx.is_admin && ctx.org_ids.length > 0) {
+    const { data: asignaciones } = await supabase
+      .from('asignaciones_ministerio')
+      .select('organizacion_id')
+      .eq('persona_id', id)
+      .eq('estado', 'activo')
+      .in('organizacion_id', ctx.org_ids)
+      .limit(1)
+
+    if (!asignaciones || asignaciones.length === 0) {
+      return NextResponse.json(
+        { error: 'No tenés permiso para editar esta persona' },
+        { status: 403 }
+      )
+    }
+  }
+
   const updateData: Record<string, unknown> = {
     nombre: body.nombre,
     apellido: body.apellido,

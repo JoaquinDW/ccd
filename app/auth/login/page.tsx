@@ -1,6 +1,6 @@
 "use client"
 
-export const dynamic = 'force-dynamic'
+export const dynamic = "force-dynamic"
 
 import React from "react"
 
@@ -12,7 +12,14 @@ import { Eye, EyeOff, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
 import { createClient } from "@/lib/supabase/client"
 
 export default function LoginPage() {
@@ -35,9 +42,11 @@ export default function LoginPage() {
     })
 
     if (error) {
-      setError(error.message === "Invalid login credentials" 
-        ? "Credenciales inválidas. Por favor verifica tu email y contraseña."
-        : error.message)
+      setError(
+        error.message === "Invalid login credentials"
+          ? "Credenciales inválidas. Por favor verifica tu email y contraseña."
+          : error.message,
+      )
       setIsLoading(false)
       return
     }
@@ -50,14 +59,25 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-background px-4 py-12">
       <Card className="w-full max-w-md border-border">
         <CardHeader className="text-center">
-          <Link href="/" className="mx-auto mb-4 flex flex-col items-center gap-2">
-            <Image src="/logoccd.jpeg" alt="Convivencia con Dios" width={64} height={64} className="rounded-lg" />
-            <span className="text-sm font-semibold text-foreground">Convivencia con Dios</span>
+          <Link
+            href="/"
+            className="mx-auto mb-4 flex flex-col items-center gap-2"
+          >
+            <Image
+              src="/logoccd.jpeg"
+              alt="Convivencia con Dios"
+              width={64}
+              height={64}
+              className="rounded-lg"
+            />
+            <span className="text-sm font-semibold text-foreground">
+              Convivencia con Dios
+            </span>
           </Link>
-          <CardTitle className="text-2xl text-foreground">Iniciar Sesión</CardTitle>
-          <CardDescription>
-            Ingresa a tu cuenta para continuar
-          </CardDescription>
+          <CardTitle className="text-2xl text-foreground">
+            Iniciar Sesión
+          </CardTitle>
+          <CardDescription>Ingresa a tu cuenta para continuar</CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-4">
@@ -96,13 +116,17 @@ export default function LoginPage() {
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                   tabIndex={-1}
                 >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
                 </button>
               </div>
             </div>
           </CardContent>
           <CardFooter className="flex flex-col gap-4">
-            <Button type="submit" className="w-full" disabled={isLoading}>
+            <Button type="submit" className="w-full mt-2" disabled={isLoading}>
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -114,7 +138,10 @@ export default function LoginPage() {
             </Button>
             <p className="text-center text-sm text-muted-foreground">
               ¿No tienes una cuenta?{" "}
-              <Link href="/auth/sign-up" className="font-medium text-primary hover:underline">
+              <Link
+                href="/auth/sign-up"
+                className="font-medium text-primary hover:underline"
+              >
                 Regístrate
               </Link>
             </p>
