@@ -15,23 +15,28 @@ type Persona = {
   nombre: string
   apellido: string
   email: string | null
+  email_ccd: string | null
   telefono: string | null
   tipo_documento: string | null
   documento: string | null
   fecha_nacimiento: string | null
   direccion: string | null
+  direccion_nro: string | null
   localidad: string | null
+  codigo_postal: string | null
   provincia: string | null
   pais: string | null
   acepta_comunicaciones: boolean | null
   notas: string | null
   estado_eclesial: string | null
+  estado_vida: string | null
   diocesis: string | null
   categoria_persona: string | null
   parroquia: string | null
   socio_asociacion: boolean | null
   referente_comunidad: boolean | null
   cecista_dedicado: boolean | null
+  intercesor_dies_natalis: string | null
 }
 
 type ModoActual = { id: string; modo: string; fecha_inicio: string } | null
@@ -72,6 +77,9 @@ interface Props {
   historialAsignaciones: HistorialAsignacion[]
   ministerios: Ministerio[]
   organizaciones: Organizacion[]
+  categoriasNoCecista: string[]
+  confraternidadActual: string | null
+  fraternidadActual: string | null
 }
 
 const modoLabels: Record<string, string> = {
@@ -90,6 +98,13 @@ const tipoMinisterioLabel: Record<string, string> = {
   sistema: "Acceso al Sistema",
 }
 
+const NO_CECISTA_CATEGORIAS = [
+  { value: "voluntario", label: "Voluntario" },
+  { value: "convivente", label: "Convivente" },
+  { value: "cooperador", label: "Cooperador" },
+  { value: "contacto_casa_retiro", label: "Contacto Casa Retiro" },
+]
+
 export function EditPersonaForm({
   persona,
   modoActual,
@@ -98,6 +113,9 @@ export function EditPersonaForm({
   historialAsignaciones,
   ministerios,
   organizaciones,
+  categoriasNoCecista: initialCategoriasNoCecista,
+  confraternidadActual,
+  fraternidadActual,
 }: Props) {
   const router = useRouter()
   const today = new Date().toISOString().split("T")[0]
@@ -107,27 +125,36 @@ export function EditPersonaForm({
     nombre: persona.nombre ?? "",
     apellido: persona.apellido ?? "",
     email: persona.email ?? "",
+    email_ccd: persona.email_ccd ?? "",
     telefono: persona.telefono ?? "",
     tipo_documento: persona.tipo_documento ?? "",
     documento: persona.documento ?? "",
     fecha_nacimiento: persona.fecha_nacimiento ?? "",
     direccion: persona.direccion ?? "",
+    direccion_nro: persona.direccion_nro ?? "",
     localidad: persona.localidad ?? "",
+    codigo_postal: persona.codigo_postal ?? "",
     provincia: persona.provincia ?? "",
     pais: persona.pais ?? "Argentina",
     acepta_comunicaciones: persona.acepta_comunicaciones ?? true,
     notas: persona.notas ?? "",
     estado_eclesial: persona.estado_eclesial ?? "laico",
+    estado_vida: persona.estado_vida ?? "",
     diocesis: persona.diocesis ?? "",
     categoria_persona: persona.categoria_persona ?? "",
     parroquia: persona.parroquia ?? "",
     socio_asociacion: persona.socio_asociacion ?? false,
     referente_comunidad: persona.referente_comunidad ?? false,
     cecista_dedicado: persona.cecista_dedicado ?? false,
+    intercesor_dies_natalis: persona.intercesor_dies_natalis ?? "",
   })
   const [basicLoading, setBasicLoading] = useState(false)
   const [basicError, setBasicError] = useState<string | null>(null)
   const [basicSuccess, setBasicSuccess] = useState(false)
+
+  // No cecista subcategories
+  const [categoriasNoCecista, setCategoriasNoCecista] = useState<string[]>(initialCategoriasNoCecista)
+  const [catLoading, setCatLoading] = useState(false)
 
   // Section B: Participation mode
   const [nuevoModo, setNuevoModo] = useState("")
@@ -173,6 +200,27 @@ export function EditPersonaForm({
       router.refresh()
     }
     setBasicLoading(false)
+  }
+
+  const handleToggleCategoriaNoCecista = async (categoria: string) => {
+    setCatLoading(true)
+    const supabase = createClient()
+    const isActive = categoriasNoCecista.includes(categoria)
+
+    if (isActive) {
+      await supabase
+        .from("persona_categoria_no_cecista")
+        .delete()
+        .eq("persona_id", persona.id)
+        .eq("categoria", categoria)
+      setCategoriasNoCecista(prev => prev.filter(c => c !== categoria))
+    } else {
+      await supabase
+        .from("persona_categoria_no_cecista")
+        .insert({ persona_id: persona.id, categoria })
+      setCategoriasNoCecista(prev => [...prev, categoria])
+    }
+    setCatLoading(false)
   }
 
   const handleModoSubmit = async (e: React.FormEvent) => {
@@ -299,12 +347,23 @@ export function EditPersonaForm({
 
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="telefono">Teléfono</Label>
+                <Input id="telefono" name="telefono" value={basicData.telefono} onChange={handleBasicChange} disabled={basicLoading} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="fecha_nacimiento">Fecha de Nacimiento</Label>
+                <Input id="fecha_nacimiento" name="fecha_nacimiento" type="date" value={basicData.fecha_nacimiento} onChange={handleBasicChange} disabled={basicLoading} />
+              </div>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="email">Mail Personal</Label>
                 <Input id="email" name="email" type="email" value={basicData.email} onChange={handleBasicChange} disabled={basicLoading} />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="telefono">Teléfono</Label>
-                <Input id="telefono" name="telefono" value={basicData.telefono} onChange={handleBasicChange} disabled={basicLoading} />
+                <Label htmlFor="email_ccd">Mail CcD</Label>
+                <Input id="email_ccd" name="email_ccd" type="email" value={basicData.email_ccd} onChange={handleBasicChange} disabled={basicLoading} />
               </div>
             </div>
 
@@ -327,26 +386,46 @@ export function EditPersonaForm({
                 </select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="documento">Número de Documento</Label>
+                <Label htmlFor="documento">Nro Documento</Label>
                 <Input id="documento" name="documento" value={basicData.documento} onChange={handleBasicChange} disabled={basicLoading} />
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="fecha_nacimiento">Fecha de Nacimiento</Label>
-              <Input id="fecha_nacimiento" name="fecha_nacimiento" type="date" value={basicData.fecha_nacimiento} onChange={handleBasicChange} disabled={basicLoading} />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="direccion">Dirección</Label>
-              <Input id="direccion" name="direccion" value={basicData.direccion} onChange={handleBasicChange} disabled={basicLoading} />
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-3">
+            <div className="grid gap-4 md:grid-cols-[1fr_auto]">
               <div className="space-y-2">
-                <Label htmlFor="localidad">Localidad</Label>
+                <Label htmlFor="direccion">Dirección Calle</Label>
+                <Input id="direccion" name="direccion" value={basicData.direccion} onChange={handleBasicChange} disabled={basicLoading} />
+              </div>
+              <div className="space-y-2 w-28">
+                <Label htmlFor="direccion_nro">Dirección Nro</Label>
+                <Input id="direccion_nro" name="direccion_nro" value={basicData.direccion_nro} onChange={handleBasicChange} disabled={basicLoading} />
+              </div>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="localidad">Ciudad</Label>
                 <Input id="localidad" name="localidad" value={basicData.localidad} onChange={handleBasicChange} disabled={basicLoading} />
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="codigo_postal">CP</Label>
+                <Input id="codigo_postal" name="codigo_postal" value={basicData.codigo_postal} onChange={handleBasicChange} disabled={basicLoading} />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="diocesis">Diócesis</Label>
+              <Input
+                id="diocesis"
+                name="diocesis"
+                placeholder="Ej: Diócesis de Corrientes"
+                value={basicData.diocesis}
+                onChange={handleBasicChange}
+                disabled={basicLoading}
+              />
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="provincia">Provincia</Label>
                 <Input id="provincia" name="provincia" value={basicData.provincia} onChange={handleBasicChange} disabled={basicLoading} />
@@ -355,19 +434,6 @@ export function EditPersonaForm({
                 <Label htmlFor="pais">País</Label>
                 <Input id="pais" name="pais" value={basicData.pais} onChange={handleBasicChange} disabled={basicLoading} />
               </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="notas">Notas</Label>
-              <textarea
-                id="notas"
-                name="notas"
-                rows={3}
-                value={basicData.notas}
-                onChange={handleBasicChange}
-                disabled={basicLoading}
-                className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground text-sm"
-              />
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">
@@ -390,35 +456,6 @@ export function EditPersonaForm({
                 </select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="diocesis">Diócesis</Label>
-                <Input
-                  id="diocesis"
-                  name="diocesis"
-                  placeholder="Ej: Diócesis de Corrientes"
-                  value={basicData.diocesis}
-                  onChange={handleBasicChange}
-                  disabled={basicLoading}
-                />
-              </div>
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="categoria_persona">Categoría</Label>
-                <select
-                  id="categoria_persona"
-                  name="categoria_persona"
-                  value={basicData.categoria_persona}
-                  onChange={handleBasicChange}
-                  disabled={basicLoading}
-                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground text-sm"
-                >
-                  <option value="">Sin especificar</option>
-                  <option value="cecista">Cecista</option>
-                  <option value="no_cecista">No Cecista</option>
-                </select>
-              </div>
-              <div className="space-y-2">
                 <Label htmlFor="parroquia">Parroquia</Label>
                 <Input
                   id="parroquia"
@@ -431,45 +468,150 @@ export function EditPersonaForm({
               </div>
             </div>
 
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <input
-                  id="socio_asociacion"
-                  name="socio_asociacion"
-                  type="checkbox"
-                  checked={basicData.socio_asociacion}
+            <div className="space-y-2">
+              <Label htmlFor="estado_vida">Estado de Vida</Label>
+              <select
+                id="estado_vida"
+                name="estado_vida"
+                value={basicData.estado_vida}
+                onChange={handleBasicChange}
+                disabled={basicLoading}
+                className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground text-sm"
+              >
+                <option value="">Sin especificar</option>
+                <option value="soltero">Soltero/a</option>
+                <option value="casado">Casado/a</option>
+                <option value="viudo">Viudo/a</option>
+                <option value="separado">Separado/a</option>
+                <option value="consagrado">Consagrado/a</option>
+              </select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="notas">Notas</Label>
+              <textarea
+                id="notas"
+                name="notas"
+                rows={3}
+                value={basicData.notas}
+                onChange={handleBasicChange}
+                disabled={basicLoading}
+                className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground text-sm"
+              />
+            </div>
+
+            <Button type="submit" disabled={basicLoading}>
+              {basicLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Guardando...
+                </>
+              ) : (
+                "Guardar Datos"
+              )}
+            </Button>
+          </CardContent>
+        </form>
+      </Card>
+
+      {/* Section: Relación con CcD */}
+      <Card className="border-border">
+        <CardHeader>
+          <CardTitle className="text-foreground">Relación con CcD</CardTitle>
+          <CardDescription>Categoría institucional y pertenencia a la comunidad</CardDescription>
+        </CardHeader>
+        <form onSubmit={handleBasicSubmit}>
+          <CardContent className="space-y-6">
+            <div className="grid gap-4 md:grid-cols-3">
+              <div className="space-y-2">
+                <Label htmlFor="categoria_persona">Categoría</Label>
+                <select
+                  id="categoria_persona"
+                  name="categoria_persona"
+                  value={basicData.categoria_persona}
                   onChange={handleBasicChange}
                   disabled={basicLoading}
-                  className="h-4 w-4 rounded border-border"
-                />
-                <Label htmlFor="socio_asociacion">Socio de la asociación</Label>
+                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground text-sm"
+                >
+                  <option value="">Otro</option>
+                  <option value="cecista">Cecista</option>
+                  <option value="no_cecista">No Cecista</option>
+                </select>
               </div>
-              <div className="flex items-center gap-2">
-                <input
-                  id="referente_comunidad"
-                  name="referente_comunidad"
-                  type="checkbox"
-                  checked={basicData.referente_comunidad}
-                  onChange={handleBasicChange}
-                  disabled={basicLoading}
-                  className="h-4 w-4 rounded border-border"
-                />
-                <Label htmlFor="referente_comunidad">Referente de comunidad</Label>
-              </div>
-              {basicData.categoria_persona === "cecista" && (
+              <div className="flex items-end gap-4 md:col-span-2">
                 <div className="flex items-center gap-2">
                   <input
-                    id="cecista_dedicado"
-                    name="cecista_dedicado"
+                    id="referente_comunidad"
+                    name="referente_comunidad"
                     type="checkbox"
-                    checked={basicData.cecista_dedicado}
+                    checked={basicData.referente_comunidad}
                     onChange={handleBasicChange}
                     disabled={basicLoading}
                     className="h-4 w-4 rounded border-border"
                   />
-                  <Label htmlFor="cecista_dedicado">Cecista dedicado</Label>
+                  <Label htmlFor="referente_comunidad">Referente de Comunidad</Label>
                 </div>
-              )}
+                <div className="flex items-center gap-2">
+                  <input
+                    id="socio_asociacion"
+                    name="socio_asociacion"
+                    type="checkbox"
+                    checked={basicData.socio_asociacion}
+                    onChange={handleBasicChange}
+                    disabled={basicLoading}
+                    className="h-4 w-4 rounded border-border"
+                  />
+                  <Label htmlFor="socio_asociacion">Socio Activo</Label>
+                </div>
+              </div>
+            </div>
+
+            {basicData.categoria_persona === "no_cecista" && (
+              <div className="space-y-2">
+                <Label>Si es No Cecista</Label>
+                <div className="flex flex-wrap gap-4">
+                  {NO_CECISTA_CATEGORIAS.map(cat => (
+                    <div key={cat.value} className="flex items-center gap-2">
+                      <input
+                        id={`cat_nc_${cat.value}`}
+                        type="checkbox"
+                        checked={categoriasNoCecista.includes(cat.value)}
+                        onChange={() => handleToggleCategoriaNoCecista(cat.value)}
+                        disabled={catLoading}
+                        className="h-4 w-4 rounded border-border"
+                      />
+                      <Label htmlFor={`cat_nc_${cat.value}`}>{cat.label}</Label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {basicData.categoria_persona === "cecista" && (
+              <div className="flex items-center gap-2">
+                <input
+                  id="cecista_dedicado"
+                  name="cecista_dedicado"
+                  type="checkbox"
+                  checked={basicData.cecista_dedicado}
+                  onChange={handleBasicChange}
+                  disabled={basicLoading}
+                  className="h-4 w-4 rounded border-border"
+                />
+                <Label htmlFor="cecista_dedicado">Dedicado</Label>
+              </div>
+            )}
+
+            {/* Read-only: Confraternidad / Fraternidad */}
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-foreground">Confraternidad</p>
+                <p className="text-sm text-muted-foreground">{confraternidadActual ?? "—"}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-foreground">Fraternidad</p>
+                <p className="text-sm text-muted-foreground">{fraternidadActual ?? "—"}</p>
+              </div>
             </div>
 
             <div className="flex items-center gap-2">
@@ -492,7 +634,7 @@ export function EditPersonaForm({
                   Guardando...
                 </>
               ) : (
-                "Guardar Datos"
+                "Guardar"
               )}
             </Button>
           </CardContent>
@@ -506,7 +648,7 @@ export function EditPersonaForm({
           <CardDescription>Estado institucional de la persona en la comunidad</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
             <span className="text-sm text-muted-foreground">Modo actual:</span>
             {modoActual ? (
               <span className="inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-sm font-medium text-primary">
@@ -520,13 +662,33 @@ export function EditPersonaForm({
             )}
           </div>
 
+          {modoActual?.modo === "intercesor" && (
+            <form onSubmit={handleBasicSubmit} className="space-y-2">
+              <Label htmlFor="intercesor_dies_natalis">Intercesor Dies Natalis</Label>
+              <div className="flex items-center gap-3">
+                <Input
+                  id="intercesor_dies_natalis"
+                  name="intercesor_dies_natalis"
+                  type="date"
+                  value={basicData.intercesor_dies_natalis}
+                  onChange={handleBasicChange}
+                  disabled={basicLoading}
+                  className="w-48"
+                />
+                <Button type="submit" size="sm" variant="outline" disabled={basicLoading}>
+                  {basicLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Guardar fecha"}
+                </Button>
+              </div>
+            </form>
+          )}
+
           <form onSubmit={handleModoSubmit} className="space-y-4">
             {modoError && (
               <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{modoError}</div>
             )}
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="nuevoModo">Nuevo Modo</Label>
+                <Label htmlFor="nuevoModo">Cambiar Modo</Label>
                 <select
                   id="nuevoModo"
                   value={nuevoModo}

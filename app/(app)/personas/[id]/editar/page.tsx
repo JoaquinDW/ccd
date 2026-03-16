@@ -21,6 +21,8 @@ export default async function EditPersonaPage({ params }: { params: Promise<{ id
     { data: historialAsignaciones },
     { data: ministerios },
     { data: organizaciones },
+    { data: categoriasNoCecista },
+    { data: personaOrgs },
   ] = await Promise.all([
     supabase.from("personas").select("*").eq("id", id).single(),
     supabase
@@ -46,9 +48,21 @@ export default async function EditPersonaPage({ params }: { params: Promise<{ id
       .order("fecha_inicio", { ascending: false }),
     supabase.from("ministerios").select("id, nombre, tipo, nivel").eq("activo", true).order("tipo").order("nombre"),
     supabase.from("organizaciones").select("id, nombre, tipo").is("fecha_baja", null).order("nombre"),
+    supabase
+      .from("persona_categoria_no_cecista")
+      .select("categoria")
+      .eq("persona_id", id),
+    supabase
+      .from("persona_organizacion")
+      .select("tipo_relacion, organizacion:organizaciones!organizacion_id(nombre)")
+      .eq("persona_id", id)
+      .is("fecha_fin", null),
   ])
 
   if (!persona) notFound()
+
+  const confraternidad = personaOrgs?.find(o => o.tipo_relacion === 'confraternidad')?.organizacion as { nombre: string } | undefined
+  const fraternidad = personaOrgs?.find(o => o.tipo_relacion === 'fraternidad')?.organizacion as { nombre: string } | undefined
 
   return (
     <EditPersonaForm
@@ -59,6 +73,9 @@ export default async function EditPersonaPage({ params }: { params: Promise<{ id
       historialAsignaciones={historialAsignaciones ?? []}
       ministerios={ministerios ?? []}
       organizaciones={organizaciones ?? []}
+      categoriasNoCecista={(categoriasNoCecista ?? []).map(c => c.categoria)}
+      confraternidadActual={confraternidad?.nombre ?? null}
+      fraternidadActual={fraternidad?.nombre ?? null}
     />
   )
 }

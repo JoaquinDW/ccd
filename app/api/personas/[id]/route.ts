@@ -64,6 +64,11 @@ export async function PATCH(
   if (body.socio_asociacion !== undefined) updateData.socio_asociacion = body.socio_asociacion
   if (body.referente_comunidad !== undefined) updateData.referente_comunidad = body.referente_comunidad
   if (body.cecista_dedicado !== undefined) updateData.cecista_dedicado = body.cecista_dedicado
+  if (body.email_ccd !== undefined) updateData.email_ccd = body.email_ccd || null
+  if (body.direccion_nro !== undefined) updateData.direccion_nro = body.direccion_nro || null
+  if (body.codigo_postal !== undefined) updateData.codigo_postal = body.codigo_postal || null
+  if (body.estado_vida !== undefined) updateData.estado_vida = body.estado_vida || null
+  if (body.intercesor_dies_natalis !== undefined) updateData.intercesor_dies_natalis = body.intercesor_dies_natalis || null
 
   const { error } = await supabase
     .from('personas')
