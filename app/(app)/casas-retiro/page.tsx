@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Hotel, Plus, Edit2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { getUserContext, canPerform } from '@/lib/auth/context'
+import SortableHeader from '@/components/ui/sortable-header'
 
 export default async function CasasRetiroPage({
   searchParams,
@@ -14,22 +15,30 @@ export default async function CasasRetiroPage({
     q?: string
     estado?: string
     provincia?: string
+    sortBy?: string
+    sortDir?: string
   }>
 }) {
   const [params, ctx] = await Promise.all([searchParams, getUserContext()])
   const q = params.q ?? ''
   const estado = params.estado ?? ''
   const provincia = params.provincia ?? ''
+  const sortBy = params.sortBy ?? ''
+  const sortDir = (params.sortDir === 'asc' || params.sortDir === 'desc') ? params.sortDir : 'asc'
 
   const canCreate = ctx ? canPerform(ctx, 'organization.create') : false
   const canUpdate = ctx ? canPerform(ctx, 'organization.update') : false
   const supabase = await createClient()
 
+  const SORTABLE_CASAS = ['nombre', 'ciudad', 'provincia', 'tipo_propiedad', 'aforo', 'estado']
+  const sortCol = (sortBy && SORTABLE_CASAS.includes(sortBy)) ? sortBy : 'nombre'
+  const sortAsc = sortBy ? sortDir === 'asc' : true
+
   let query = supabase
     .from('casas_retiro')
     .select('id, nombre, ciudad, provincia, estado, tipo_propiedad, aforo')
     .is('fecha_baja', null)
-    .order('nombre', { ascending: true })
+    .order(sortCol, { ascending: sortAsc })
 
   if (q) query = query.ilike('nombre', `%${q}%`)
   if (estado) query = query.eq('estado', estado)
@@ -127,12 +136,12 @@ export default async function CasasRetiroPage({
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-border">
-                      <th className="text-left py-3 px-4 font-semibold text-foreground">Nombre</th>
-                      <th className="text-left py-3 px-4 font-semibold text-foreground">Ciudad</th>
-                      <th className="text-left py-3 px-4 font-semibold text-foreground">Provincia</th>
-                      <th className="text-left py-3 px-4 font-semibold text-foreground">Propiedad</th>
-                      <th className="text-left py-3 px-4 font-semibold text-foreground">Aforo</th>
-                      <th className="text-left py-3 px-4 font-semibold text-foreground">Estado</th>
+                      <SortableHeader column="nombre" label="Nombre" currentSort={sortBy} currentDir={sortDir} />
+                      <SortableHeader column="ciudad" label="Ciudad" currentSort={sortBy} currentDir={sortDir} />
+                      <SortableHeader column="provincia" label="Provincia" currentSort={sortBy} currentDir={sortDir} />
+                      <SortableHeader column="tipo_propiedad" label="Propiedad" currentSort={sortBy} currentDir={sortDir} />
+                      <SortableHeader column="aforo" label="Aforo" currentSort={sortBy} currentDir={sortDir} />
+                      <SortableHeader column="estado" label="Estado" currentSort={sortBy} currentDir={sortDir} />
                       <th className="text-center py-3 px-4 font-semibold text-foreground">Acciones</th>
                     </tr>
                   </thead>

@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dialog"
 import PersonaDetailModal from "./persona-detail-modal"
 import ExportButton from "./export-button"
+import SortableHeader from "@/components/ui/sortable-header"
 
 type Persona = {
   id: string
@@ -32,6 +33,8 @@ type Props = {
   canUpdate: boolean
   exportSearch: string
   initialPersonaId: string | null
+  sortBy: string
+  sortDir: 'asc' | 'desc' | ''
 }
 
 export default function PersonasTable({
@@ -40,6 +43,8 @@ export default function PersonasTable({
   canUpdate,
   exportSearch,
   initialPersonaId,
+  sortBy,
+  sortDir,
 }: Props) {
   const [selectedId, setSelectedId] = useState<string | null>(initialPersonaId)
   const [copied, setCopied] = useState(false)
@@ -189,27 +194,13 @@ export default function PersonasTable({
             <table className="w-full">
               <thead>
                 <tr className="border-b border-border">
-                  <th className="text-left py-3 px-4 font-semibold text-foreground">
-                    Nombre
-                  </th>
-                  <th className="text-left py-3 px-4 font-semibold text-foreground">
-                    Email
-                  </th>
-                  <th className="text-left py-3 px-4 font-semibold text-foreground">
-                    Teléfono
-                  </th>
-                  <th className="text-left py-3 px-4 font-semibold text-foreground">
-                    Localidad
-                  </th>
-                  <th className="text-left py-3 px-4 font-semibold text-foreground">
-                    Estado ecl.
-                  </th>
-                  <th className="text-left py-3 px-4 font-semibold text-foreground">
-                    Estado
-                  </th>
-                  <th className="text-center py-3 px-4 font-semibold text-foreground">
-                    Acciones
-                  </th>
+                  <SortableHeader column="apellido" label="Nombre" currentSort={sortBy} currentDir={sortDir} />
+                  <SortableHeader column="email" label="Email" currentSort={sortBy} currentDir={sortDir} />
+                  <th className="text-left py-3 px-4 font-semibold text-foreground">Teléfono</th>
+                  <SortableHeader column="localidad" label="Localidad" currentSort={sortBy} currentDir={sortDir} />
+                  <SortableHeader column="estado_eclesial" label="Estado ecl." currentSort={sortBy} currentDir={sortDir} />
+                  <SortableHeader column="estado" label="Estado" currentSort={sortBy} currentDir={sortDir} />
+                  <th className="text-center py-3 px-4 font-semibold text-foreground">Acciones</th>
                 </tr>
               </thead>
               <tbody>

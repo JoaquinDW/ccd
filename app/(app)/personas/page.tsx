@@ -20,6 +20,8 @@ export default async function PersonasPage({
     modo?: string
     ministerio_id?: string
     persona?: string
+    sortBy?: string
+    sortDir?: string
   }>
 }) {
   const [params, ctx] = await Promise.all([searchParams, getUserContext()])
@@ -30,6 +32,8 @@ export default async function PersonasPage({
   const modo = params.modo ?? ''
   const ministerio_id = params.ministerio_id ?? ''
   const initialPersonaId = params.persona ?? null
+  const sortBy = params.sortBy ?? ''
+  const sortDir = (params.sortDir === 'asc' || params.sortDir === 'desc') ? params.sortDir : 'asc'
 
   const canCreate = ctx ? canPerform(ctx, 'person.create') : false
   const canUpdate = ctx ? canPerform(ctx, 'person.update') : false
@@ -76,12 +80,16 @@ export default async function PersonasPage({
 
   let personas: { id: string; nombre: string; apellido: string; email: string | null; telefono: string | null; localidad: string | null; estado: string | null; estado_eclesial: string | null }[] = []
 
+  const SORTABLE_PERSONAS = ['apellido', 'email', 'localidad', 'estado_eclesial', 'estado']
+  const sortCol = (sortBy && SORTABLE_PERSONAS.includes(sortBy)) ? sortBy : 'apellido'
+  const sortAsc = sortBy ? sortDir === 'asc' : true
+
   if (!noResults) {
     let query = supabase
       .from('personas')
       .select('id, nombre, apellido, email, telefono, localidad, estado, estado_eclesial')
       .is('fecha_baja', null)
-      .order('apellido', { ascending: true })
+      .order(sortCol, { ascending: sortAsc })
 
     if (q) {
       query = query.or(`nombre.ilike.%${q}%,apellido.ilike.%${q}%,email.ilike.%${q}%`)
@@ -148,6 +156,8 @@ export default async function PersonasPage({
             canUpdate={canUpdate}
             exportSearch={exportSearch}
             initialPersonaId={initialPersonaId}
+            sortBy={sortBy}
+            sortDir={sortDir}
           />
           {personas.length === 0 && (
             <div className="py-12 text-center">

@@ -7,6 +7,7 @@ import { Building2, Plus, Edit2, Download } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { getUserContext, canPerform } from '@/lib/auth/context'
 import OrgExportButton from './_components/org-export-button'
+import SortableHeader from '@/components/ui/sortable-header'
 
 export default async function OrganizacionesPage({
   searchParams,
@@ -16,6 +17,8 @@ export default async function OrganizacionesPage({
     tipo?: string
     estado?: string
     provincia?: string
+    sortBy?: string
+    sortDir?: string
   }>
 }) {
   const [params, ctx] = await Promise.all([searchParams, getUserContext()])
@@ -23,17 +26,23 @@ export default async function OrganizacionesPage({
   const tipo = params.tipo ?? ''
   const estado = params.estado ?? ''
   const provincia = params.provincia ?? ''
+  const sortBy = params.sortBy ?? ''
+  const sortDir = (params.sortDir === 'asc' || params.sortDir === 'desc') ? params.sortDir : 'asc'
 
   const canCreate = ctx ? canPerform(ctx, 'organization.create') : false
   // canUpdate se evalúa por org en la tabla (ver uso abajo)
   const canUpdateOrg = (orgId: string) => ctx ? canPerform(ctx, 'organization.update', orgId) : false
   const supabase = await createClient()
 
+  const SORTABLE_ORGS = ['nombre', 'tipo', 'localidad', 'estado']
+  const sortCol = (sortBy && SORTABLE_ORGS.includes(sortBy)) ? sortBy : 'nombre'
+  const sortAsc = sortBy ? sortDir === 'asc' : true
+
   let query = supabase
     .from('organizaciones')
     .select('id, nombre, tipo, localidad, provincia, estado, parent:organizaciones!parent_id(nombre)')
     .is('fecha_baja', null)
-    .order('nombre', { ascending: true })
+    .order(sortCol, { ascending: sortAsc })
 
   if (q) query = query.ilike('nombre', `%${q}%`)
   if (tipo) query = query.eq('tipo', tipo)
@@ -158,11 +167,11 @@ export default async function OrganizacionesPage({
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-border">
-                      <th className="text-left py-3 px-4 font-semibold text-foreground">Nombre</th>
-                      <th className="text-left py-3 px-4 font-semibold text-foreground">Tipo</th>
+                      <SortableHeader column="nombre" label="Nombre" currentSort={sortBy} currentDir={sortDir} />
+                      <SortableHeader column="tipo" label="Tipo" currentSort={sortBy} currentDir={sortDir} />
                       <th className="text-left py-3 px-4 font-semibold text-foreground">Depende de</th>
-                      <th className="text-left py-3 px-4 font-semibold text-foreground">Localidad</th>
-                      <th className="text-left py-3 px-4 font-semibold text-foreground">Estado</th>
+                      <SortableHeader column="localidad" label="Localidad" currentSort={sortBy} currentDir={sortDir} />
+                      <SortableHeader column="estado" label="Estado" currentSort={sortBy} currentDir={sortDir} />
                       <th className="text-center py-3 px-4 font-semibold text-foreground">Acciones</th>
                     </tr>
                   </thead>

@@ -2,9 +2,10 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Settings, Trash2 } from 'lucide-react'
+import { Settings, Trash2, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/client'
+import { cn } from '@/lib/utils'
 
 interface Ministerio {
   id: string
@@ -38,12 +39,65 @@ const nivelLabel: Record<number, { label: string; color: string }> = {
   10: { label: 'Solo lectura', color: 'bg-muted text-muted-foreground' },
 }
 
+type SortKey = 'nombre' | 'tipo' | 'nivel' | 'nivel_acceso' | 'asignaciones' | 'activo'
+type SortDir = 'asc' | 'desc' | ''
+
+function sortMinisterios(list: Ministerio[], key: SortKey, dir: SortDir): Ministerio[] {
+  if (!dir) return list
+  return [...list].sort((a, b) => {
+    const av = a[key]
+    const bv = b[key]
+    let cmp = 0
+    if (typeof av === 'number' && typeof bv === 'number') {
+      cmp = av - bv
+    } else if (typeof av === 'boolean' && typeof bv === 'boolean') {
+      cmp = (av === bv ? 0 : av ? -1 : 1)
+    } else {
+      cmp = String(av).localeCompare(String(bv))
+    }
+    return dir === 'asc' ? cmp : -cmp
+  })
+}
+
 export function MinisteriosTable({ ministerios: initial }: { ministerios: Ministerio[] }) {
   const supabase = createClient()
   const [ministerios, setMinisterios] = useState(initial)
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [deleting, setDeleting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [sortKey, setSortKey] = useState<SortKey | ''>('')
+  const [sortDir, setSortDir] = useState<SortDir>('')
+
+  function handleSort(key: SortKey) {
+    if (sortKey !== key) {
+      setSortKey(key)
+      setSortDir('asc')
+    } else if (sortDir === 'asc') {
+      setSortDir('desc')
+    } else {
+      setSortKey('')
+      setSortDir('')
+    }
+  }
+
+  function ColHeader({ col, label }: { col: SortKey; label: string }) {
+    const isActive = sortKey === col
+    const Icon = isActive ? (sortDir === 'asc' ? ArrowUp : ArrowDown) : ArrowUpDown
+    return (
+      <th className="text-left py-3 px-4 font-semibold text-foreground">
+        <button
+          type="button"
+          onClick={() => handleSort(col)}
+          className="inline-flex items-center gap-1 hover:opacity-80 transition-opacity"
+        >
+          {label}
+          <Icon className={cn('h-3.5 w-3.5 shrink-0', isActive ? 'text-foreground' : 'text-muted-foreground/50')} />
+        </button>
+      </th>
+    )
+  }
+
+  const displayed = sortKey && sortDir ? sortMinisterios(ministerios, sortKey, sortDir) : ministerios
 
   const allIds = ministerios.map(m => m.id)
   const allSelected = allIds.length > 0 && allIds.every(id => selected.has(id))
@@ -153,17 +207,17 @@ export function MinisteriosTable({ ministerios: initial }: { ministerios: Minist
                   className="h-4 w-4 rounded border-border accent-primary cursor-pointer"
                 />
               </th>
-              <th className="text-left py-3 px-4 font-semibold text-foreground">Nombre</th>
-              <th className="text-left py-3 px-4 font-semibold text-foreground">Tipo</th>
-              <th className="text-left py-3 px-4 font-semibold text-foreground">Nivel</th>
-              <th className="text-left py-3 px-4 font-semibold text-foreground">Acceso al Sistema</th>
-              <th className="text-left py-3 px-4 font-semibold text-foreground">Asignaciones Activas</th>
-              <th className="text-left py-3 px-4 font-semibold text-foreground">Estado</th>
+              <ColHeader col="nombre" label="Nombre" />
+              <ColHeader col="tipo" label="Tipo" />
+              <ColHeader col="nivel" label="Nivel" />
+              <ColHeader col="nivel_acceso" label="Acceso al Sistema" />
+              <ColHeader col="asignaciones" label="Asignaciones Activas" />
+              <ColHeader col="activo" label="Estado" />
               <th className="text-center py-3 px-4 font-semibold text-foreground">Acciones</th>
             </tr>
           </thead>
           <tbody>
-            {ministerios.map((m) => {
+            {displayed.map((m) => {
               const nivel = nivelLabel[m.nivel_acceso] ?? (
                 m.nivel_acceso > 0
                   ? { label: `Nivel ${m.nivel_acceso}`, color: 'bg-muted text-muted-foreground' }
