@@ -59,7 +59,7 @@ export function AsignacionesDelRol({ asignaciones, ministerioId }: Props) {
                       {a.persona ? (
                         <div>
                           <Link
-                            href={`/personas/${a.persona.id}`}
+                            href={`/personas?persona=${a.persona.id}`}
                             className="font-medium text-foreground hover:text-primary text-sm"
                           >
                             {a.persona.nombre} {a.persona.apellido}
