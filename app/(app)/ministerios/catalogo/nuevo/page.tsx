@@ -2,7 +2,7 @@
 
 export const dynamic = 'force-dynamic'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Briefcase, ArrowLeft, Loader2 } from 'lucide-react'
@@ -40,6 +40,7 @@ export default function NuevoMinisterioPage() {
     nivel: 'fraternidad',
     requiere_acta: false,
   })
+  const [tipoPersonalizado, setTipoPersonalizado] = useState('')
 
   // Permisos disponibles cargados al montar
   const [permisosPorCategoria, setPermisosPorCategoria] = useState<Record<string, Permiso[]>>({})
@@ -77,6 +78,17 @@ export default function NuevoMinisterioPage() {
     })
   }
 
+  const toggleCategoria = useCallback((categoria: string) => {
+    const ids = (permisosPorCategoria[categoria] ?? []).map(p => p.id)
+    setSeleccionados(prev => {
+      const allSelected = ids.every(id => prev.has(id))
+      const next = new Set(prev)
+      if (allSelected) ids.forEach(id => next.delete(id))
+      else ids.forEach(id => next.add(id))
+      return next
+    })
+  }, [permisosPorCategoria])
+
   const nivelAcceso = totalPermisos === 0 ? 0 : Math.round((seleccionados.size / totalPermisos) * 100)
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -91,12 +103,22 @@ export default function NuevoMinisterioPage() {
       return
     }
 
+    const tipoFinal = form.tipo === 'otro'
+      ? tipoPersonalizado.trim().toLowerCase().replace(/\s+/g, '_')
+      : form.tipo
+
+    if (!tipoFinal) {
+      setError('Especificá el tipo de ministerio')
+      setLoading(false)
+      return
+    }
+
     // 1. Crear el ministerio
     const { data, error: err } = await supabase
       .from('ministerios')
       .insert({
         nombre,
-        tipo: form.tipo,
+        tipo: tipoFinal,
         nivel: form.nivel,
         nivel_acceso: nivelAcceso,
         requiere_acta: form.requiere_acta,
@@ -159,7 +181,7 @@ export default function NuevoMinisterioPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="tipo">Tipo *</Label>
+                <Label htmlFor="tipo">Ministerio *</Label>
                 <select
                   id="tipo"
                   required
@@ -169,9 +191,18 @@ export default function NuevoMinisterioPage() {
                 >
                   <option value="conduccion">Conducción</option>
                   <option value="pastoral">Pastoral</option>
-                  <option value="servicio">Servicio</option>
+                  <option value="servicio">De Servicio</option>
                   <option value="sistema">Sistema (acceso técnico)</option>
+                  <option value="otro">Otro</option>
                 </select>
+                {form.tipo === 'otro' && (
+                  <Input
+                    placeholder="ej: Formación"
+                    value={tipoPersonalizado}
+                    onChange={e => setTipoPersonalizado(e.target.value)}
+                    className="mt-2"
+                  />
+                )}
               </div>
 
               <div className="space-y-2">
@@ -255,12 +286,27 @@ export default function NuevoMinisterioPage() {
                 </p>
               ) : (
                 <div className="space-y-6">
-                  {Object.keys(permisosPorCategoria).map(categoria => (
+                  {Object.keys(permisosPorCategoria).map(categoria => {
+                    const ids = permisosPorCategoria[categoria].map(p => p.id)
+                    const selectedCount = ids.filter(id => seleccionados.has(id)).length
+                    const allSelected = selectedCount === ids.length
+                    const someSelected = selectedCount > 0 && !allSelected
+                    return (
                     <div key={categoria}>
-                      <h3 className="text-sm font-semibold text-foreground mb-3 uppercase tracking-wide">
-                        {categoriaLabel[categoria] ?? categoria}
-                      </h3>
-                      <div className="space-y-2">
+                      <div className="flex items-center gap-2 mb-3">
+                        <input
+                          type="checkbox"
+                          id={`cat-${categoria}`}
+                          checked={allSelected}
+                          ref={el => { if (el) el.indeterminate = someSelected }}
+                          onChange={() => toggleCategoria(categoria)}
+                          className="h-4 w-4 rounded border-border accent-primary cursor-pointer"
+                        />
+                        <label htmlFor={`cat-${categoria}`} className="text-sm font-semibold text-foreground uppercase tracking-wide cursor-pointer">
+                          {categoriaLabel[categoria] ?? categoria}
+                        </label>
+                      </div>
+                      <div className="space-y-2 pl-6">
                         {permisosPorCategoria[categoria].map(permiso => {
                           const isActive = seleccionados.has(permiso.id)
                           return (
@@ -295,7 +341,8 @@ export default function NuevoMinisterioPage() {
                         })}
                       </div>
                     </div>
-                  ))}
+                  )})}
+
                 </div>
               )}
             </CardContent>

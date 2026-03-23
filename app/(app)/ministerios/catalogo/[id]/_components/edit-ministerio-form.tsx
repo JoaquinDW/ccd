@@ -17,7 +17,7 @@ interface Ministerio {
 const tipoLabel: Record<string, string> = {
   conduccion: 'Conducción',
   pastoral: 'Pastoral',
-  servicio: 'Servicio',
+  servicio: 'De Servicio',
   sistema: 'Sistema',
 }
 

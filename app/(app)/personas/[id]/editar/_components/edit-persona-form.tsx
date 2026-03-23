@@ -3,7 +3,7 @@
 import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, Loader2, X } from "lucide-react"
+import { ArrowLeft, Loader2, X, Check } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -154,6 +154,32 @@ export function EditPersonaForm({
   const [basicLoading, setBasicLoading] = useState(false)
   const [basicError, setBasicError] = useState<string | null>(null)
   const [basicSuccess, setBasicSuccess] = useState(false)
+
+  // Username section
+  const [usernameInput, setUsernameInput] = useState(persona.nombre_usuario ?? "")
+  const [usernameLoading, setUsernameLoading] = useState(false)
+  const [usernameError, setUsernameError] = useState<string | null>(null)
+  const [usernameSuccess, setUsernameSuccess] = useState(false)
+
+  const handleUsernameSave = async () => {
+    setUsernameError(null)
+    setUsernameSuccess(false)
+    setUsernameLoading(true)
+    const res = await fetch(`/api/personas/${persona.id}/username`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nombre_usuario: usernameInput }),
+    })
+    setUsernameLoading(false)
+    if (!res.ok) {
+      const { error } = await res.json()
+      setUsernameError(error ?? 'Error al guardar')
+    } else {
+      setUsernameSuccess(true)
+      setBasicData(prev => ({ ...prev, nombre_usuario: usernameInput.toLowerCase().trim() }))
+      setTimeout(() => setUsernameSuccess(false), 3000)
+    }
+  }
 
   // No cecista subcategories
   const [categoriasNoCecista, setCategoriasNoCecista] = useState<string[]>(initialCategoriasNoCecista)
@@ -372,16 +398,26 @@ export function EditPersonaForm({
 
             <div className="space-y-2">
               <Label htmlFor="nombre_usuario">Nombre de Usuario</Label>
-              <Input
-                id="nombre_usuario"
-                name="nombre_usuario"
-                value={basicData.nombre_usuario}
-                disabled
-                placeholder="Sin usuario asignado"
-              />
-              <p className="text-xs text-muted-foreground">
-                Para cambiar el usuario contactá al administrador técnico.
-              </p>
+              <div className="flex gap-2">
+                <Input
+                  id="nombre_usuario"
+                  value={usernameInput}
+                  onChange={(e) => { setUsernameInput(e.target.value); setUsernameError(null); setUsernameSuccess(false) }}
+                  placeholder="Sin usuario asignado"
+                  disabled={usernameLoading}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleUsernameSave}
+                  disabled={usernameLoading || usernameInput === (basicData.nombre_usuario ?? "")}
+                >
+                  {usernameLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : usernameSuccess ? <Check className="h-4 w-4 text-green-600" /> : "Guardar"}
+                </Button>
+              </div>
+              {usernameError && <p className="text-xs text-destructive">{usernameError}</p>}
+              {usernameSuccess && <p className="text-xs text-green-600">Usuario actualizado correctamente.</p>}
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">

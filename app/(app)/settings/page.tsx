@@ -6,8 +6,12 @@ export const dynamic = 'force-dynamic'
 import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Settings, Bell, Lock, Database } from 'lucide-react'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
+import { Settings, Bell, Lock, Database, Loader2, Eye, EyeOff } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { createClient } from '@/lib/supabase/client'
 
 type FontSize = 'small' | 'medium' | 'large'
 
@@ -26,6 +30,65 @@ const FONT_SIZE_OPTIONS: { value: FontSize; label: string; preview: string }[] =
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState('general')
   const [fontSize, setFontSize] = useState<FontSize>('small')
+
+  // Password change dialog
+  const [pwOpen, setPwOpen] = useState(false)
+  const [pwForm, setPwForm] = useState({ actual: '', nueva: '', confirmar: '' })
+  const [pwLoading, setPwLoading] = useState(false)
+  const [pwError, setPwError] = useState<string | null>(null)
+  const [pwSuccess, setPwSuccess] = useState(false)
+  const [showPw, setShowPw] = useState({ actual: false, nueva: false, confirmar: false })
+
+  const handlePasswordChange = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setPwError(null)
+
+    if (pwForm.nueva.length < 8) {
+      setPwError('La nueva contraseña debe tener al menos 8 caracteres.')
+      return
+    }
+    if (pwForm.nueva !== pwForm.confirmar) {
+      setPwError('Las contraseñas no coinciden.')
+      return
+    }
+
+    setPwLoading(true)
+    const supabase = createClient()
+
+    // Verify current password by re-authenticating
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user?.email) {
+      setPwError('No se pudo obtener el usuario actual.')
+      setPwLoading(false)
+      return
+    }
+
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email: user.email,
+      password: pwForm.actual,
+    })
+
+    if (signInError) {
+      setPwError('Contraseña actual incorrecta.')
+      setPwLoading(false)
+      return
+    }
+
+    const { error: updateError } = await supabase.auth.updateUser({ password: pwForm.nueva })
+    setPwLoading(false)
+
+    if (updateError) {
+      setPwError(updateError.message)
+      return
+    }
+
+    setPwSuccess(true)
+    setPwForm({ actual: '', nueva: '', confirmar: '' })
+    setTimeout(() => {
+      setPwOpen(false)
+      setPwSuccess(false)
+    }, 1500)
+  }
 
   useEffect(() => {
     const saved = localStorage.getItem('font-size-preference') as FontSize | null
@@ -188,9 +251,101 @@ export default function SettingsPage() {
             <div className="py-4 border-b border-border">
               <h3 className="font-medium text-foreground mb-2">Cambiar Contraseña</h3>
               <p className="text-sm text-muted-foreground mb-4">Actualiza tu contraseña regularmente para mantener tu cuenta segura</p>
-              <Button variant="outline" className="bg-transparent">
+              <Button variant="outline" className="bg-transparent" onClick={() => { setPwOpen(true); setPwError(null); setPwSuccess(false) }}>
                 Cambiar Contraseña
               </Button>
+
+              <Dialog open={pwOpen} onOpenChange={(open) => { setPwOpen(open); if (!open) { setPwForm({ actual: '', nueva: '', confirmar: '' }); setPwError(null); setPwSuccess(false) } }}>
+                <DialogContent className="sm:max-w-md">
+                  <DialogHeader>
+                    <DialogTitle>Cambiar Contraseña</DialogTitle>
+                    <DialogDescription>Ingresá tu contraseña actual y la nueva contraseña dos veces para confirmar.</DialogDescription>
+                  </DialogHeader>
+
+                  {pwSuccess ? (
+                    <p className="text-sm text-green-600 py-4 text-center">¡Contraseña actualizada correctamente!</p>
+                  ) : (
+                    <form onSubmit={handlePasswordChange} className="space-y-4 py-2">
+                      <div className="space-y-1">
+                        <Label htmlFor="pw-actual">Contraseña Actual</Label>
+                        <div className="relative">
+                          <Input
+                            id="pw-actual"
+                            type={showPw.actual ? 'text' : 'password'}
+                            value={pwForm.actual}
+                            onChange={(e) => setPwForm(prev => ({ ...prev, actual: e.target.value }))}
+                            required
+                            disabled={pwLoading}
+                          />
+                          <button
+                            type="button"
+                            className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                            onClick={() => setShowPw(prev => ({ ...prev, actual: !prev.actual }))}
+                            tabIndex={-1}
+                          >
+                            {showPw.actual ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="space-y-1">
+                        <Label htmlFor="pw-nueva">Nueva Contraseña</Label>
+                        <div className="relative">
+                          <Input
+                            id="pw-nueva"
+                            type={showPw.nueva ? 'text' : 'password'}
+                            value={pwForm.nueva}
+                            onChange={(e) => setPwForm(prev => ({ ...prev, nueva: e.target.value }))}
+                            required
+                            disabled={pwLoading}
+                          />
+                          <button
+                            type="button"
+                            className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                            onClick={() => setShowPw(prev => ({ ...prev, nueva: !prev.nueva }))}
+                            tabIndex={-1}
+                          >
+                            {showPw.nueva ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="space-y-1">
+                        <Label htmlFor="pw-confirmar">Confirmar Nueva Contraseña</Label>
+                        <div className="relative">
+                          <Input
+                            id="pw-confirmar"
+                            type={showPw.confirmar ? 'text' : 'password'}
+                            value={pwForm.confirmar}
+                            onChange={(e) => setPwForm(prev => ({ ...prev, confirmar: e.target.value }))}
+                            required
+                            disabled={pwLoading}
+                          />
+                          <button
+                            type="button"
+                            className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                            onClick={() => setShowPw(prev => ({ ...prev, confirmar: !prev.confirmar }))}
+                            tabIndex={-1}
+                          >
+                            {showPw.confirmar ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                          </button>
+                        </div>
+                      </div>
+
+                      {pwError && <p className="text-sm text-destructive">{pwError}</p>}
+
+                      <DialogFooter className="pt-2">
+                        <Button type="button" variant="outline" onClick={() => setPwOpen(false)} disabled={pwLoading}>
+                          Cancelar
+                        </Button>
+                        <Button type="submit" disabled={pwLoading}>
+                          {pwLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Guardar'}
+                        </Button>
+                      </DialogFooter>
+                    </form>
+                  )}
+                </DialogContent>
+              </Dialog>
             </div>
 
             <div className="py-4">

@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ArrowLeft } from 'lucide-react'
+import { LocationFields } from '@/components/location-fields'
 
 type OrgOption = { id: string; nombre: string; parent_id?: string | null }
 
@@ -314,61 +315,18 @@ export default function NuevoEventoForm({ fraternidades, confraternidades, perso
             </div>
 
             {/* Ubicación */}
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-1">
-                <Label htmlFor="ciudad">Ciudad</Label>
-                <Input
-                  id="ciudad"
-                  name="ciudad"
-                  placeholder="Ciudad del evento"
-                  value={formData.ciudad}
-                  onChange={handleChange}
-                />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="codigo_postal">CP</Label>
-                <Input
-                  id="codigo_postal"
-                  name="codigo_postal"
-                  placeholder="Código postal"
-                  value={formData.codigo_postal}
-                  onChange={handleChange}
-                />
-              </div>
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-3">
-              <div className="space-y-1">
-                <Label htmlFor="diocesis">Diócesis</Label>
-                <Input
-                  id="diocesis"
-                  name="diocesis"
-                  placeholder="Diócesis"
-                  value={formData.diocesis}
-                  onChange={handleChange}
-                />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="provincia_evento">Provincia</Label>
-                <Input
-                  id="provincia_evento"
-                  name="provincia_evento"
-                  placeholder="Provincia"
-                  value={formData.provincia_evento}
-                  onChange={handleChange}
-                />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="pais_evento">País</Label>
-                <Input
-                  id="pais_evento"
-                  name="pais_evento"
-                  placeholder="País"
-                  value={formData.pais_evento}
-                  onChange={handleChange}
-                />
-              </div>
-            </div>
+            <LocationFields
+              pais={formData.pais_evento}
+              provincia={formData.provincia_evento}
+              localidad={formData.ciudad}
+              codigoPostal={formData.codigo_postal}
+              diocesis={formData.diocesis}
+              onPaisChange={(val) => setFormData(prev => ({ ...prev, pais_evento: val }))}
+              onProvinciaChange={(val) => setFormData(prev => ({ ...prev, provincia_evento: val }))}
+              onLocalidadChange={(val) => setFormData(prev => ({ ...prev, ciudad: val }))}
+              onCodigoPostalChange={(val) => setFormData(prev => ({ ...prev, codigo_postal: val }))}
+              onDiocesisChange={(val) => setFormData(prev => ({ ...prev, diocesis: val }))}
+            />
 
             {/* Notas */}
             <div className="space-y-1">

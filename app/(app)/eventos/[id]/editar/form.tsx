@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { ArrowLeft } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { LocationFields } from '@/components/location-fields'
 
 type OrgOption = { id: string; nombre: string; tipo: string }
 
@@ -34,6 +35,11 @@ export default function EditarEventoForm({ isAdmin = false }: { isAdmin?: boolea
     modalidad: 'presencial',
     estado: 'borrador',
     descripcion: '',
+    ciudad: '',
+    codigo_postal: '',
+    diocesis: '',
+    provincia_evento: '',
+    pais_evento: 'Argentina',
   })
 
   useEffect(() => {
@@ -42,7 +48,7 @@ export default function EditarEventoForm({ isAdmin = false }: { isAdmin?: boolea
     Promise.all([
       supabase
         .from('eventos')
-        .select('id, nombre, tipo, fecha_inicio, fecha_fin, organizacion_id, casa_retiro_id, cupo_maximo, precio, audiencia, modalidad, estado, descripcion')
+        .select('id, nombre, tipo, fecha_inicio, fecha_fin, organizacion_id, casa_retiro_id, cupo_maximo, precio, audiencia, modalidad, estado, descripcion, ciudad, codigo_postal, diocesis, provincia_evento, pais_evento')
         .eq('id', id)
         .single(),
       supabase
@@ -69,6 +75,11 @@ export default function EditarEventoForm({ isAdmin = false }: { isAdmin?: boolea
         modalidad: evento.modalidad ?? 'presencial',
         estado: evento.estado ?? 'borrador',
         descripcion: evento.descripcion ?? '',
+        ciudad: evento.ciudad ?? '',
+        codigo_postal: evento.codigo_postal ?? '',
+        diocesis: evento.diocesis ?? '',
+        provincia_evento: evento.provincia_evento ?? '',
+        pais_evento: evento.pais_evento ?? 'Argentina',
       })
       if (orgs) {
         setOrganizaciones(orgs.filter(o => o.tipo !== 'casa_retiro'))
@@ -99,6 +110,11 @@ export default function EditarEventoForm({ isAdmin = false }: { isAdmin?: boolea
         cupo_maximo: formData.cupo_maximo ? parseInt(formData.cupo_maximo) : null,
         precio: formData.precio ? parseFloat(formData.precio) : null,
         descripcion: formData.descripcion || null,
+        ciudad: formData.ciudad || null,
+        codigo_postal: formData.codigo_postal || null,
+        diocesis: formData.diocesis || null,
+        provincia_evento: formData.provincia_evento || null,
+        pais_evento: formData.pais_evento || 'Argentina',
       }
 
       const { error: updateError } = await supabase
@@ -345,6 +361,20 @@ export default function EditarEventoForm({ isAdmin = false }: { isAdmin?: boolea
                 className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground text-sm min-h-20"
               />
             </div>
+
+            {/* Ubicación */}
+            <LocationFields
+              pais={formData.pais_evento}
+              provincia={formData.provincia_evento}
+              localidad={formData.ciudad}
+              codigoPostal={formData.codigo_postal}
+              diocesis={formData.diocesis}
+              onPaisChange={(val) => setFormData(prev => ({ ...prev, pais_evento: val }))}
+              onProvinciaChange={(val) => setFormData(prev => ({ ...prev, provincia_evento: val }))}
+              onLocalidadChange={(val) => setFormData(prev => ({ ...prev, ciudad: val }))}
+              onCodigoPostalChange={(val) => setFormData(prev => ({ ...prev, codigo_postal: val }))}
+              onDiocesisChange={(val) => setFormData(prev => ({ ...prev, diocesis: val }))}
+            />
 
             {/* Buttons */}
             <div className="flex gap-3 pt-6">
