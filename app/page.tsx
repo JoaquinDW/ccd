@@ -15,13 +15,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { Heart, Mail, Lock } from "lucide-react"
+import { Lock } from "lucide-react"
 
 import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
 
 export default function LoginPage() {
-  const [email, setEmail] = useState("")
+  const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
@@ -34,13 +34,14 @@ export default function LoginPage() {
     setError("")
 
     try {
+      const fakeEmail = `${username.toLowerCase().trim()}@ccd.internal`
       const { error: authError } = await supabase.auth.signInWithPassword({
-        email,
+        email: fakeEmail,
         password,
       })
 
       if (authError) {
-        setError(authError.message)
+        setError("Credenciales inválidas. Por favor verifica tu usuario y contraseña.")
       } else {
         router.push("/dashboard")
       }
@@ -58,7 +59,6 @@ export default function LoginPage() {
         <div className="w-full max-w-md">
           {/* Logo */}
           <div className="mb-8 flex flex-col items-center gap-3">
-            {/* <Image src="/logoccd.jpeg" alt="Convivencia con Dios" width={80} height={80} className="rounded-xl" /> */}
             <h1 className="text-xl font-bold text-foreground">
               Convivencia con Dios
             </h1>
@@ -81,21 +81,20 @@ export default function LoginPage() {
                 )}
 
                 <div className="space-y-2">
-                  <Label htmlFor="email" className="text-foreground">
-                    Correo Electrónico
+                  <Label htmlFor="username" className="text-foreground">
+                    Usuario
                   </Label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input
-                      id="email"
-                      type="email"
-                      placeholder="tu@email.com"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      required
-                      className="pl-10"
-                    />
-                  </div>
+                  <Input
+                    id="username"
+                    type="text"
+                    placeholder="tu.usuario"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    required
+                    autoComplete="username"
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                  />
                 </div>
 
                 <div className="space-y-2">

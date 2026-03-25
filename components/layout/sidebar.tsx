@@ -8,16 +8,11 @@ import {
   LayoutDashboard,
   Users,
   Calendar,
-  DollarSign,
-  FileText,
-  Settings,
   LogOut,
   ChevronDown,
   Menu,
   X,
   Home,
-  ClipboardList,
-  BarChart3,
   ShieldCheck,
   Briefcase,
   UserCheck,
@@ -26,6 +21,7 @@ import {
   Building2,
   PlusCircle,
   Hotel,
+  Tag,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { createClient } from "@/lib/supabase/client"
@@ -43,10 +39,26 @@ const navItems: NavItem[] = [
     label: "Panel de Inicio",
     href: "/dashboard",
   },
-
+  {
+    icon: <Users className="h-5 w-5" />,
+    label: "Personas",
+    href: "/personas",
+    children: [
+      {
+        icon: <List className="h-4 w-4" />,
+        label: "Lista de personas",
+        href: "/personas",
+      },
+      {
+        icon: <UserPlus className="h-4 w-4" />,
+        label: "Registrar persona",
+        href: "/personas/nueva",
+      },
+    ],
+  },
   {
     icon: <Home className="h-5 w-5" />,
-    label: "Organizaciones",
+    label: "Confraternidades y Fraternidades",
     href: "/organizaciones",
     children: [
       {
@@ -79,50 +91,8 @@ const navItems: NavItem[] = [
     ],
   },
   {
-    icon: <Users className="h-5 w-5" />,
-    label: "Personas",
-    href: "/personas",
-    children: [
-      {
-        icon: <List className="h-4 w-4" />,
-        label: "Lista de personas",
-        href: "/personas",
-      },
-      {
-        icon: <UserPlus className="h-4 w-4" />,
-        label: "Registrar persona",
-        href: "/personas/nueva",
-      },
-    ],
-  },
-  {
-    icon: <Calendar className="h-5 w-5" />,
-    label: "Eventos",
-    href: "/eventos",
-  },
-  {
-    icon: <ClipboardList className="h-5 w-5" />,
-    label: "Inscripciones",
-    href: "/inscripciones",
-  },
-  {
-    icon: <DollarSign className="h-5 w-5" />,
-    label: "Pagos",
-    href: "/pagos",
-  },
-  {
-    icon: <FileText className="h-5 w-5" />,
-    label: "Documentos",
-    href: "/documentos",
-  },
-  {
-    icon: <BarChart3 className="h-5 w-5" />,
-    label: "Reportes",
-    href: "/reportes",
-  },
-  {
     icon: <ShieldCheck className="h-5 w-5" />,
-    label: "Roles en Ministerios",
+    label: "Roles de la Plataforma",
     href: "/ministerios",
     children: [
       {
@@ -130,17 +100,34 @@ const navItems: NavItem[] = [
         label: "Listado de roles",
         href: "/ministerios/catalogo",
       },
-      {
-        icon: <UserCheck className="h-4 w-4" />,
-        label: "Asignación Rol-Persona",
-        href: "/ministerios/asignaciones",
-      },
     ],
   },
   {
-    icon: <Settings className="h-5 w-5" />,
-    label: "Configuración",
-    href: "/settings",
+    icon: <UserCheck className="h-5 w-5" />,
+    label: "Asignaciones de roles",
+    href: "/ministerios/asignaciones",
+  },
+  {
+    icon: <Calendar className="h-5 w-5" />,
+    label: "Eventos",
+    href: "/eventos",
+  },
+  {
+    icon: <Tag className="h-5 w-5" />,
+    label: "Tipos de Eventos",
+    href: "/tipos-eventos",
+    children: [
+      {
+        icon: <List className="h-4 w-4" />,
+        label: "Lista de tipos",
+        href: "/tipos-eventos",
+      },
+      {
+        icon: <PlusCircle className="h-4 w-4" />,
+        label: "Nuevo tipo",
+        href: "/tipos-eventos/nuevo",
+      },
+    ],
   },
 ]
 

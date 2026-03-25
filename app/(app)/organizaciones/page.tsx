@@ -40,7 +40,7 @@ export default async function OrganizacionesPage({
 
   let query = supabase
     .from('organizaciones')
-    .select('id, nombre, tipo, localidad, provincia, estado, parent:organizaciones!parent_id(nombre)')
+    .select('id, codigo, nombre, tipo, localidad, provincia, estado, parent:organizaciones!parent_id(nombre)')
     .is('fecha_baja', null)
     .order(sortCol, { ascending: sortAsc })
 
@@ -74,7 +74,7 @@ export default async function OrganizacionesPage({
       <div>
         <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
           <Building2 className="h-8 w-8 text-primary" />
-          Gestión de Organizaciones
+          Comunidad Convivencia con Dios
         </h1>
         <p className="mt-2 text-muted-foreground">
           Administra las organizaciones y su jerarquía
@@ -84,7 +84,7 @@ export default async function OrganizacionesPage({
       <Card className="border-border bg-card">
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
-            <CardTitle className="text-foreground">Organizaciones Registradas</CardTitle>
+            <CardTitle className="text-foreground">Confraternidades y Fraternidades de Comunidad Convivencia con Dios</CardTitle>
             <CardDescription>Lista completa de organizaciones en el sistema</CardDescription>
           </div>
           {canCreate && (
@@ -120,8 +120,6 @@ export default async function OrganizacionesPage({
               <option value="comunidad">Comunidad</option>
               <option value="confraternidad">Confraternidad</option>
               <option value="fraternidad">Fraternidad</option>
-              <option value="casa_retiro">Casa de Retiro</option>
-              <option value="eqt">EQT</option>
               <option value="otra">Otra</option>
             </select>
 
@@ -167,17 +165,19 @@ export default async function OrganizacionesPage({
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-border">
+                      <th className="text-left py-3 px-4 font-semibold text-foreground">Código</th>
                       <SortableHeader column="nombre" label="Nombre" currentSort={sortBy} currentDir={sortDir} />
                       <SortableHeader column="tipo" label="Tipo" currentSort={sortBy} currentDir={sortDir} />
-                      <th className="text-left py-3 px-4 font-semibold text-foreground">Depende de</th>
+                      <th className="text-left py-3 px-4 font-semibold text-foreground">Relación</th>
                       <SortableHeader column="localidad" label="Localidad" currentSort={sortBy} currentDir={sortDir} />
-                      <SortableHeader column="estado" label="Estado" currentSort={sortBy} currentDir={sortDir} />
+                      <th className="text-left py-3 px-4 font-semibold text-foreground">Provincia</th>
                       <th className="text-center py-3 px-4 font-semibold text-foreground">Acciones</th>
                     </tr>
                   </thead>
                   <tbody>
                     {organizaciones.map((org: any) => (
                       <tr key={org.id} className="border-b border-border hover:bg-muted/50 transition-colors">
+                        <td className="py-3 px-4 text-muted-foreground font-mono text-xs">{org.codigo ?? '—'}</td>
                         <td className="py-3 px-4 font-medium">
                           <Link href={`/organizaciones/${org.id}`} className="text-foreground hover:text-primary">
                             {org.nombre}
@@ -186,15 +186,7 @@ export default async function OrganizacionesPage({
                         <td className="py-3 px-4 text-muted-foreground">{tipoLabel[org.tipo] ?? org.tipo}</td>
                         <td className="py-3 px-4 text-muted-foreground">{org.parent?.nombre ?? '—'}</td>
                         <td className="py-3 px-4 text-muted-foreground">{org.localidad ?? '—'}</td>
-                        <td className="py-3 px-4">
-                          <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-                            org.estado === 'activa'
-                              ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
-                              : 'bg-muted text-muted-foreground'
-                          }`}>
-                            {org.estado}
-                          </span>
-                        </td>
+                        <td className="py-3 px-4 text-muted-foreground">{org.provincia ?? '—'}</td>
                         <td className="py-3 px-4 text-center">
                           {canUpdateOrg(org.id) && (
                             <Link href={`/organizaciones/${org.id}/editar`}>

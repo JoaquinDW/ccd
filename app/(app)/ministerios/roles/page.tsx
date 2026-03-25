@@ -73,7 +73,7 @@ export default async function RolesPage() {
                   <tr className="border-b border-border">
                     <th className="text-left py-3 px-4 font-semibold text-foreground">Nombre</th>
                     <th className="text-left py-3 px-4 font-semibold text-foreground">Descripción</th>
-                    <th className="text-left py-3 px-4 font-semibold text-foreground">Nivel de Acceso</th>
+                    <th className="text-left py-3 px-4 font-semibold text-foreground">Alcance</th>
                     <th className="text-left py-3 px-4 font-semibold text-foreground">Usuarios Activos</th>
                     <th className="text-left py-3 px-4 font-semibold text-foreground">Estado</th>
                     <th className="text-center py-3 px-4 font-semibold text-foreground">Acciones</th>
