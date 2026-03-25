@@ -1,12 +1,19 @@
-'use client'
+"use client"
 
-import { useRouter, useSearchParams } from 'next/navigation'
-import { useRef } from 'react'
+import { useRouter, useSearchParams } from "next/navigation"
+import { useRef } from "react"
 
 type Ministerio = { id: string; nombre: string }
+type Organizacion = { id: string; nombre: string; tipo: string }
+
+const tipoLabel: Record<string, string> = {
+  confraternidad: 'Confraternidad',
+  fraternidad: 'Fraternidad',
+}
 
 type Props = {
   ministerios: Ministerio[]
+  organizaciones: Organizacion[]
   defaults: {
     q: string
     estado: string
@@ -14,26 +21,23 @@ type Props = {
     provincia: string
     modo: string
     ministerio_id: string
+    organizacion_id: string
   }
 }
 
-export default function PersonasFilters({ ministerios, defaults }: Props) {
+export default function PersonasFilters({ ministerios, organizaciones, defaults }: Props) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const formRef = useRef<HTMLFormElement>(null)
 
   function handleClear() {
-    router.push('/personas')
+    router.push("/personas")
   }
 
-  const hasActiveFilters = Object.values(defaults).some(v => v !== '')
+  const hasActiveFilters = Object.values(defaults).some((v) => v !== "")
 
   return (
-    <form
-      ref={formRef}
-      method="GET"
-      className="flex flex-wrap items-end gap-2"
-    >
+    <form ref={formRef} method="GET" className="flex flex-wrap items-end gap-2">
       {/* Búsqueda texto */}
       <div className="relative min-w-[200px] flex-1">
         <input
@@ -49,7 +53,12 @@ export default function PersonasFilters({ ministerios, defaults }: Props) {
           viewBox="0 0 24 24"
           stroke="currentColor"
         >
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+          />
         </svg>
       </div>
 
@@ -109,9 +118,27 @@ export default function PersonasFilters({ ministerios, defaults }: Props) {
           defaultValue={defaults.ministerio_id}
           className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
         >
-          <option value="">Ministerio asignado</option>
-          {ministerios.map(m => (
-            <option key={m.id} value={m.id}>{m.nombre}</option>
+          <option value="">Rol Asignado</option>
+          {ministerios.map((m) => (
+            <option key={m.id} value={m.id}>
+              {m.nombre}
+            </option>
+          ))}
+        </select>
+      )}
+
+      {/* Confraternidad / Fraternidad */}
+      {organizaciones.length > 0 && (
+        <select
+          name="organizacion_id"
+          defaultValue={defaults.organizacion_id}
+          className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+        >
+          <option value="">Confraternidad/Fraternidad</option>
+          {organizaciones.map((o) => (
+            <option key={o.id} value={o.id}>
+              {o.nombre} ({tipoLabel[o.tipo] ?? o.tipo})
+            </option>
           ))}
         </select>
       )}

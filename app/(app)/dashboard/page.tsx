@@ -46,7 +46,7 @@ const QuickActions = [
   },
   {
     icon: Calendar,
-    label: "Nuevo Evento",
+    label: "Solicitar Evento",
     href: "/eventos/nuevo",
     color: "text-purple-500",
   },
@@ -484,9 +484,9 @@ export default function DashboardPage() {
             <Link href="/eventos/nuevo">
               <div className="p-3 rounded-lg border border-border hover:border-primary/50 transition-colors cursor-pointer">
                 <p className="font-medium text-foreground text-sm">
-                  Nuevo Evento
+                  Solicitar Evento
                 </p>
-                <p className="text-xs text-muted-foreground">Crear evento</p>
+                <p className="text-xs text-muted-foreground">Solicitar evento</p>
               </div>
             </Link>
           </div>

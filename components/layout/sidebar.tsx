@@ -111,6 +111,18 @@ const navItems: NavItem[] = [
     icon: <Calendar className="h-5 w-5" />,
     label: "Eventos",
     href: "/eventos",
+    children: [
+      {
+        icon: <List className="h-4 w-4" />,
+        label: "Lista de eventos",
+        href: "/eventos",
+      },
+      {
+        icon: <PlusCircle className="h-4 w-4" />,
+        label: "Solicitar Evento",
+        href: "/eventos/nuevo",
+      },
+    ],
   },
   {
     icon: <Tag className="h-5 w-5" />,

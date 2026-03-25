@@ -19,6 +19,7 @@ export default async function PersonasPage({
     provincia?: string
     modo?: string
     ministerio_id?: string
+    organizacion_id?: string
     persona?: string
     sortBy?: string
     sortDir?: string
@@ -31,6 +32,7 @@ export default async function PersonasPage({
   const provincia = params.provincia ?? ''
   const modo = params.modo ?? ''
   const ministerio_id = params.ministerio_id ?? ''
+  const organizacion_id = params.organizacion_id ?? ''
   const initialPersonaId = params.persona ?? null
   const sortBy = params.sortBy ?? ''
   const sortDir = (params.sortDir === 'asc' || params.sortDir === 'desc') ? params.sortDir : 'asc'
@@ -40,11 +42,10 @@ export default async function PersonasPage({
   const supabase = await createClient()
 
   // Load ministerios for the filter select
-  const { data: ministerios } = await supabase
-    .from('ministerios')
-    .select('id, nombre')
-    .eq('activo', true)
-    .order('nombre')
+  const [{ data: ministerios }, { data: organizaciones }] = await Promise.all([
+    supabase.from('ministerios').select('id, nombre').eq('activo', true).order('nombre'),
+    supabase.from('organizaciones').select('id, nombre, tipo').in('tipo', ['confraternidad', 'fraternidad']).is('fecha_baja', null).order('tipo').order('nombre'),
+  ])
 
   // Relational filters: get persona ids matching modo/ministerio
   let modoIds: string[] | null = null
@@ -67,12 +68,21 @@ export default async function PersonasPage({
     ministerioIds = data?.map(r => r.persona_id) ?? []
   }
 
-  // Intersect relational filters
+  let orgIds: string[] | null = null
+  if (organizacion_id) {
+    const { data } = await supabase
+      .from('persona_organizacion')
+      .select('persona_id')
+      .eq('organizacion_id', organizacion_id)
+      .is('fecha_fin', null)
+    orgIds = data?.map(r => r.persona_id) ?? []
+  }
+
+  // Intersect all relational filters
   let filterIds: string[] | null = null
-  if (modoIds !== null && ministerioIds !== null) {
-    filterIds = modoIds.filter(id => ministerioIds!.includes(id))
-  } else {
-    filterIds = modoIds ?? ministerioIds
+  const relIds = [modoIds, ministerioIds, orgIds].filter(arr => arr !== null) as string[][]
+  if (relIds.length > 0) {
+    filterIds = relIds.reduce((acc, arr) => acc.filter(id => arr.includes(id)))
   }
 
   // If relational filter was set but no matches found, short-circuit
@@ -103,7 +113,7 @@ export default async function PersonasPage({
     personas = data ?? []
   }
 
-  const hasFilters = !!(q || estado || estado_eclesial || provincia || modo || ministerio_id)
+  const hasFilters = !!(q || estado || estado_eclesial || provincia || modo || ministerio_id || organizacion_id)
 
   // Build search string for export button
   const exportParams = new URLSearchParams()
@@ -113,6 +123,7 @@ export default async function PersonasPage({
   if (provincia) exportParams.set('provincia', provincia)
   if (modo) exportParams.set('modo', modo)
   if (ministerio_id) exportParams.set('ministerio_id', ministerio_id)
+  if (organizacion_id) exportParams.set('organizacion_id', organizacion_id)
   const exportSearch = exportParams.size > 0 ? `?${exportParams.toString()}` : ''
 
   return (
@@ -146,7 +157,8 @@ export default async function PersonasPage({
           {/* Filters */}
           <PersonasFilters
             ministerios={ministerios ?? []}
-            defaults={{ q, estado, estado_eclesial, provincia, modo, ministerio_id }}
+            organizaciones={organizaciones ?? []}
+            defaults={{ q, estado, estado_eclesial, provincia, modo, ministerio_id, organizacion_id }}
           />
 
           {/* Table — always rendered so ?persona=id deep-links work even with active filters */}

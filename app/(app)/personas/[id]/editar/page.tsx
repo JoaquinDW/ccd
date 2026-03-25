@@ -54,15 +54,15 @@ export default async function EditPersonaPage({ params }: { params: Promise<{ id
       .eq("persona_id", id),
     supabase
       .from("persona_organizacion")
-      .select("tipo_relacion, organizacion:organizaciones!organizacion_id(nombre)")
+      .select("id, tipo_relacion, organizacion_id, organizacion:organizaciones!organizacion_id(nombre)")
       .eq("persona_id", id)
       .is("fecha_fin", null),
   ])
 
   if (!persona) notFound()
 
-  const confraternidad = personaOrgs?.find(o => o.tipo_relacion === 'confraternidad')?.organizacion as { nombre: string } | undefined
-  const fraternidad = personaOrgs?.find(o => o.tipo_relacion === 'fraternidad')?.organizacion as { nombre: string } | undefined
+  const confraternidadOrg = personaOrgs?.find(o => o.tipo_relacion === 'confraternidad') as { id: string; organizacion_id: string; organizacion: { nombre: string } } | undefined
+  const fraternidadOrg = personaOrgs?.find(o => o.tipo_relacion === 'fraternidad') as { id: string; organizacion_id: string; organizacion: { nombre: string } } | undefined
 
   return (
     <EditPersonaForm
@@ -74,8 +74,10 @@ export default async function EditPersonaPage({ params }: { params: Promise<{ id
       ministerios={ministerios ?? []}
       organizaciones={organizaciones ?? []}
       categoriasNoCecista={(categoriasNoCecista ?? []).map(c => c.categoria)}
-      confraternidadActual={confraternidad?.nombre ?? null}
-      fraternidadActual={fraternidad?.nombre ?? null}
+      confraternidadActualId={confraternidadOrg?.organizacion_id ?? null}
+      fraternidadActualId={fraternidadOrg?.organizacion_id ?? null}
+      personaOrgConfraternidadId={confraternidadOrg?.id ?? null}
+      personaOrgFraternidadId={fraternidadOrg?.id ?? null}
     />
   )
 }

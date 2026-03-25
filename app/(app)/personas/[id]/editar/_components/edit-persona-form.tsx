@@ -80,8 +80,10 @@ interface Props {
   ministerios: Ministerio[]
   organizaciones: Organizacion[]
   categoriasNoCecista: string[]
-  confraternidadActual: string | null
-  fraternidadActual: string | null
+  confraternidadActualId: string | null
+  fraternidadActualId: string | null
+  personaOrgConfraternidadId: string | null
+  personaOrgFraternidadId: string | null
 }
 
 const modoLabels: Record<string, string> = {
@@ -116,8 +118,10 @@ export function EditPersonaForm({
   ministerios,
   organizaciones,
   categoriasNoCecista: initialCategoriasNoCecista,
-  confraternidadActual,
-  fraternidadActual,
+  confraternidadActualId,
+  fraternidadActualId,
+  personaOrgConfraternidadId,
+  personaOrgFraternidadId,
 }: Props) {
   const router = useRouter()
   const today = new Date().toISOString().split("T")[0]
@@ -190,6 +194,65 @@ export function EditPersonaForm({
   const [motivoFin, setMotivoFin] = useState("")
   const [modoLoading, setModoLoading] = useState(false)
   const [modoError, setModoError] = useState<string | null>(null)
+
+  // Section: Org (confraternidad/fraternidad) assignment
+  const [selectedConfraternidad, setSelectedConfraternidad] = useState(confraternidadActualId ?? "")
+  const [selectedFraternidad, setSelectedFraternidad] = useState(fraternidadActualId ?? "")
+  const [currentOrgConfraternidadId, setCurrentOrgConfraternidadId] = useState(personaOrgConfraternidadId)
+  const [currentOrgFraternidadId, setCurrentOrgFraternidadId] = useState(personaOrgFraternidadId)
+  const [orgLoading, setOrgLoading] = useState(false)
+  const [orgError, setOrgError] = useState<string | null>(null)
+  const [orgSuccess, setOrgSuccess] = useState(false)
+
+  const handleOrgSubmit = async () => {
+    setOrgError(null)
+    setOrgSuccess(false)
+    setOrgLoading(true)
+    const supabase = createClient()
+
+    // Handle confraternidad change
+    if (selectedConfraternidad !== (confraternidadActualId ?? "")) {
+      if (currentOrgConfraternidadId) {
+        await supabase.from("persona_organizacion").update({ fecha_fin: today }).eq("id", currentOrgConfraternidadId)
+      }
+      if (selectedConfraternidad) {
+        const { data: newRec, error } = await supabase.from("persona_organizacion").insert({
+          persona_id: persona.id,
+          organizacion_id: selectedConfraternidad,
+          tipo_relacion: "confraternidad",
+          fecha_inicio: today,
+        }).select("id").single()
+        if (error) { setOrgError(error.message); setOrgLoading(false); return }
+        setCurrentOrgConfraternidadId(newRec?.id ?? null)
+      } else {
+        setCurrentOrgConfraternidadId(null)
+      }
+    }
+
+    // Handle fraternidad change
+    if (selectedFraternidad !== (fraternidadActualId ?? "")) {
+      if (currentOrgFraternidadId) {
+        await supabase.from("persona_organizacion").update({ fecha_fin: today }).eq("id", currentOrgFraternidadId)
+      }
+      if (selectedFraternidad) {
+        const { data: newRec, error } = await supabase.from("persona_organizacion").insert({
+          persona_id: persona.id,
+          organizacion_id: selectedFraternidad,
+          tipo_relacion: "fraternidad",
+          fecha_inicio: today,
+        }).select("id").single()
+        if (error) { setOrgError(error.message); setOrgLoading(false); return }
+        setCurrentOrgFraternidadId(newRec?.id ?? null)
+      } else {
+        setCurrentOrgFraternidadId(null)
+      }
+    }
+
+    setOrgSuccess(true)
+    setOrgLoading(false)
+    setTimeout(() => setOrgSuccess(false), 3000)
+    router.refresh()
+  }
 
   // Section C: Ministry assignments
   const [newAsig, setNewAsig] = useState({
@@ -635,17 +698,52 @@ export function EditPersonaForm({
               </div>
             )}
 
-            {/* Read-only: Confraternidad / Fraternidad */}
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-1">
-                <p className="text-sm font-medium text-foreground">Confraternidad</p>
-                <p className="text-sm text-muted-foreground">{confraternidadActual ?? "—"}</p>
+            {/* Confraternidad / Fraternidad — editable when cecista */}
+            {basicData.categoria_persona === "cecista" && (
+              <div className="space-y-4">
+                {orgError && (
+                  <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{orgError}</div>
+                )}
+                {orgSuccess && (
+                  <div className="rounded-md bg-green-50 p-3 text-sm text-green-800">Organización actualizada correctamente</div>
+                )}
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="confraternidad_id">Confraternidad</Label>
+                    <select
+                      id="confraternidad_id"
+                      value={selectedConfraternidad}
+                      onChange={e => setSelectedConfraternidad(e.target.value)}
+                      disabled={orgLoading}
+                      className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground text-sm"
+                    >
+                      <option value="">Sin confraternidad</option>
+                      {organizaciones.filter(o => o.tipo === "confraternidad").map(o => (
+                        <option key={o.id} value={o.id}>{o.nombre}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="fraternidad_id">Fraternidad</Label>
+                    <select
+                      id="fraternidad_id"
+                      value={selectedFraternidad}
+                      onChange={e => setSelectedFraternidad(e.target.value)}
+                      disabled={orgLoading}
+                      className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground text-sm"
+                    >
+                      <option value="">Sin fraternidad</option>
+                      {organizaciones.filter(o => o.tipo === "fraternidad").map(o => (
+                        <option key={o.id} value={o.id}>{o.nombre}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <Button type="button" variant="outline" size="sm" disabled={orgLoading} onClick={handleOrgSubmit}>
+                  {orgLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Guardando...</> : "Guardar Organización"}
+                </Button>
               </div>
-              <div className="space-y-1">
-                <p className="text-sm font-medium text-foreground">Fraternidad</p>
-                <p className="text-sm text-muted-foreground">{fraternidadActual ?? "—"}</p>
-              </div>
-            </div>
+            )}
 
             <div className="flex items-center gap-2">
               <input

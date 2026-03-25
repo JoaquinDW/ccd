@@ -58,6 +58,8 @@ export default function NewPersonaPage() {
     provincia: '',
     pais: 'Argentina',
     acepta_comunicaciones: true,
+    confraternidad_id: '',
+    fraternidad_id: '',
     modo_inicial: '',
     rol_sistema_id: '',
     organizacion_id: '',
@@ -107,6 +109,21 @@ export default function NewPersonaPage() {
       }
 
       const { id: personaId } = await res.json()
+
+      // Create org relationships for cecista
+      const today = new Date().toISOString().split('T')[0]
+      if (formData.categoria_persona === 'cecista') {
+        const orgInserts = []
+        if (formData.confraternidad_id) {
+          orgInserts.push({ persona_id: personaId, organizacion_id: formData.confraternidad_id, tipo_relacion: 'confraternidad', fecha_inicio: today })
+        }
+        if (formData.fraternidad_id) {
+          orgInserts.push({ persona_id: personaId, organizacion_id: formData.fraternidad_id, tipo_relacion: 'fraternidad', fecha_inicio: today })
+        }
+        if (orgInserts.length > 0) {
+          await supabase.from('persona_organizacion').insert(orgInserts)
+        }
+      }
 
       // Create system access only if a role was selected
       if (formData.rol_sistema_id) {
@@ -368,17 +385,52 @@ export default function NewPersonaPage() {
             )}
 
             {formData.categoria_persona === 'cecista' && (
-              <div className="flex items-center gap-2">
-                <input
-                  id="cecista_dedicado"
-                  name="cecista_dedicado"
-                  type="checkbox"
-                  checked={formData.cecista_dedicado}
-                  onChange={handleChange}
-                  className="h-4 w-4 rounded border-border"
-                />
-                <Label htmlFor="cecista_dedicado">Dedicado</Label>
-              </div>
+              <>
+                <div className="flex items-center gap-2">
+                  <input
+                    id="cecista_dedicado"
+                    name="cecista_dedicado"
+                    type="checkbox"
+                    checked={formData.cecista_dedicado}
+                    onChange={handleChange}
+                    className="h-4 w-4 rounded border-border"
+                  />
+                  <Label htmlFor="cecista_dedicado">Dedicado</Label>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="confraternidad_id">Confraternidad</Label>
+                    <select
+                      id="confraternidad_id"
+                      name="confraternidad_id"
+                      value={formData.confraternidad_id}
+                      onChange={handleChange}
+                      className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground text-sm"
+                    >
+                      <option value="">Sin confraternidad</option>
+                      {organizaciones.filter(o => o.tipo === 'confraternidad').map(o => (
+                        <option key={o.id} value={o.id}>{o.nombre}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="fraternidad_id">Fraternidad</Label>
+                    <select
+                      id="fraternidad_id"
+                      name="fraternidad_id"
+                      value={formData.fraternidad_id}
+                      onChange={handleChange}
+                      className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground text-sm"
+                    >
+                      <option value="">Sin fraternidad</option>
+                      {organizaciones.filter(o => o.tipo === 'fraternidad').map(o => (
+                        <option key={o.id} value={o.id}>{o.nombre}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </>
             )}
 
             <div className="flex items-center gap-2">
