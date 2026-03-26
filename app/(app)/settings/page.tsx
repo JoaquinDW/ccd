@@ -2,14 +2,13 @@
 
 export const dynamic = 'force-dynamic'
 
-
 import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
-import { Settings, Bell, Lock, Database, Loader2, Eye, EyeOff } from 'lucide-react'
+import { Settings, Lock, Loader2, Eye, EyeOff } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 
@@ -55,7 +54,6 @@ export default function SettingsPage() {
     setPwLoading(true)
     const supabase = createClient()
 
-    // Verify current password by re-authenticating
     const { data: { user } } = await supabase.auth.getUser()
     if (!user?.email) {
       setPwError('No se pudo obtener el usuario actual.')
@@ -126,16 +124,6 @@ export default function SettingsPage() {
           General
         </button>
         <button
-          onClick={() => setActiveTab('notificaciones')}
-          className={`px-4 py-2 font-medium border-b-2 transition-colors ${
-            activeTab === 'notificaciones'
-              ? 'border-primary text-primary'
-              : 'border-transparent text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          Notificaciones
-        </button>
-        <button
           onClick={() => setActiveTab('seguridad')}
           className={`px-4 py-2 font-medium border-b-2 transition-colors ${
             activeTab === 'seguridad'
@@ -144,16 +132,6 @@ export default function SettingsPage() {
           }`}
         >
           Seguridad
-        </button>
-        <button
-          onClick={() => setActiveTab('datos')}
-          className={`px-4 py-2 font-medium border-b-2 transition-colors ${
-            activeTab === 'datos'
-              ? 'border-primary text-primary'
-              : 'border-transparent text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          Datos
         </button>
       </div>
 
@@ -197,46 +175,6 @@ export default function SettingsPage() {
         </Card>
       )}
 
-      {/* Notifications */}
-      {activeTab === 'notificaciones' && (
-        <Card className="border-border bg-card max-w-2xl">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-foreground">
-              <Bell className="h-5 w-5 text-primary" />
-              Notificaciones
-            </CardTitle>
-            <CardDescription>Configura cómo recibes notificaciones</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between py-3 border-b border-border">
-              <div>
-                <p className="font-medium text-foreground">Eventos próximos</p>
-                <p className="text-sm text-muted-foreground">Recibe alertas sobre eventos próximos</p>
-              </div>
-              <input type="checkbox" defaultChecked className="w-4 h-4" />
-            </div>
-
-            <div className="flex items-center justify-between py-3 border-b border-border">
-              <div>
-                <p className="font-medium text-foreground">Nuevas inscripciones</p>
-                <p className="text-sm text-muted-foreground">Notificaciones sobre nuevas inscripciones</p>
-              </div>
-              <input type="checkbox" defaultChecked className="w-4 h-4" />
-            </div>
-
-            <div className="flex items-center justify-between py-3">
-              <div>
-                <p className="font-medium text-foreground">Cambios en eventos</p>
-                <p className="text-sm text-muted-foreground">Se notificado de cambios en los eventos</p>
-              </div>
-              <input type="checkbox" defaultChecked className="w-4 h-4" />
-            </div>
-
-            <Button>Guardar Preferencias</Button>
-          </CardContent>
-        </Card>
-      )}
-
       {/* Security */}
       {activeTab === 'seguridad' && (
         <Card className="border-border bg-card max-w-2xl">
@@ -247,8 +185,8 @@ export default function SettingsPage() {
             </CardTitle>
             <CardDescription>Administra la seguridad de tu cuenta</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="py-4 border-b border-border">
+          <CardContent>
+            <div className="py-4">
               <h3 className="font-medium text-foreground mb-2">Cambiar Contraseña</h3>
               <p className="text-sm text-muted-foreground mb-4">Actualiza tu contraseña regularmente para mantener tu cuenta segura</p>
               <Button variant="outline" className="bg-transparent" onClick={() => { setPwOpen(true); setPwError(null); setPwSuccess(false) }}>
@@ -346,44 +284,6 @@ export default function SettingsPage() {
                   )}
                 </DialogContent>
               </Dialog>
-            </div>
-
-            <div className="py-4">
-              <h3 className="font-medium text-foreground mb-2">Autenticación de Dos Factores</h3>
-              <p className="text-sm text-muted-foreground mb-4">Añade una capa adicional de seguridad a tu cuenta</p>
-              <Button variant="outline" className="bg-transparent">
-                Configurar 2FA
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Data */}
-      {activeTab === 'datos' && (
-        <Card className="border-border bg-card max-w-2xl">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-foreground">
-              <Database className="h-5 w-5 text-primary" />
-              Gestión de Datos
-            </CardTitle>
-            <CardDescription>Administra los datos del sistema</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="py-4 border-b border-border">
-              <h3 className="font-medium text-foreground mb-2">Exportar Datos</h3>
-              <p className="text-sm text-muted-foreground mb-4">Descarga una copia de todos tus datos en formato CSV</p>
-              <Button variant="outline" className="bg-transparent">
-                Exportar Datos
-              </Button>
-            </div>
-
-            <div className="py-4">
-              <h3 className="font-medium text-foreground mb-2">Limpiar Caché</h3>
-              <p className="text-sm text-muted-foreground mb-4">Limpia los datos en caché del sistema para mejorar el rendimiento</p>
-              <Button variant="outline" className="bg-transparent">
-                Limpiar Caché
-              </Button>
             </div>
           </CardContent>
         </Card>

@@ -22,6 +22,7 @@ import {
   PlusCircle,
   Hotel,
   Tag,
+  Settings,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { createClient } from "@/lib/supabase/client"
@@ -294,6 +295,18 @@ export function Sidebar() {
                 {userEmail}
               </p>
             )}
+            <Link
+              href="/settings"
+              onClick={() => setIsOpen(false)}
+              className={`flex items-center gap-2 w-full rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                isActive("/settings")
+                  ? "bg-primary/10 text-primary"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+              }`}
+            >
+              <Settings className="h-5 w-5" />
+              <span>Ajustes</span>
+            </Link>
             <Button
               onClick={handleSignOut}
               variant="ghost"
