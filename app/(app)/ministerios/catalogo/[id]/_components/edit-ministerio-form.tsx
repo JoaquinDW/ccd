@@ -1,9 +1,13 @@
 'use client'
 
 import { useState } from 'react'
+import { Loader2 } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Button } from '@/components/ui/button'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { createClient } from '@/lib/supabase/client'
 
 interface Ministerio {
   id: string
@@ -44,10 +48,37 @@ interface Props {
 
 export function EditMinisterioForm({ ministerio, nivelCalculado }: Props) {
   const [nivel, setNivel] = useState(nivelCalculado)
+  const [nombre, setNombre] = useState(ministerio.nombre)
+  const [tipo, setTipo] = useState(ministerio.tipo)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [saved, setSaved] = useState(false)
 
   // Permite que PermisosMatrix actualice el nivel mostrado
   if (nivel !== nivelCalculado) {
     setNivel(nivelCalculado)
+  }
+
+  const isReadOnly = ministerio.tipo === 'sistema'
+  const isDirty = nombre !== ministerio.nombre || tipo !== ministerio.tipo
+
+  async function handleSave() {
+    if (!isDirty) return
+    setSaving(true)
+    setError(null)
+    setSaved(false)
+    const supabase = createClient()
+    const { error: err } = await supabase
+      .from('ministerios')
+      .update({ nombre: nombre.trim(), tipo })
+      .eq('id', ministerio.id)
+    setSaving(false)
+    if (err) {
+      setError(err.message)
+    } else {
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2000)
+    }
   }
 
   return (
@@ -55,20 +86,38 @@ export function EditMinisterioForm({ ministerio, nivelCalculado }: Props) {
       <CardHeader>
         <CardTitle className="text-foreground">Datos del Rol en Ministerio</CardTitle>
         <CardDescription>
-          {ministerio.tipo === 'sistema'
+          {isReadOnly
             ? 'Rol del sistema — nombre y tipo no se pueden modificar'
-            : 'Nombre y tipo definidos al crear el rol en ministerio'}
+            : 'Editá el nombre y tipo del rol en ministerio'}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-2">
           <Label>Nombre</Label>
-          <Input value={ministerio.nombre} disabled className="text-sm" />
+          <Input
+            value={nombre}
+            onChange={e => setNombre(e.target.value)}
+            disabled={isReadOnly}
+            className="text-sm"
+          />
         </div>
 
         <div className="space-y-2">
           <Label>Tipo</Label>
-          <Input value={tipoLabel[ministerio.tipo] ?? ministerio.tipo} disabled className="text-sm" />
+          {isReadOnly ? (
+            <Input value={tipoLabel[tipo] ?? tipo} disabled className="text-sm" />
+          ) : (
+            <Select value={tipo} onValueChange={setTipo}>
+              <SelectTrigger className="text-sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="conduccion">Conducción</SelectItem>
+                <SelectItem value="pastoral">Pastoral</SelectItem>
+                <SelectItem value="servicio">De Servicio</SelectItem>
+              </SelectContent>
+            </Select>
+          )}
         </div>
 
         <div className="space-y-2">
@@ -91,6 +140,20 @@ export function EditMinisterioForm({ ministerio, nivelCalculado }: Props) {
             {nivelAccesoLabel(nivel)} — se calcula automáticamente según los permisos activos
           </p>
         </div>
+
+        {!isReadOnly && (
+          <div className="pt-2">
+            {error && <p className="text-xs text-destructive mb-2">{error}</p>}
+            <Button
+              size="sm"
+              onClick={handleSave}
+              disabled={!isDirty || saving}
+            >
+              {saving && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
+              {saved ? 'Guardado' : 'Guardar cambios'}
+            </Button>
+          </div>
+        )}
       </CardContent>
     </Card>
   )
