@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ArrowLeft, Edit2, Calendar, MapPin, Users } from 'lucide-react'
 import DiscernimientoPanel from './_components/approval-panel'
+import { formatDateAR } from '@/lib/utils'
 
 const estadoClases: Record<string, string> = {
   borrador: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
@@ -61,7 +62,7 @@ export default async function EventoDetailPage({
     .from('eventos')
     .select(`
       id, nombre, tipo, estado, fecha_inicio, fecha_fin,
-      modalidad, descripcion, notas,
+      modalidad, descripcion, notas, cupo_maximo,
       requiere_discernimiento_confra, requiere_discernimiento_eqt,
       coordinadores_propuestos, asesor_propuesto, asesor_voluntario, es_apv,
       ciudad, codigo_postal, diocesis, provincia_evento, pais_evento,
@@ -81,6 +82,26 @@ export default async function EventoDetailPage({
     .single()
 
   if (!evento) notFound()
+
+  const { data: cambiosHistorial } = await supabase
+    .from('evento_cambios')
+    .select('id, nivel_disc, campo, valor_anterior, valor_nuevo, fecha, modificado_por_persona:personas!modificado_por(nombre, apellido)')
+    .eq('evento_id', id)
+    .order('fecha', { ascending: true })
+
+  const campoLabel: Record<string, string> = {
+    nombre: 'Nombre', fecha_inicio: 'Fecha inicio', fecha_fin: 'Fecha fin',
+    ciudad: 'Ciudad', provincia_evento: 'Provincia', pais_evento: 'País',
+    codigo_postal: 'CP', diocesis: 'Diócesis',
+    coordinadores_propuestos: 'Coordinadores', asesor_propuesto: 'Asesor',
+    asesor_voluntario: 'Asesor voluntario', modalidad: 'Modalidad',
+    notas: 'Notas', cupo_maximo: 'Cupo máximo',
+  }
+
+  const nivelDiscLabel: Record<string, string> = {
+    confra: 'Confraternidad',
+    eqt: 'Equipo Timón',
+  }
 
   const confraternidad = evento.confraternidad as { id: string; nombre: string } | null
   const fraternidad = evento.fraternidad as { id: string; nombre: string } | null
@@ -173,7 +194,7 @@ export default async function EventoDetailPage({
           {rechazadoPor && (
             <p className="text-sm text-red-700 dark:text-red-400">
               Rechazado por: {rechazadoPor.nombre} {rechazadoPor.apellido}
-              {evento.fecha_rechazo && ` el ${evento.fecha_rechazo}`}
+              {evento.fecha_rechazo && ` el ${formatDateAR(evento.fecha_rechazo)}`}
             </p>
           )}
           {evento.motivo_rechazo && (
@@ -229,7 +250,7 @@ export default async function EventoDetailPage({
               <Calendar className="h-4 w-4 shrink-0 mt-0.5 text-muted-foreground" />
               <div>
                 <p className="text-xs text-muted-foreground">Fechas propuestas</p>
-                <p className="text-foreground">{evento.fecha_inicio} — {evento.fecha_fin}</p>
+                <p className="text-foreground">{formatDateAR(evento.fecha_inicio)} — {formatDateAR(evento.fecha_fin)}</p>
               </div>
             </div>
             <Field label="Modalidad" value={evento.modalidad} />
@@ -306,22 +327,50 @@ export default async function EventoDetailPage({
           )}
 
           {/* Historial */}
-          <div className="border-t border-border pt-4 space-y-1">
+          <div className="border-t border-border pt-4 space-y-2">
             <p className="text-xs text-muted-foreground uppercase tracking-wide">Historial</p>
             <div className="space-y-1 text-sm text-muted-foreground">
               {solicitadoPor && (
                 <p>
                   Solicitado por: <span className="text-foreground">{solicitadoPor.nombre} {solicitadoPor.apellido}</span>
-                  {evento.fecha_solicitud && ` el ${evento.fecha_solicitud}`}
+                  {evento.fecha_solicitud && ` el ${formatDateAR(evento.fecha_solicitud)}`}
                 </p>
               )}
               {aprobadoPor && (
                 <p>
                   Aprobado por: <span className="text-foreground">{aprobadoPor.nombre} {aprobadoPor.apellido}</span>
-                  {evento.fecha_aprobacion && ` el ${evento.fecha_aprobacion}`}
+                  {evento.fecha_aprobacion && ` el ${formatDateAR(evento.fecha_aprobacion)}`}
                 </p>
               )}
             </div>
+
+            {cambiosHistorial && cambiosHistorial.length > 0 && (
+              <div className="mt-2 space-y-1.5">
+                <p className="text-xs text-muted-foreground uppercase tracking-wide">Cambios registrados</p>
+                {(cambiosHistorial as Array<{
+                  id: string
+                  nivel_disc: string
+                  campo: string
+                  valor_anterior: string | null
+                  valor_nuevo: string | null
+                  fecha: string | null
+                  modificado_por_persona: { nombre: string; apellido: string } | null
+                }>).map((c) => (
+                  <div key={c.id} className="text-xs text-muted-foreground border-l-2 border-border pl-2">
+                    <span className="font-medium text-foreground">{campoLabel[c.campo] ?? c.campo}</span>
+                    {': '}
+                    <span className="line-through opacity-60">{c.valor_anterior ?? '—'}</span>
+                    {' → '}
+                    <span className="text-foreground">{c.valor_nuevo ?? '—'}</span>
+                    {c.modificado_por_persona && (
+                      <span> · {c.modificado_por_persona.nombre} {c.modificado_por_persona.apellido}</span>
+                    )}
+                    <span> · {nivelDiscLabel[c.nivel_disc] ?? c.nivel_disc}</span>
+                    {c.fecha && <span> · {formatDateAR(c.fecha.split('T')[0])}</span>}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -333,6 +382,23 @@ export default async function EventoDetailPage({
             <DiscernimientoPanel
               eventoId={id}
               niveles={discNiveles}
+              evento={{
+                nombre: evento.nombre,
+                fecha_inicio: evento.fecha_inicio ?? null,
+                fecha_fin: evento.fecha_fin ?? null,
+                ciudad: evento.ciudad ?? null,
+                provincia_evento: evento.provincia_evento ?? null,
+                pais_evento: evento.pais_evento ?? null,
+                codigo_postal: evento.codigo_postal ?? null,
+                diocesis: evento.diocesis ?? null,
+                coordinadores_propuestos: evento.coordinadores_propuestos ?? null,
+                asesor_propuesto: evento.asesor_propuesto ?? null,
+                asesor_voluntario: evento.asesor_voluntario ?? null,
+                modalidad: evento.modalidad ?? null,
+                notas: evento.notas ?? null,
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                cupo_maximo: (evento as any).cupo_maximo ?? null,
+              }}
             />
           </div>
         </div>

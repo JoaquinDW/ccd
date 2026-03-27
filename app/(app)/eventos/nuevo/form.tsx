@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ArrowLeft } from 'lucide-react'
 import { LocationFields } from '@/components/location-fields'
+import { formatDateAR } from '@/lib/utils'
 
 type OrgOption = { id: string; nombre: string; parent_id?: string | null }
 
@@ -124,7 +125,7 @@ export default function NuevoEventoForm({ fraternidades, confraternidades, perso
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1">
                 <Label>Fecha Solicitud</Label>
-                <div className={readonlyClass}>{today}</div>
+                <div className={readonlyClass}>{formatDateAR(today)}</div>
               </div>
               <div className="space-y-1">
                 <Label>Solicitado por</Label>

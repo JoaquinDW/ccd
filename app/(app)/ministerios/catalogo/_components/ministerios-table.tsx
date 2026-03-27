@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Settings, Trash2, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react'
+import { Settings, Trash2, ArrowUp, ArrowDown, ArrowUpDown, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
@@ -64,6 +64,7 @@ export function MinisteriosTable({ ministerios: initial }: { ministerios: Minist
   const [ministerios, setMinisterios] = useState(initial)
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [deleting, setDeleting] = useState(false)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [sortKey, setSortKey] = useState<SortKey | ''>('')
   const [sortDir, setSortDir] = useState<SortDir>('')
@@ -158,6 +159,29 @@ export function MinisteriosTable({ ministerios: initial }: { ministerios: Minist
     }
 
     setDeleting(false)
+  }
+
+  const handleDeactivateOne = async (m: Ministerio) => {
+    if (m.asignaciones > 0) {
+      setError(`No se puede desactivar "${m.nombre}" porque tiene ${m.asignaciones} asignación${m.asignaciones !== 1 ? 'es' : ''} activa${m.asignaciones !== 1 ? 's' : ''}.`)
+      return
+    }
+    if (m.nombre === 'admin_general') {
+      setError('El rol admin_general no se puede desactivar porque es requerido por el sistema de autenticación.')
+      return
+    }
+    setDeletingId(m.id)
+    setError(null)
+    const { error: err } = await supabase
+      .from('ministerios')
+      .update({ activo: false })
+      .eq('id', m.id)
+    if (err) {
+      setError(`Error al desactivar: [${err.code}] ${err.message}`)
+    } else {
+      setMinisterios(prev => prev.map(r => r.id === m.id ? { ...r, activo: false } : r))
+    }
+    setDeletingId(null)
   }
 
   return (
@@ -272,11 +296,26 @@ export function MinisteriosTable({ ministerios: initial }: { ministerios: Minist
                     </span>
                   </td>
                   <td className="py-3 px-4 text-center">
-                    <Link href={`/ministerios/catalogo/${m.id}`}>
-                      <Button size="sm" variant="ghost" className="h-8 w-8 p-0">
-                        <Settings className="h-4 w-4" />
+                    <div className="inline-flex items-center gap-1">
+                      <Link href={`/ministerios/catalogo/${m.id}`}>
+                        <Button size="sm" variant="ghost" className="h-8 w-8 p-0">
+                          <Settings className="h-4 w-4" />
+                        </Button>
+                      </Link>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                        disabled={!m.activo || deletingId === m.id}
+                        onClick={() => handleDeactivateOne(m)}
+                        title={!m.activo ? 'Ya está inactivo' : 'Desactivar rol'}
+                      >
+                        {deletingId === m.id
+                          ? <Loader2 className="h-4 w-4 animate-spin" />
+                          : <Trash2 className="h-4 w-4" />
+                        }
                       </Button>
-                    </Link>
+                    </div>
                   </td>
                 </tr>
               )

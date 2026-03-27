@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Calendar, Plus, Eye, Edit2, Clock } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { getUserContext, canPerform } from '@/lib/auth/context'
+import { formatDateAR } from '@/lib/utils'
 
 const estadoClases: Record<string, string> = {
   borrador: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
@@ -68,7 +69,7 @@ function EventoItem({ evento }: { evento: EventoRow }) {
         </div>
         <div className="flex gap-4 mt-1 text-xs text-muted-foreground flex-wrap">
           <span>{tipoLabel[evento.tipo] ?? evento.tipo}</span>
-          <span>{evento.fecha_inicio} — {evento.fecha_fin}</span>
+          <span>{formatDateAR(evento.fecha_inicio)} — {formatDateAR(evento.fecha_fin)}</span>
           {evento.organizacion && <span>{evento.organizacion.nombre}</span>}
         </div>
       </div>

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Loader2 } from 'lucide-react'
+import { Loader2, Trash2 } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -50,8 +50,11 @@ export function EditMinisterioForm({ ministerio, nivelCalculado }: Props) {
   const [nivel, setNivel] = useState(nivelCalculado)
   const [nombre, setNombre] = useState(ministerio.nombre)
   const [tipo, setTipo] = useState(ministerio.tipo)
+  const [activo, setActivo] = useState(ministerio.activo)
   const [saving, setSaving] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [deactivating, setDeactivating] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
+  const [deactivateError, setDeactivateError] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
 
   // Permite que PermisosMatrix actualice el nivel mostrado
@@ -65,7 +68,7 @@ export function EditMinisterioForm({ ministerio, nivelCalculado }: Props) {
   async function handleSave() {
     if (!isDirty) return
     setSaving(true)
-    setError(null)
+    setSaveError(null)
     setSaved(false)
     const supabase = createClient()
     const { error: err } = await supabase
@@ -74,10 +77,36 @@ export function EditMinisterioForm({ ministerio, nivelCalculado }: Props) {
       .eq('id', ministerio.id)
     setSaving(false)
     if (err) {
-      setError(err.message)
+      setSaveError(err.message)
     } else {
       setSaved(true)
       setTimeout(() => setSaved(false), 2000)
+    }
+  }
+
+  async function handleDeactivate() {
+    setDeactivating(true)
+    setDeactivateError(null)
+    const supabase = createClient()
+    const { count } = await supabase
+      .from('asignaciones_ministerio')
+      .select('id', { count: 'exact', head: true })
+      .eq('ministerio_id', ministerio.id)
+      .eq('estado', 'activo')
+    if ((count ?? 0) > 0) {
+      setDeactivateError(`No se puede desactivar: tiene ${count} asignación${count !== 1 ? 'es' : ''} activa${count !== 1 ? 's' : ''}.`)
+      setDeactivating(false)
+      return
+    }
+    const { error: err } = await supabase
+      .from('ministerios')
+      .update({ activo: false })
+      .eq('id', ministerio.id)
+    setDeactivating(false)
+    if (err) {
+      setDeactivateError(err.message)
+    } else {
+      setActivo(false)
     }
   }
 
@@ -143,7 +172,7 @@ export function EditMinisterioForm({ ministerio, nivelCalculado }: Props) {
 
         {!isReadOnly && (
           <div className="pt-2">
-            {error && <p className="text-xs text-destructive mb-2">{error}</p>}
+            {saveError && <p className="text-xs text-destructive mb-2">{saveError}</p>}
             <Button
               size="sm"
               onClick={handleSave}
@@ -151,6 +180,29 @@ export function EditMinisterioForm({ ministerio, nivelCalculado }: Props) {
             >
               {saving && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
               {saved ? 'Guardado' : 'Guardar cambios'}
+            </Button>
+          </div>
+        )}
+
+        {!isReadOnly && (
+          <div className="pt-4 border-t border-border mt-2">
+            <p className="text-xs text-muted-foreground mb-2">
+              {activo
+                ? 'Desactivar este rol lo marcará como inactivo. No se puede si tiene asignaciones activas.'
+                : 'Este rol está inactivo.'}
+            </p>
+            {deactivateError && <p className="text-xs text-destructive mb-2">{deactivateError}</p>}
+            <Button
+              size="sm"
+              variant="destructive"
+              className="gap-2"
+              disabled={!activo || deactivating}
+              onClick={handleDeactivate}
+            >
+              {deactivating
+                ? <Loader2 className="h-3 w-3 animate-spin" />
+                : <Trash2 className="h-3 w-3" />}
+              {activo ? 'Desactivar rol' : 'Rol inactivo'}
             </Button>
           </div>
         )}

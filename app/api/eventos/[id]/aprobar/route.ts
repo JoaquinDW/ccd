@@ -7,6 +7,29 @@ type ResultadoDiscernimiento =
   | 'aprobado_con_modificaciones'
   | 'rechazado'
 
+type CampoEvento =
+  | 'nombre'
+  | 'fecha_inicio'
+  | 'fecha_fin'
+  | 'ciudad'
+  | 'provincia_evento'
+  | 'pais_evento'
+  | 'codigo_postal'
+  | 'diocesis'
+  | 'coordinadores_propuestos'
+  | 'asesor_propuesto'
+  | 'asesor_voluntario'
+  | 'modalidad'
+  | 'notas'
+  | 'cupo_maximo'
+
+const CAMPOS_EDITABLES: CampoEvento[] = [
+  'nombre', 'fecha_inicio', 'fecha_fin',
+  'ciudad', 'provincia_evento', 'pais_evento', 'codigo_postal', 'diocesis',
+  'coordinadores_propuestos', 'asesor_propuesto', 'asesor_voluntario',
+  'modalidad', 'notas', 'cupo_maximo',
+]
+
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -21,6 +44,7 @@ export async function POST(
   const body = await request.json()
   const resultado = body.resultado_discernimiento as ResultadoDiscernimiento
   const notas = body.notas_discernimiento as string | undefined
+  const cambios = (body.cambios ?? {}) as Partial<Record<CampoEvento, unknown>>
 
   const validResultados: ResultadoDiscernimiento[] = [
     'aprobado_sin_modificaciones',
@@ -38,11 +62,27 @@ export async function POST(
     return NextResponse.json({ error: 'Las notas son obligatorias al rechazar' }, { status: 400 })
   }
 
+  // Validate campo names
+  const camposInvalidos = Object.keys(cambios).filter(k => !CAMPOS_EDITABLES.includes(k as CampoEvento))
+  if (camposInvalidos.length > 0) {
+    return NextResponse.json(
+      { error: `Campos no permitidos: ${camposInvalidos.join(', ')}` },
+      { status: 400 }
+    )
+  }
+
   const supabase = await createClient()
 
   const { data: evento, error: eventoError } = await supabase
     .from('eventos')
-    .select('id, estado, organizacion_id, requiere_discernimiento_confra, requiere_discernimiento_eqt')
+    .select(`
+      id, estado, organizacion_id,
+      requiere_discernimiento_confra, requiere_discernimiento_eqt,
+      nombre, fecha_inicio, fecha_fin,
+      ciudad, provincia_evento, pais_evento, codigo_postal, diocesis,
+      coordinadores_propuestos, asesor_propuesto, asesor_voluntario,
+      modalidad, notas, cupo_maximo
+    `)
     .eq('id', id)
     .single()
 
@@ -95,6 +135,36 @@ export async function POST(
     )
   }
 
+  // Build field update payload and cambios rows
+  const fieldUpdates: Record<string, unknown> = {}
+  const cambiosRows: Array<{
+    evento_id: string
+    nivel_disc: 'confra' | 'eqt'
+    campo: string
+    valor_anterior: string | null
+    valor_nuevo: string | null
+    modificado_por: string | null
+  }> = []
+
+  for (const [campo, nuevoValor] of Object.entries(cambios)) {
+    const anteriorRaw = (evento as Record<string, unknown>)[campo]
+    const valorAnterior = anteriorRaw == null ? null : String(anteriorRaw)
+    const valorNuevo = nuevoValor == null ? null : String(nuevoValor)
+
+    // Skip if value hasn't actually changed
+    if (valorAnterior === valorNuevo) continue
+
+    fieldUpdates[campo] = nuevoValor
+    cambiosRows.push({
+      evento_id: id,
+      nivel_disc: nivel,
+      campo,
+      valor_anterior: valorAnterior,
+      valor_nuevo: valorNuevo,
+      modificado_por: ctx.persona_id,
+    })
+  }
+
   // Compute next state
   // Flows:
   //   confra + eqt: solicitud → discernimiento_confra → discernimiento_eqt → aprobado
@@ -142,11 +212,22 @@ export async function POST(
 
   const { error: updateError } = await supabase
     .from('eventos')
-    .update(updateData)
+    .update({ ...updateData, ...fieldUpdates })
     .eq('id', id)
 
   if (updateError) {
     return NextResponse.json({ error: updateError.message }, { status: 400 })
+  }
+
+  // Insert change rows (non-blocking: event update already succeeded)
+  if (cambiosRows.length > 0) {
+    const { error: cambiosError } = await supabase
+      .from('evento_cambios')
+      .insert(cambiosRows)
+
+    if (cambiosError) {
+      console.error('[aprobar] Failed to insert evento_cambios:', cambiosError.message)
+    }
   }
 
   return NextResponse.json({ estado: nextEstado })
