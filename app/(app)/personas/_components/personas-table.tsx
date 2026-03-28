@@ -46,6 +46,7 @@ export default function PersonasTable({
   sortBy,
   sortDir,
 }: Props) {
+  // Deep-link modal (URL-based, kept for backwards compat with ?persona=UUID)
   const [selectedId, setSelectedId] = useState<string | null>(initialPersonaId)
   const [copied, setCopied] = useState(false)
   const [exporting, setExporting] = useState(false)
@@ -53,11 +54,25 @@ export default function PersonasTable({
   const selected = selectedId ? personas.find((p) => p.id === selectedId) : null
   const printRef = useRef<HTMLDivElement>(null)
 
-  function handleOpen(id: string) {
-    setSelectedId(id)
-    const params = new URLSearchParams(window.location.search)
-    params.set("persona", id)
-    window.history.replaceState(null, "", `${pathname}?${params.toString()}`)
+  // Hover preview modal
+  const HOVER_DELAY = 1500
+  const [hoveredId, setHoveredId] = useState<string | null>(null)
+  const hoveredPersona = hoveredId ? personas.find((p) => p.id === hoveredId) : null
+  const [hoverActive, setHoverActive] = useState<string | null>(null)
+  const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  function handleHoverEnter(id: string) {
+    if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current)
+    setHoverActive(id)
+    hoverTimerRef.current = setTimeout(() => {
+      setHoveredId(id)
+      setHoverActive(null)
+    }, HOVER_DELAY)
+  }
+
+  function handleHoverLeave() {
+    if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current)
+    setHoverActive(null)
   }
 
   function handleClose() {
@@ -88,7 +103,6 @@ export default function PersonasTable({
       ])
 
       const element = printRef.current
-      // Temporarily remove max-height/overflow so html2canvas captures full content
       const dialogContent = element.closest(
         '[data-slot="dialog-content"]',
       ) as HTMLElement | null
@@ -99,7 +113,6 @@ export default function PersonasTable({
         dialogContent.style.overflow = "visible"
       }
 
-      // Hide action buttons during capture
       element.classList.add("is-exporting")
 
       const canvas = await html2canvas(element, {
@@ -170,7 +183,6 @@ export default function PersonasTable({
       const blob = pdf.output("blob")
       const url = URL.createObjectURL(blob)
       const win = window.open(url, "_blank")
-      // Revoke the object URL after the window has loaded to free memory
       if (win) {
         win.addEventListener("load", () => URL.revokeObjectURL(url), { once: true })
       }
@@ -182,6 +194,12 @@ export default function PersonasTable({
 
   return (
     <>
+      <style>{`
+        @keyframes hover-progress {
+          from { stroke-dashoffset: 37.7; }
+          to   { stroke-dashoffset: 0; }
+        }
+      `}</style>
       {personas.length > 0 && (
         <>
           <div className="flex items-center justify-between mb-2">
@@ -209,8 +227,36 @@ export default function PersonasTable({
                     key={persona.id}
                     className="border-b border-border hover:bg-muted/50 transition-colors"
                   >
-                    <td className="py-3 px-4 text-foreground font-medium">
-                      {persona.apellido}, {persona.nombre}
+                    <td
+                      className="py-3 px-4 font-medium"
+                      onMouseEnter={() => handleHoverEnter(persona.id)}
+                      onMouseLeave={handleHoverLeave}
+                    >
+                      <div className="flex items-center gap-2">
+                        <Link
+                          href={`/personas/${persona.id}`}
+                          className="text-foreground hover:text-primary hover:underline"
+                        >
+                          {persona.apellido}, {persona.nombre}
+                        </Link>
+                        {hoverActive === persona.id && (
+                          <svg className="h-4 w-4 text-primary shrink-0" viewBox="0 0 16 16" fill="none">
+                            <circle cx="8" cy="8" r="6" stroke="currentColor" strokeOpacity="0.2" strokeWidth="2" />
+                            <circle
+                              cx="8" cy="8" r="6"
+                              stroke="currentColor" strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeDasharray="37.7"
+                              strokeDashoffset="37.7"
+                              style={{
+                                animation: `hover-progress ${HOVER_DELAY}ms linear forwards`,
+                                transformOrigin: 'center',
+                                transform: 'rotate(-90deg)',
+                              }}
+                            />
+                          </svg>
+                        )}
+                      </div>
                     </td>
                     <td className="py-3 px-4 text-muted-foreground">
                       {persona.email ?? "—"}
@@ -237,15 +283,15 @@ export default function PersonasTable({
                     </td>
                     <td className="py-3 px-4">
                       <div className="flex items-center justify-center gap-1">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-8 w-8 p-0"
-                          onClick={() => handleOpen(persona.id)}
-                          title="Ver detalle"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
+                        <Link href={`/personas/${persona.id}`} title="Ver detalle">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-8 w-8 p-0"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                        </Link>
                         {canUpdate && (
                           <Link href={`/personas/${persona.id}/editar`}>
                             <Button
@@ -268,6 +314,36 @@ export default function PersonasTable({
         </>
       )}
 
+      {/* Hover preview modal */}
+      <Dialog open={!!hoveredId} onOpenChange={(open) => { if (!open) setHoveredId(null) }}>
+        <DialogContent
+          className="sm:max-w-2xl max-h-[80vh] overflow-y-auto"
+        >
+          {hoveredPersona && (
+            <DialogHeader>
+              <div className="flex items-center gap-3">
+                <DialogTitle>
+                  {hoveredPersona.apellido}, {hoveredPersona.nombre}
+                </DialogTitle>
+                <DialogDescription asChild>
+                  <span
+                    className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                      hoveredPersona.estado === "activo"
+                        ? "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400"
+                        : "bg-muted text-muted-foreground"
+                    }`}
+                  >
+                    {hoveredPersona.estado}
+                  </span>
+                </DialogDescription>
+              </div>
+            </DialogHeader>
+          )}
+          {hoveredId && <PersonaDetailModal personaId={hoveredId} />}
+        </DialogContent>
+      </Dialog>
+
+      {/* Deep-link modal (?persona=UUID) */}
       <Dialog
         open={!!selectedId}
         onOpenChange={(open) => {
@@ -279,7 +355,6 @@ export default function PersonasTable({
             {selected && (
               <DialogHeader>
                 <div className="flex items-start justify-between gap-4 pr-8">
-                  {/* pr-8 avoids overlap with the shadcn X close button at absolute top-4 right-4 */}
                   <div className="flex flex-col gap-1.5">
                     <DialogTitle>
                       {selected.apellido}, {selected.nombre}

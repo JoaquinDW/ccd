@@ -16,6 +16,12 @@ export default async function NuevoEventoPage() {
 
   const supabase = await createClient()
 
+  // Load tipos de eventos
+  const { data: tiposEventos } = await supabase
+    .from('tipos_eventos')
+    .select('id, nombre, categoria, requiere_discernimiento_confra, requiere_discernimiento_eqt')
+    .order('nombre')
+
   // Load organizations the user has access to
   let fraternidades: { id: string; nombre: string; parent_id: string | null }[] = []
   let confraternidades: { id: string; nombre: string }[] = []
@@ -52,6 +58,7 @@ export default async function NuevoEventoPage() {
         <NuevoEventoForm
           fraternidades={[]}
           confraternidades={[]}
+          tiposEventos={tiposEventos ?? []}
           personaNombre={personaNombre}
           isAdmin={false}
         />
@@ -88,6 +95,7 @@ export default async function NuevoEventoPage() {
     <NuevoEventoForm
       fraternidades={fraternidades}
       confraternidades={confraternidades}
+      tiposEventos={tiposEventos ?? []}
       personaNombre={personaNombre}
       isAdmin={ctx.is_admin}
     />

@@ -29,6 +29,7 @@ export async function POST(request: Request) {
   const insertData: Record<string, unknown> = {
     nombre: body.nombre,
     tipo: body.tipo,
+    tipo_evento_id: body.tipo_evento_id || null,
     modalidad: body.modalidad ?? 'presencial',
     fecha_inicio: body.fecha_inicio,
     fecha_fin: body.fecha_fin,

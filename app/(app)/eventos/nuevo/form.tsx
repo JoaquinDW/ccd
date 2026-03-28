@@ -7,33 +7,42 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, CheckCircle2, XCircle } from 'lucide-react'
 import { LocationFields } from '@/components/location-fields'
 import { formatDateAR } from '@/lib/utils'
+import { Combobox } from '@/components/ui/combobox'
 
 type OrgOption = { id: string; nombre: string; parent_id?: string | null }
+type TipoEvento = {
+  id: string
+  nombre: string
+  categoria: string
+  requiere_discernimiento_confra: boolean
+  requiere_discernimiento_eqt: boolean
+}
 
 type Props = {
   fraternidades: OrgOption[]
   confraternidades: OrgOption[]
+  tiposEventos: TipoEvento[]
   personaNombre: string
   isAdmin?: boolean
 }
 
 const today = new Date().toISOString().split('T')[0]
 
-export default function NuevoEventoForm({ fraternidades, confraternidades, personaNombre, isAdmin = false }: Props) {
+export default function NuevoEventoForm({ fraternidades, confraternidades, tiposEventos, personaNombre, isAdmin = false }: Props) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
   const [fraternidadId, setFraternidadId] = useState(fraternidades[0]?.id ?? '')
-  const [requiereConfra, setRequiereConfra] = useState(false)
-  const [requiereEqt, setRequiereEqt] = useState(false)
+  const [tipoEventoId, setTipoEventoId] = useState(tiposEventos[0]?.id ?? '')
+
+  const tipoSeleccionado = tiposEventos.find(t => t.id === tipoEventoId) ?? null
 
   const [formData, setFormData] = useState({
     nombre: '',
-    tipo: 'convivencia',
     modalidad: 'presencial',
     es_apv: false,
     fecha_inicio: '',
@@ -68,10 +77,12 @@ export default function NuevoEventoForm({ fraternidades, confraternidades, perso
     try {
       const payload = {
         ...formData,
+        tipo: tipoSeleccionado?.categoria ?? '',
+        tipo_evento_id: tipoEventoId || null,
         fraternidad_id: fraternidadId,
         organizacion_id: confraternidadId,
-        requiere_discernimiento_confra: requiereConfra,
-        requiere_discernimiento_eqt: requiereEqt,
+        requiere_discernimiento_confra: tipoSeleccionado?.requiere_discernimiento_confra ?? false,
+        requiere_discernimiento_eqt: tipoSeleccionado?.requiere_discernimiento_eqt ?? false,
         estado: 'solicitud',
       }
 
@@ -160,63 +171,59 @@ export default function NuevoEventoForm({ fraternidades, confraternidades, perso
               <div className={readonlyClass}>{confraternidadNombre}</div>
             </div>
 
-            {/* Niveles de discernimiento */}
-            <div className="rounded-md border border-border p-4 space-y-3">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Niveles de discernimiento</p>
-              <div className="flex items-center gap-3">
-                <input
-                  type="checkbox"
-                  id="requiere_confra"
-                  checked={requiereConfra}
-                  onChange={e => setRequiereConfra(e.target.checked)}
-                  className="h-4 w-4 rounded border-border"
+            {/* Tipo de evento */}
+            <div className="space-y-1">
+              <Label>Tipo de evento solicitado *</Label>
+              {tiposEventos.length === 0 ? (
+                <div className={readonlyClass}>No hay tipos de eventos configurados</div>
+              ) : (
+                <Combobox
+                  value={tipoEventoId}
+                  onSelect={setTipoEventoId}
+                  options={tiposEventos.map(t => ({ label: t.nombre, value: t.id }))}
+                  placeholder="Seleccionar tipo de evento..."
+                  searchPlaceholder="Buscar tipo..."
+                  emptyText="No se encontraron tipos de eventos."
                 />
-                <label htmlFor="requiere_confra" className="text-sm text-foreground cursor-pointer">
-                  Requiere discernimiento Confraternidad / Delegado
-                </label>
-              </div>
-              <div className="flex items-center gap-3">
-                <input
-                  type="checkbox"
-                  id="requiere_eqt"
-                  checked={requiereEqt}
-                  onChange={e => setRequiereEqt(e.target.checked)}
-                  className="h-4 w-4 rounded border-border"
-                />
-                <label htmlFor="requiere_eqt" className="text-sm text-foreground cursor-pointer">
-                  Requiere discernimiento Equipo Timón
-                </label>
-              </div>
+              )}
             </div>
 
-            {/* Tipo + Nombre */}
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-1">
-                <Label htmlFor="tipo">Tipo de evento solicitado *</Label>
-                <select
-                  id="tipo"
-                  name="tipo"
-                  value={formData.tipo}
-                  onChange={handleChange}
-                  required
-                  className={fieldClass}
-                >
-                  <option value="convivencia">Convivencia</option>
-                  <option value="retiro">Retiro</option>
-                  <option value="taller">Taller</option>
-                </select>
+            {/* Niveles de discernimiento (readonly, derivados del tipo) */}
+            {tipoSeleccionado && (
+              <div className="rounded-md border border-border p-4 space-y-3">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Niveles de discernimiento</p>
+                <div className="flex items-center gap-2">
+                  {tipoSeleccionado.requiere_discernimiento_confra
+                    ? <CheckCircle2 className="h-4 w-4 text-green-600 shrink-0" />
+                    : <XCircle className="h-4 w-4 text-muted-foreground shrink-0" />
+                  }
+                  <span className={`text-sm ${tipoSeleccionado.requiere_discernimiento_confra ? 'text-foreground' : 'text-muted-foreground'}`}>
+                    Requiere discernimiento Confraternidad / Delegado
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  {tipoSeleccionado.requiere_discernimiento_eqt
+                    ? <CheckCircle2 className="h-4 w-4 text-green-600 shrink-0" />
+                    : <XCircle className="h-4 w-4 text-muted-foreground shrink-0" />
+                  }
+                  <span className={`text-sm ${tipoSeleccionado.requiere_discernimiento_eqt ? 'text-foreground' : 'text-muted-foreground'}`}>
+                    Requiere discernimiento Equipo Timón
+                  </span>
+                </div>
               </div>
-              <div className="space-y-1">
-                <Label htmlFor="nombre">Nombre del evento *</Label>
-                <Input
-                  id="nombre"
-                  name="nombre"
-                  placeholder="Convivencia San José 2026"
-                  value={formData.nombre}
-                  onChange={handleChange}
-                  required
-                />
-              </div>
+            )}
+
+            {/* Nombre */}
+            <div className="space-y-1">
+              <Label htmlFor="nombre">Nombre del evento *</Label>
+              <Input
+                id="nombre"
+                name="nombre"
+                placeholder="Convivencia San José 2026"
+                value={formData.nombre}
+                onChange={handleChange}
+                required
+              />
             </div>
 
             {/* Modalidad + APV */}
@@ -346,7 +353,7 @@ export default function NuevoEventoForm({ fraternidades, confraternidades, perso
             <div className="flex gap-3 pt-2">
               <Button
                 type="submit"
-                disabled={loading || fraternidades.length === 0 || !fraternidadId}
+                disabled={loading || fraternidades.length === 0 || !fraternidadId || !tipoEventoId}
               >
                 {loading ? 'Enviando...' : 'Enviar Solicitud'}
               </Button>

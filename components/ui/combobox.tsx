@@ -58,8 +58,10 @@ export function Combobox({
     onSearch?.(query)
   }
 
-  function handleSelect(selectedValue: string) {
-    onSelect(selectedValue === value ? "" : selectedValue)
+  function handleSelect(selectedLabel: string) {
+    const option = options.find((o) => o.label === selectedLabel)
+    if (!option) return
+    onSelect(option.value === value ? "" : option.value)
     setOpen(false)
     setSearch("")
   }
@@ -78,7 +80,7 @@ export function Combobox({
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+      <PopoverContent className="w-(--radix-popover-trigger-width) p-0" align="start">
         <Command shouldFilter={!onSearch}>
           <CommandInput
             placeholder={searchPlaceholder}
@@ -95,8 +97,9 @@ export function Combobox({
                   {options.map((option) => (
                     <CommandItem
                       key={option.value}
-                      value={option.value}
+                      value={option.label}
                       onSelect={handleSelect}
+                      className="data-[selected=true]:bg-muted data-[selected=true]:text-foreground"
                     >
                       <Check
                         className={cn("mr-2 h-4 w-4", value === option.value ? "opacity-100" : "opacity-0")}

@@ -2,14 +2,13 @@
 
 export const dynamic = 'force-dynamic'
 
-
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter, useParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ArrowLeft } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
@@ -20,9 +19,18 @@ type Asignacion = {
   estado: string
   fecha_inicio: string | null
   fecha_fin: string | null
-  personas: { nombre_completo: string } | null
-  ministerios: { nombre: string } | null
-  eventos: { nombre: string } | null
+  persona: { nombre: string; apellido: string } | null
+  ministerio: { nombre: string } | null
+  evento: { nombre: string } | null
+}
+
+const tipoLabel: Record<string, string> = {
+  comunidad: 'Comunidad',
+  confraternidad: 'Confraternidad',
+  fraternidad: 'Fraternidad',
+  casa_retiro: 'Casa de Retiro',
+  eqt: 'EQT',
+  otra: 'Otra',
 }
 
 export default function EditarOrganizacionPage() {
@@ -79,9 +87,9 @@ export default function EditarOrganizacionPage() {
         .order('nombre'),
       supabase
         .from('asignaciones_ministerio')
-        .select('id, estado, fecha_inicio, fecha_fin, personas(nombre_completo), ministerios(nombre), eventos(nombre)')
+        .select('id, estado, fecha_inicio, fecha_fin, persona:personas!persona_id(nombre, apellido), ministerio:ministerios!ministerio_id(nombre), evento:eventos!evento_id(nombre)')
         .eq('organizacion_id', id)
-        .is('fecha_fin', null)
+        .eq('estado', 'activo')
         .order('fecha_inicio'),
     ]).then(([{ data: org, error: orgError }, { data: parents }, { data: dependientes }, { data: asig }]) => {
       if (orgError || !org) {
@@ -133,7 +141,7 @@ export default function EditarOrganizacionPage() {
         throw new Error(apiError ?? 'Error al actualizar la organización')
       }
 
-      router.push('/organizaciones')
+      router.push(`/organizaciones/${id}`)
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Error al actualizar la organización'
       setError(msg)
@@ -157,29 +165,28 @@ export default function EditarOrganizacionPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <Link href="/organizaciones" className="inline-flex items-center gap-2 text-primary hover:underline">
+    <div className="space-y-6 max-w-3xl">
+      <Link href={`/organizaciones/${id}`} className="inline-flex items-center gap-2 text-primary hover:underline">
         <ArrowLeft className="h-4 w-4" />
-        Volver a Organizaciones
+        Volver a Organización
       </Link>
 
-      <Card className="border-border bg-card max-w-3xl">
+      <Card className="border-border bg-card">
         <CardHeader>
           <CardTitle className="text-foreground">Editar Organización</CardTitle>
-          <CardDescription>Modifica los datos de la organización</CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-5">
             {error && (
               <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
                 {error}
               </div>
             )}
 
-            {/* Nombre y Código */}
-            <div className="grid gap-4 md:grid-cols-[1fr_auto]">
-              <div className="space-y-2">
-                <Label htmlFor="nombre">Nombre *</Label>
+            {/* Nombre + Código */}
+            <div className="grid grid-cols-[1fr_160px] gap-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="nombre">Nombre <span className="text-muted-foreground text-xs">(50 caracteres)</span></Label>
                 <Input
                   id="nombre"
                   name="nombre"
@@ -190,61 +197,57 @@ export default function EditarOrganizacionPage() {
                   required
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="codigo">Código Interno</Label>
+              <div className="space-y-1.5">
+                <Label htmlFor="codigo">Código Interno <span className="text-muted-foreground text-xs">3 letras + 3 nros</span></Label>
                 <Input
                   id="codigo"
                   name="codigo"
                   placeholder="FRA001"
                   value={formData.codigo}
                   onChange={handleChange}
-                  className="w-32"
                 />
               </div>
             </div>
 
-            {/* Tipo y Organización Padre */}
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="tipo">Tipo *</Label>
-                <select
-                  id="tipo"
-                  name="tipo"
-                  value={formData.tipo}
-                  onChange={handleChange}
-                  required
-                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground text-sm"
-                >
-                  <option value="comunidad">Comunidad</option>
-                  <option value="confraternidad">Confraternidad</option>
-                  <option value="fraternidad">Fraternidad</option>
-                  <option value="casa_retiro">Casa de Retiro</option>
-                  <option value="eqt">EQT</option>
-                  <option value="otra">Otra</option>
-                </select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="parent_id">Organización Padre</Label>
-                <select
-                  id="parent_id"
-                  name="parent_id"
-                  value={formData.parent_id}
-                  onChange={handleChange}
-                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground text-sm"
-                >
-                  <option value="">Sin organización padre</option>
-                  {orgsParent.map(org => (
-                    <option key={org.id} value={org.id}>
-                      {org.nombre} ({org.tipo})
-                    </option>
-                  ))}
-                </select>
-              </div>
+            {/* Tipo */}
+            <div className="space-y-1.5">
+              <Label htmlFor="tipo">Tipo *</Label>
+              <select
+                id="tipo"
+                name="tipo"
+                value={formData.tipo}
+                onChange={handleChange}
+                required
+                className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground text-sm"
+              >
+                {Object.entries(tipoLabel).map(([val, lbl]) => (
+                  <option key={val} value={val}>{lbl}</option>
+                ))}
+              </select>
             </div>
 
-            {/* Estado y Mail */}
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
+            {/* Org. Padre */}
+            <div className="space-y-1.5">
+              <Label htmlFor="parent_id">Org. Padre</Label>
+              <select
+                id="parent_id"
+                name="parent_id"
+                value={formData.parent_id}
+                onChange={handleChange}
+                className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground text-sm"
+              >
+                <option value="">Listado total de organizaciones</option>
+                {orgsParent.map(org => (
+                  <option key={org.id} value={org.id}>
+                    {org.nombre} ({tipoLabel[org.tipo] ?? org.tipo})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Estado + Mail */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
                 <Label htmlFor="estado">Estado</Label>
                 <select
                   id="estado"
@@ -257,7 +260,7 @@ export default function EditarOrganizacionPage() {
                   <option value="inactiva">Inactiva</option>
                 </select>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <Label htmlFor="mail_org">Mail Organización</Label>
                 <Input
                   id="mail_org"
@@ -286,8 +289,8 @@ export default function EditarOrganizacionPage() {
             {/* Dirección (condicional) */}
             {formData.sede_fisica && (
               <div className="space-y-4 rounded-md border border-border p-4">
-                <div className="grid gap-4 md:grid-cols-[1fr_auto]">
-                  <div className="space-y-2">
+                <div className="grid grid-cols-[1fr_120px] gap-4">
+                  <div className="space-y-1.5">
                     <Label htmlFor="direccion_calle">Dirección Calle</Label>
                     <Input
                       id="direccion_calle"
@@ -297,20 +300,19 @@ export default function EditarOrganizacionPage() {
                       onChange={handleChange}
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="direccion_nro">Nro.</Label>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="direccion_nro">Dirección Nro</Label>
                     <Input
                       id="direccion_nro"
                       name="direccion_nro"
                       placeholder="1234"
                       value={formData.direccion_nro}
                       onChange={handleChange}
-                      className="w-24"
                     />
                   </div>
                 </div>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-2">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
                     <Label htmlFor="ciudad">Ciudad</Label>
                     <Input
                       id="ciudad"
@@ -320,7 +322,7 @@ export default function EditarOrganizacionPage() {
                       onChange={handleChange}
                     />
                   </div>
-                  <div className="space-y-2">
+                  <div className="space-y-1.5">
                     <Label htmlFor="cp">CP</Label>
                     <Input
                       id="cp"
@@ -331,7 +333,7 @@ export default function EditarOrganizacionPage() {
                     />
                   </div>
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <Label htmlFor="diocesis">Diócesis</Label>
                   <Input
                     id="diocesis"
@@ -341,8 +343,8 @@ export default function EditarOrganizacionPage() {
                     onChange={handleChange}
                   />
                 </div>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-2">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
                     <Label htmlFor="provincia">Provincia</Label>
                     <Input
                       id="provincia"
@@ -352,7 +354,7 @@ export default function EditarOrganizacionPage() {
                       onChange={handleChange}
                     />
                   </div>
-                  <div className="space-y-2">
+                  <div className="space-y-1.5">
                     <Label htmlFor="pais">País</Label>
                     <Input
                       id="pais"
@@ -366,10 +368,10 @@ export default function EditarOrganizacionPage() {
               </div>
             )}
 
-            {/* Localidad y Provincia (si no hay sede física) */}
+            {/* Localidad / Provincia / País (si no hay sede física) */}
             {!formData.sede_fisica && (
-              <div className="grid gap-4 md:grid-cols-3">
-                <div className="space-y-2">
+              <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-1.5">
                   <Label htmlFor="localidad">Localidad</Label>
                   <Input
                     id="localidad"
@@ -379,7 +381,7 @@ export default function EditarOrganizacionPage() {
                     onChange={handleChange}
                   />
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <Label htmlFor="provincia">Provincia</Label>
                   <Input
                     id="provincia"
@@ -389,7 +391,7 @@ export default function EditarOrganizacionPage() {
                     onChange={handleChange}
                   />
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <Label htmlFor="pais">País</Label>
                   <Input
                     id="pais"
@@ -402,32 +404,8 @@ export default function EditarOrganizacionPage() {
               </div>
             )}
 
-            {/* Teléfonos */}
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="telefono_1">Teléfono</Label>
-                <Input
-                  id="telefono_1"
-                  name="telefono_1"
-                  placeholder="+54 9 11 1234 5678"
-                  value={formData.telefono_1}
-                  onChange={handleChange}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="telefono_2">Teléfono 2</Label>
-                <Input
-                  id="telefono_2"
-                  name="telefono_2"
-                  placeholder="+54 9 11 8765 4321"
-                  value={formData.telefono_2}
-                  onChange={handleChange}
-                />
-              </div>
-            </div>
-
             {/* Notas */}
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <Label htmlFor="notas">Notas</Label>
               <textarea
                 id="notas"
@@ -440,11 +418,11 @@ export default function EditarOrganizacionPage() {
             </div>
 
             {/* Buttons */}
-            <div className="flex gap-3 pt-6">
+            <div className="flex gap-3 pt-2">
               <Button type="submit" disabled={loading}>
                 {loading ? 'Guardando...' : 'Guardar Cambios'}
               </Button>
-              <Link href="/organizaciones">
+              <Link href={`/organizaciones/${id}`}>
                 <Button type="button" variant="outline" className="bg-transparent">
                   Cancelar
                 </Button>
@@ -455,9 +433,9 @@ export default function EditarOrganizacionPage() {
       </Card>
 
       {/* Organizaciones Dependientes */}
-      <Card className="border-border bg-card max-w-3xl">
+      <Card className="border-border bg-card">
         <CardHeader>
-          <CardTitle className="text-base text-foreground">
+          <CardTitle className="text-sm font-semibold text-foreground uppercase tracking-wide">
             Confraternidades o Fraternidades Relacionadas (Org. Dependientes)
           </CardTitle>
         </CardHeader>
@@ -467,9 +445,8 @@ export default function EditarOrganizacionPage() {
           ) : (
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-border text-left text-muted-foreground">
-                  <th className="pb-2 font-medium">Organización</th>
-                  <th className="pb-2 font-medium">Tipo</th>
+                <tr className="border-b border-border">
+                  <th className="text-left py-2 font-medium text-muted-foreground">Organización</th>
                 </tr>
               </thead>
               <tbody>
@@ -480,7 +457,6 @@ export default function EditarOrganizacionPage() {
                         {dep.nombre}
                       </Link>
                     </td>
-                    <td className="py-2 capitalize text-muted-foreground">{dep.tipo}</td>
                   </tr>
                 ))}
               </tbody>
@@ -490,9 +466,9 @@ export default function EditarOrganizacionPage() {
       </Card>
 
       {/* Roles y Ministerios */}
-      <Card className="border-border bg-card max-w-3xl">
+      <Card className="border-border bg-card">
         <CardHeader>
-          <CardTitle className="text-base text-foreground">
+          <CardTitle className="text-sm font-semibold text-foreground uppercase tracking-wide">
             Roles y Ministerios de la Organización
           </CardTitle>
         </CardHeader>
@@ -502,27 +478,33 @@ export default function EditarOrganizacionPage() {
           ) : (
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-border text-left text-muted-foreground">
-                  <th className="pb-2 font-medium">Persona</th>
-                  <th className="pb-2 font-medium">Rol</th>
-                  <th className="pb-2 font-medium">Evento</th>
-                  <th className="pb-2 font-medium">Estado</th>
-                  <th className="pb-2 font-medium">Inicio</th>
-                  <th className="pb-2 font-medium">Fin</th>
+                <tr className="border-b border-border">
+                  <th className="text-left py-2 px-3 font-medium text-muted-foreground">Persona</th>
+                  <th className="text-left py-2 px-3 font-medium text-muted-foreground">Rol</th>
+                  <th className="text-left py-2 px-3 font-medium text-muted-foreground">Evento</th>
+                  <th className="text-left py-2 px-3 font-medium text-muted-foreground">Estado</th>
+                  <th className="text-left py-2 px-3 font-medium text-muted-foreground">Inicio</th>
+                  <th className="text-left py-2 px-3 font-medium text-muted-foreground">Fin</th>
                 </tr>
               </thead>
               <tbody>
                 {asignaciones.map(asig => (
                   <tr key={asig.id} className="border-b border-border/50 last:border-0">
-                    <td className="py-2">{asig.personas?.nombre_completo ?? '—'}</td>
-                    <td className="py-2">{asig.ministerios?.nombre ?? '—'}</td>
-                    <td className="py-2 text-muted-foreground">{asig.eventos?.nombre ?? '—'}</td>
-                    <td className="py-2 capitalize">{asig.estado}</td>
-                    <td className="py-2 text-muted-foreground">
-                      {asig.fecha_inicio ?? '—'}
+                    <td className="py-2 px-3 font-medium">
+                      {asig.persona ? `${asig.persona.apellido}, ${asig.persona.nombre}` : '—'}
                     </td>
-                    <td className="py-2 text-muted-foreground">
-                      {asig.fecha_fin ?? '—'}
+                    <td className="py-2 px-3">{asig.ministerio?.nombre ?? '—'}</td>
+                    <td className="py-2 px-3 text-muted-foreground">{asig.evento?.nombre ?? '—'}</td>
+                    <td className="py-2 px-3 capitalize">{asig.estado}</td>
+                    <td className="py-2 px-3 text-muted-foreground">
+                      {asig.fecha_inicio
+                        ? new Date(asig.fecha_inicio).toLocaleDateString('es-AR')
+                        : '—'}
+                    </td>
+                    <td className="py-2 px-3 text-muted-foreground">
+                      {asig.fecha_fin
+                        ? new Date(asig.fecha_fin).toLocaleDateString('es-AR')
+                        : '—'}
                     </td>
                   </tr>
                 ))}

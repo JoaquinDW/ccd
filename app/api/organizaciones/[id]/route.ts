@@ -36,6 +36,13 @@ export async function PATCH(
     notas: body.notas || null,
     telefono_1: body.telefono_1 || null,
     telefono_2: body.telefono_2 || null,
+    mail_org: body.mail_org || null,
+    sede_fisica: body.sede_fisica ?? false,
+    direccion_calle: body.direccion_calle || null,
+    direccion_nro: body.direccion_nro || null,
+    ciudad: body.ciudad || null,
+    cp: body.cp || null,
+    diocesis: body.diocesis || null,
   }
 
   // Soft delete if state changed to inactiva

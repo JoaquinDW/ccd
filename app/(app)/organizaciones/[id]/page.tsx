@@ -4,14 +4,7 @@ import Link from "next/link"
 import { notFound } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import {
-  Building2,
-  Edit2,
-  Calendar,
-  Users,
-  ArrowLeft,
-  Plus,
-} from "lucide-react"
+import { ArrowLeft, Edit2 } from "lucide-react"
 import { createClient } from "@/lib/supabase/server"
 
 const tipoLabel: Record<string, string> = {
@@ -23,19 +16,15 @@ const tipoLabel: Record<string, string> = {
   otra: "Otra",
 }
 
-const estadoEventoLabel: Record<string, string> = {
-  borrador: "Borrador",
-  solicitado: "Solicitado",
-  aprobado: "Aprobado",
-  publicado: "Publicado",
-  finalizado: "Finalizado",
-  cancelado: "Cancelado",
-}
-
-const tipoEventoLabel: Record<string, string> = {
-  convivencia: "Convivencia",
-  retiro: "Retiro",
-  taller: "Taller",
+function Field({ label, value }: { label: string; value?: string | null }) {
+  return (
+    <div className="grid grid-cols-[160px_1fr] gap-2 items-start">
+      <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide pt-0.5">
+        {label}
+      </span>
+      <span className="text-sm text-foreground">{value || "—"}</span>
+    </div>
+  )
 }
 
 export default async function OrganizacionDetailPage({
@@ -45,401 +34,262 @@ export default async function OrganizacionDetailPage({
 }) {
   const { id } = await params
   const supabase = await createClient()
-  const today = new Date().toISOString().split("T")[0]
 
   const [
     { data: org, error },
-    { data: eventos },
-    { data: ministerios },
-    { data: miembros },
+    { data: orgsDependientes },
+    { data: asignaciones },
   ] = await Promise.all([
     supabase
       .from("organizaciones")
       .select(
-        "id, nombre, tipo, codigo, estado, pais, provincia, localidad, notas, telefono_1, telefono_2, fecha_baja, parent:organizaciones!parent_id(id, nombre, tipo)",
+        "id, nombre, tipo, codigo, estado, mail_org, sede_fisica, direccion_calle, direccion_nro, ciudad, cp, diocesis, localidad, provincia, pais, notas, telefono_1, telefono_2, parent:organizaciones!parent_id(id, nombre, tipo)",
       )
       .eq("id", id)
       .single(),
     supabase
-      .from("eventos")
-      .select("id, nombre, tipo, estado, fecha_inicio, fecha_fin")
-      .eq("organizacion_id", id)
-      .order("fecha_inicio", { ascending: false }),
+      .from("organizaciones")
+      .select("id, nombre, tipo")
+      .eq("parent_id", id)
+      .is("fecha_baja", null)
+      .order("nombre"),
     supabase
       .from("asignaciones_ministerio")
       .select(
-        "id, fecha_inicio, persona:personas(id, nombre, apellido), ministerio:ministerios(id, nombre, tipo)",
+        "id, persona_id, estado, fecha_inicio, fecha_fin, persona:personas!persona_id(nombre, apellido), ministerio:ministerios!ministerio_id(nombre), evento:eventos!evento_id(nombre)",
       )
       .eq("organizacion_id", id)
-      .is("fecha_fin", null),
-    supabase
-      .from("persona_organizacion")
-      .select(
-        "id, tipo_relacion, fecha_inicio, persona:personas!persona_id(id, nombre, apellido, categoria_persona)",
-      )
-      .eq("organizacion_id", id)
-      .is("fecha_fin", null)
-      .order("fecha_inicio", { ascending: true }),
+      .eq("estado", "activo")
+      .order("fecha_inicio"),
   ])
 
   if (error || !org) notFound()
 
-  const proximosEventos = (eventos ?? []).filter((e) => e.fecha_inicio >= today)
-  const pasadosEventos = (eventos ?? []).filter((e) => e.fecha_inicio < today)
-  const parent = org.parent as {
-    id: string
-    nombre: string
-    tipo: string
-  } | null
+  const parent = Array.isArray(org.parent) ? null : (org.parent as { id: string; nombre: string; tipo: string } | null)
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 max-w-3xl">
       {/* Header */}
-      <div className="flex items-start justify-between">
-        <div className="space-y-1">
-          <Link
-            href="/organizaciones"
-            className="inline-flex items-center gap-2 text-sm text-primary hover:underline mb-2"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Volver a Organizaciones
-          </Link>
-          <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
-            <Building2 className="h-8 w-8 text-primary" />
-            {org.nombre}
-          </h1>
-          <div className="flex items-center gap-3 mt-1">
-            <span className="text-muted-foreground">
-              {tipoLabel[org.tipo] ?? org.tipo}
-            </span>
-            {org.codigo && (
-              <>
-                <span className="text-muted-foreground">·</span>
-                <span className="text-muted-foreground font-mono text-sm">
-                  {org.codigo}
-                </span>
-              </>
-            )}
-            <span className="text-muted-foreground">·</span>
-            <span
-              className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-                org.estado === "activa"
-                  ? "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400"
-                  : "bg-muted text-muted-foreground"
-              }`}
-            >
-              {org.estado}
-            </span>
-          </div>
-        </div>
+      <div className="flex items-center justify-between">
+        <Link
+          href="/organizaciones"
+          className="inline-flex items-center gap-2 text-sm text-primary hover:underline"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Volver a Organizaciones
+        </Link>
         <Link href={`/organizaciones/${id}/editar`}>
-          <Button variant="outline" className="gap-2">
+          <Button variant="outline" size="sm" className="gap-2">
             <Edit2 className="h-4 w-4" />
             Editar
           </Button>
         </Link>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* Datos básicos */}
-        <Card className="border-border bg-card">
-          <CardHeader>
-            <CardTitle className="text-foreground text-base">
-              Información General
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3 text-sm">
-            {parent && (
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Depende de</span>
-                <Link
-                  href={`/organizaciones/${parent.id}`}
-                  className="text-primary hover:underline"
-                >
-                  {parent.nombre}{" "}
-                  <span className="text-muted-foreground">
-                    ({tipoLabel[parent.tipo] ?? parent.tipo})
-                  </span>
-                </Link>
-              </div>
-            )}
-            {org.localidad && (
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Localidad</span>
-                <span className="text-foreground">{org.localidad}</span>
-              </div>
-            )}
-            {org.provincia && (
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Provincia</span>
-                <span className="text-foreground">{org.provincia}</span>
-              </div>
-            )}
-            {org.pais && (
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">País</span>
-                <span className="text-foreground">{org.pais}</span>
-              </div>
-            )}
-            {org.telefono_1 && (
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Teléfono</span>
-                <span className="text-foreground">{org.telefono_1}</span>
-              </div>
-            )}
-            {org.telefono_2 && (
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Teléfono 2</span>
-                <span className="text-foreground">{org.telefono_2}</span>
-              </div>
-            )}
-            {org.notas && (
-              <div className="pt-2 border-t border-border">
-                <p className="text-muted-foreground mb-1">Notas</p>
-                <p className="text-foreground">{org.notas}</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Ministerios / Miembros activos */}
-        <Card className="border-border bg-card">
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-foreground text-base flex items-center gap-2">
-              <Users className="h-4 w-4" />
-              Ministerios Activos
-            </CardTitle>
-            <span className="text-sm text-muted-foreground">
-              {(ministerios ?? []).length} asignaciones
-            </span>
-          </CardHeader>
-          <CardContent>
-            {ministerios && ministerios.length > 0 ? (
-              <ul className="space-y-2">
-                {(ministerios as any[]).map((a) => (
-                  <li
-                    key={a.id}
-                    className="flex items-center justify-between text-sm"
-                  >
-                    <div>
-                      <Link
-                        href={`/personas/${a.persona.id}`}
-                        className="text-foreground font-medium hover:text-primary"
-                      >
-                        {a.persona.apellido}, {a.persona.nombre}
-                      </Link>
-                      <p className="text-muted-foreground text-xs">
-                        {a.ministerio.nombre}
-                      </p>
-                    </div>
-                    <span className="text-xs text-muted-foreground">
-                      desde{" "}
-                      {new Date(a.fecha_inicio).toLocaleDateString("es-AR")}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                No hay ministerios asignados actualmente.
-              </p>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Miembros (persona_organizacion) */}
-      {miembros && miembros.length > 0 && (
-        <Card className="border-border bg-card">
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-foreground text-base flex items-center gap-2">
-              <Users className="h-4 w-4" />
-              Cecistas
-            </CardTitle>
-            <span className="text-sm text-muted-foreground">
-              {miembros.length} personas
-            </span>
-          </CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border">
-                    <th className="text-left py-2 px-3 text-muted-foreground font-medium">
-                      Persona
-                    </th>
-                    <th className="text-left py-2 px-3 text-muted-foreground font-medium">
-                      Categoría
-                    </th>
-                    <th className="text-left py-2 px-3 text-muted-foreground font-medium">
-                      Desde
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(miembros as any[]).map((m) => (
-                    <tr
-                      key={m.id}
-                      className="border-b border-border hover:bg-muted/40"
-                    >
-                      <td className="py-2 px-3">
-                        <Link
-                          href={`/personas/${m.persona.id}`}
-                          className="text-foreground font-medium hover:text-primary"
-                        >
-                          {m.persona.apellido}, {m.persona.nombre}
-                        </Link>
-                      </td>
-                      <td className="py-2 px-3 text-muted-foreground capitalize">
-                        {m.persona.categoria_persona ?? "—"}
-                      </td>
-                      <td className="py-2 px-3 text-muted-foreground">
-                        {m.fecha_inicio
-                          ? new Date(m.fecha_inicio).toLocaleDateString("es-AR")
-                          : "—"}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Eventos próximos */}
+      {/* Main data card */}
       <Card className="border-border bg-card">
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-foreground text-base flex items-center gap-2">
-            <Calendar className="h-4 w-4" />
-            Próximos Eventos
+        <CardHeader>
+          <CardTitle className="text-foreground">Pantalla Organización</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Nombre + Código */}
+          <div className="grid grid-cols-[1fr_auto] gap-4">
+            <Field label="Nombre" value={`${org.nombre}${org.nombre ? " (50 caracteres)" : ""}`} />
+            <div className="grid grid-cols-[160px_1fr] gap-2 items-start">
+              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide pt-0.5">
+                Código Interno
+              </span>
+              <span className="text-sm font-mono text-foreground">{org.codigo || "—"}</span>
+            </div>
+          </div>
+
+          {/* Tipo */}
+          <Field label="Tipo" value={tipoLabel[org.tipo] ?? org.tipo} />
+
+          {/* Org. Padre */}
+          <div className="grid grid-cols-[160px_1fr] gap-2 items-start">
+            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide pt-0.5">
+              Org. Padre
+            </span>
+            {parent ? (
+              <Link href={`/organizaciones/${parent.id}`} className="text-sm text-primary hover:underline">
+                {parent.nombre}{" "}
+                <span className="text-muted-foreground">({tipoLabel[parent.tipo] ?? parent.tipo})</span>
+              </Link>
+            ) : (
+              <span className="text-sm text-muted-foreground">—</span>
+            )}
+          </div>
+
+          {/* Estado + Mail */}
+          <div className="grid grid-cols-2 gap-6">
+            <div className="grid grid-cols-[100px_1fr] gap-2 items-start">
+              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide pt-0.5">
+                Estado
+              </span>
+              <span
+                className={`inline-flex w-fit items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                  org.estado === "activa"
+                    ? "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400"
+                    : "bg-muted text-muted-foreground"
+                }`}
+              >
+                {org.estado === "activa" ? "Activa" : "Inactiva"}
+              </span>
+            </div>
+            <Field label="Mail Organización" value={org.mail_org} />
+          </div>
+
+          {/* Sede Física */}
+          <div className="flex items-center gap-2">
+            <div
+              className={`h-4 w-4 rounded border border-border flex items-center justify-center ${
+                org.sede_fisica ? "bg-primary border-primary" : "bg-background"
+              }`}
+            >
+              {org.sede_fisica && (
+                <svg className="h-3 w-3 text-primary-foreground" viewBox="0 0 12 12" fill="none">
+                  <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              )}
+            </div>
+            <span className="text-sm font-medium text-foreground">Sede Física</span>
+          </div>
+
+          {/* Dirección (si sede_fisica) */}
+          {org.sede_fisica && (
+            <div className="space-y-3 rounded-md border border-border p-4">
+              <div className="grid grid-cols-[1fr_auto] gap-4">
+                <Field label="Dirección Calle" value={org.direccion_calle} />
+                <div className="grid grid-cols-[80px_1fr] gap-2 items-start">
+                  <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide pt-0.5">
+                    Nro.
+                  </span>
+                  <span className="text-sm text-foreground">{org.direccion_nro || "—"}</span>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <Field label="Ciudad" value={org.ciudad} />
+                <Field label="CP" value={org.cp} />
+              </div>
+              <Field label="Diócesis" value={org.diocesis} />
+              <div className="grid grid-cols-2 gap-4">
+                <Field label="Provincia" value={org.provincia} />
+                <Field label="País" value={org.pais} />
+              </div>
+            </div>
+          )}
+
+          {/* Localidad / Provincia / País (si no hay sede) */}
+          {!org.sede_fisica && (
+            <div className="grid grid-cols-3 gap-4">
+              <Field label="Localidad" value={org.localidad} />
+              <Field label="Provincia" value={org.provincia} />
+              <Field label="País" value={org.pais} />
+            </div>
+          )}
+
+          {/* Teléfonos */}
+          <div className="grid grid-cols-2 gap-4">
+            <Field label="Teléfono" value={org.telefono_1} />
+            <Field label="Teléfono 2" value={org.telefono_2} />
+          </div>
+
+          {/* Notas */}
+          <div className="space-y-1">
+            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Notas</span>
+            <p className="text-sm text-foreground min-h-12 rounded-md border border-border bg-muted/30 p-2">
+              {org.notas || ""}
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Organizaciones Dependientes */}
+      <Card className="border-border bg-card">
+        <CardHeader>
+          <CardTitle className="text-sm font-semibold text-foreground uppercase tracking-wide">
+            Confraternidades o Fraternidades Relacionadas (Org. Dependientes)
           </CardTitle>
-          <Link href={`/eventos/nuevo?organizacion_id=${id}`}>
-            <Button size="sm" className="gap-2">
-              <Plus className="h-4 w-4" />
-              Nuevo Evento
-            </Button>
-          </Link>
         </CardHeader>
         <CardContent>
-          {proximosEventos.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border">
-                    <th className="text-left py-2 px-3 text-muted-foreground font-medium">
-                      Nombre
-                    </th>
-                    <th className="text-left py-2 px-3 text-muted-foreground font-medium">
-                      Tipo
-                    </th>
-                    <th className="text-left py-2 px-3 text-muted-foreground font-medium">
-                      Fecha
-                    </th>
-                    <th className="text-left py-2 px-3 text-muted-foreground font-medium">
-                      Estado
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {proximosEventos.map((e) => (
-                    <tr
-                      key={e.id}
-                      className="border-b border-border hover:bg-muted/40"
-                    >
-                      <td className="py-2 px-3">
-                        <Link
-                          href={`/eventos/${e.id}`}
-                          className="text-foreground hover:text-primary font-medium"
-                        >
-                          {e.nombre}
-                        </Link>
-                      </td>
-                      <td className="py-2 px-3 text-muted-foreground">
-                        {tipoEventoLabel[e.tipo] ?? e.tipo}
-                      </td>
-                      <td className="py-2 px-3 text-muted-foreground">
-                        {new Date(e.fecha_inicio).toLocaleDateString("es-AR")}
-                      </td>
-                      <td className="py-2 px-3">
-                        <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-muted text-muted-foreground">
-                          {estadoEventoLabel[e.estado] ?? e.estado}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+          {(orgsDependientes ?? []).length === 0 ? (
+            <p className="text-sm text-muted-foreground">Sin organizaciones dependientes</p>
           ) : (
-            <p className="text-sm text-muted-foreground">
-              No hay eventos próximos.
-            </p>
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border">
+                  <th className="text-left py-2 font-medium text-muted-foreground">Organización</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(orgsDependientes ?? []).map((dep) => (
+                  <tr key={dep.id} className="border-b border-border/50 last:border-0">
+                    <td className="py-2">
+                      <Link href={`/organizaciones/${dep.id}`} className="text-primary hover:underline">
+                        {dep.nombre}
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           )}
         </CardContent>
       </Card>
 
-      {/* Eventos pasados */}
-      {pasadosEventos.length > 0 && (
-        <Card className="border-border bg-card">
-          <CardHeader>
-            <CardTitle className="text-foreground text-base flex items-center gap-2">
-              <Calendar className="h-4 w-4 text-muted-foreground" />
-              Eventos Pasados
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border">
-                    <th className="text-left py-2 px-3 text-muted-foreground font-medium">
-                      Nombre
-                    </th>
-                    <th className="text-left py-2 px-3 text-muted-foreground font-medium">
-                      Tipo
-                    </th>
-                    <th className="text-left py-2 px-3 text-muted-foreground font-medium">
-                      Fecha
-                    </th>
-                    <th className="text-left py-2 px-3 text-muted-foreground font-medium">
-                      Estado
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {pasadosEventos.map((e) => (
-                    <tr
-                      key={e.id}
-                      className="border-b border-border hover:bg-muted/40"
-                    >
-                      <td className="py-2 px-3">
-                        <Link
-                          href={`/eventos/${e.id}`}
-                          className="text-foreground hover:text-primary font-medium"
-                        >
-                          {e.nombre}
+      {/* Roles y Ministerios */}
+      <Card className="border-border bg-card">
+        <CardHeader>
+          <CardTitle className="text-sm font-semibold text-foreground uppercase tracking-wide">
+            Roles y Ministerios de la Organización
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {(asignaciones ?? []).length === 0 ? (
+            <p className="text-sm text-muted-foreground">Sin asignaciones activas</p>
+          ) : (
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border">
+                  <th className="text-left py-2 px-3 font-medium text-muted-foreground">Persona</th>
+                  <th className="text-left py-2 px-3 font-medium text-muted-foreground">Rol</th>
+                  <th className="text-left py-2 px-3 font-medium text-muted-foreground">Evento</th>
+                  <th className="text-left py-2 px-3 font-medium text-muted-foreground">Estado</th>
+                  <th className="text-left py-2 px-3 font-medium text-muted-foreground">Inicio</th>
+                  <th className="text-left py-2 px-3 font-medium text-muted-foreground">Fin</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(asignaciones as any[]).map((asig) => (
+                  <tr key={asig.id} className="border-b border-border/50 last:border-0">
+                    <td className="py-2 px-3 font-medium">
+                      {asig.persona ? (
+                        <Link href={`/personas/${asig.persona_id}`} className="text-primary hover:underline">
+                          {asig.persona.apellido}, {asig.persona.nombre}
                         </Link>
-                      </td>
-                      <td className="py-2 px-3 text-muted-foreground">
-                        {tipoEventoLabel[e.tipo] ?? e.tipo}
-                      </td>
-                      <td className="py-2 px-3 text-muted-foreground">
-                        {new Date(e.fecha_inicio).toLocaleDateString("es-AR")}
-                      </td>
-                      <td className="py-2 px-3">
-                        <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-muted text-muted-foreground">
-                          {estadoEventoLabel[e.estado] ?? e.estado}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+                      ) : "—"}
+                    </td>
+                    <td className="py-2 px-3">{asig.ministerio?.nombre ?? "—"}</td>
+                    <td className="py-2 px-3 text-muted-foreground">{asig.evento?.nombre ?? "—"}</td>
+                    <td className="py-2 px-3 capitalize">{asig.estado}</td>
+                    <td className="py-2 px-3 text-muted-foreground">
+                      {asig.fecha_inicio
+                        ? new Date(asig.fecha_inicio).toLocaleDateString("es-AR")
+                        : "—"}
+                    </td>
+                    <td className="py-2 px-3 text-muted-foreground">
+                      {asig.fecha_fin
+                        ? new Date(asig.fecha_fin).toLocaleDateString("es-AR")
+                        : "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </CardContent>
+      </Card>
     </div>
   )
 }
