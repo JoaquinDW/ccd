@@ -1,6 +1,6 @@
 "use client"
 
-export const dynamic = 'force-dynamic'
+export const dynamic = "force-dynamic"
 
 import Link from "next/link"
 import Image from "next/image"
@@ -41,7 +41,9 @@ export default function LoginPage() {
       })
 
       if (authError) {
-        setError("Credenciales inválidas. Por favor verifica tu usuario y contraseña.")
+        setError(
+          "Credenciales inválidas. Por favor verifica tu usuario y contraseña.",
+        )
       } else {
         router.push("/dashboard")
       }
@@ -135,7 +137,7 @@ export default function LoginPage() {
           </Card>
 
           <p className="mt-8 text-center text-xs text-muted-foreground">
-            © 2024 Convivencia con Dios. Todos los derechos reservados.
+            © 2026 Convivencia con Dios.
           </p>
         </div>
       </div>

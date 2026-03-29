@@ -1,17 +1,23 @@
-'use client'
+"use client"
 
-export const dynamic = 'force-dynamic'
+export const dynamic = "force-dynamic"
 
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import Link from 'next/link'
-import { UserCheck, ArrowLeft, Paperclip, X } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Label } from '@/components/ui/label'
-import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
-import { createClient } from '@/lib/supabase/client'
+import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
+import Link from "next/link"
+import { UserCheck, ArrowLeft, Paperclip, X } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
+import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
+import { createClient } from "@/lib/supabase/client"
 
 interface Persona {
   id: string
@@ -39,19 +45,19 @@ interface Evento {
 }
 
 const tipoEventoLabel: Record<string, string> = {
-  convivencia: 'Convivencia',
-  retiro: 'Retiro',
-  taller: 'Taller',
+  convivencia: "Convivencia",
+  retiro: "Retiro",
+  taller: "Taller",
 }
 
 const tipoLabel: Record<string, string> = {
-  conduccion: 'Conducción',
-  pastoral: 'Pastoral',
-  servicio: 'Servicio',
-  sistema: 'Sistema',
+  conduccion: "Conducción",
+  pastoral: "Pastoral",
+  servicio: "Servicio",
+  sistema: "Sistema",
 }
 
-const BUCKET = 'asignaciones-adjuntos'
+const BUCKET = "asignaciones-adjuntos"
 
 export default function NuevaAsignacionPage() {
   const router = useRouter()
@@ -64,15 +70,15 @@ export default function NuevaAsignacionPage() {
   const [loadingData, setLoadingData] = useState(true)
 
   const [form, setForm] = useState({
-    persona_id: '',
-    ministerio_id: '',
-    organizacion_id: '',
-    evento_id: '',
-    fecha_inicio: new Date().toISOString().split('T')[0],
-    fecha_fin: '',
-    estado: 'activo',
-    motivo_fin: '',
-    notas: '',
+    persona_id: "",
+    ministerio_id: "",
+    organizacion_id: "",
+    evento_id: "",
+    fecha_inicio: new Date().toISOString().split("T")[0],
+    fecha_fin: "",
+    estado: "activo",
+    motivo_fin: "",
+    notas: "",
   })
   const [adjunto, setAdjunto] = useState<File | null>(null)
   const [loading, setLoading] = useState(false)
@@ -80,30 +86,33 @@ export default function NuevaAsignacionPage() {
 
   useEffect(() => {
     const load = async () => {
-      const [{ data: personasData, error: personasError }, { data: ministeriosData }, { data: orgsData }, { data: eventosData }] = await Promise.all([
+      const [
+        { data: personasData, error: personasError },
+        { data: ministeriosData },
+        { data: orgsData },
+        { data: eventosData },
+      ] = await Promise.all([
         supabase
-          .from('personas')
-          .select('id, nombre, apellido, email')
-          .is('fecha_baja', null)
-          .order('apellido')
-          .order('nombre'),
+          .from("personas")
+          .select("id, nombre, apellido, email")
+          .is("fecha_baja", null)
+          .order("apellido")
+          .order("nombre"),
         supabase
-          .from('ministerios')
-          .select('id, nombre, tipo, nivel_acceso')
-          .eq('activo', true)
-          .order('tipo')
-          .order('nombre'),
+          .from("ministerios")
+          .select("id, nombre, tipo, nivel_acceso")
+          .eq("activo", true)
+          .order("tipo")
+          .order("nombre"),
         supabase
-          .from('organizaciones')
-          .select('id, nombre')
-          .is('fecha_baja', null)
-          .order('nombre'),
-        supabase
-          .from('eventos')
-          .select('id, nombre, tipo')
-          .order('nombre'),
+          .from("organizaciones")
+          .select("id, nombre")
+          .is("fecha_baja", null)
+          .order("nombre"),
+        supabase.from("eventos").select("id, nombre, tipo").order("nombre"),
       ])
-      if (personasError) console.error('Error cargando personas:', personasError)
+      if (personasError)
+        console.error("Error cargando personas:", personasError)
       setPersonas(personasData ?? [])
       setMinisterios(ministeriosData ?? [])
       setOrganizaciones(orgsData ?? [])
@@ -119,30 +128,30 @@ export default function NuevaAsignacionPage() {
     setError(null)
 
     if (!form.persona_id || !form.ministerio_id) {
-      setError('Debes seleccionar una persona y un rol en ministerio')
+      setError("Debes seleccionar una persona y un rol en ministerio")
       setLoading(false)
       return
     }
 
-    if (form.estado === 'inactivo' && !form.fecha_fin) {
-      setError('Debes indicar una fecha de fin cuando el estado es inactivo')
+    if (form.estado === "inactivo" && !form.fecha_fin) {
+      setError("Debes indicar una fecha de fin cuando el estado es inactivo")
       setLoading(false)
       return
     }
 
     const orgId = form.organizacion_id || null
-    const hoy = new Date().toISOString().split('T')[0]
+    const hoy = new Date().toISOString().split("T")[0]
 
     // Subir adjunto si se seleccionó uno
     let documentoUrl: string | null = null
     if (adjunto) {
-      const ext = adjunto.name.split('.').pop()
+      const ext = adjunto.name.split(".").pop()
       const path = `${form.persona_id}/${Date.now()}.${ext}`
       const { error: uploadError } = await supabase.storage
         .from(BUCKET)
         .upload(path, adjunto)
       if (uploadError) {
-        setError('Error al subir el adjunto: ' + uploadError.message)
+        setError("Error al subir el adjunto: " + uploadError.message)
         setLoading(false)
         return
       }
@@ -152,23 +161,23 @@ export default function NuevaAsignacionPage() {
 
     // Cerrar asignación activa existente para la misma combinación (patrón histórico)
     let closeQuery = supabase
-      .from('asignaciones_ministerio')
-      .update({ estado: 'inactivo', fecha_fin: hoy })
-      .eq('persona_id', form.persona_id)
-      .eq('ministerio_id', form.ministerio_id)
-      .eq('estado', 'activo')
+      .from("asignaciones_ministerio")
+      .update({ estado: "inactivo", fecha_fin: hoy })
+      .eq("persona_id", form.persona_id)
+      .eq("ministerio_id", form.ministerio_id)
+      .eq("estado", "activo")
 
     if (orgId) {
-      closeQuery = closeQuery.eq('organizacion_id', orgId)
+      closeQuery = closeQuery.eq("organizacion_id", orgId)
     } else {
-      closeQuery = closeQuery.is('organizacion_id', null)
+      closeQuery = closeQuery.is("organizacion_id", null)
     }
 
     await closeQuery
 
     // Insertar nueva asignación
     const { error: insertError } = await supabase
-      .from('asignaciones_ministerio')
+      .from("asignaciones_ministerio")
       .insert({
         persona_id: form.persona_id,
         ministerio_id: form.ministerio_id,
@@ -183,12 +192,12 @@ export default function NuevaAsignacionPage() {
       })
 
     if (insertError) {
-      setError('Error al crear la asignación: ' + insertError.message)
+      setError("Error al crear la asignación: " + insertError.message)
       setLoading(false)
       return
     }
 
-    router.push('/ministerios/asignaciones')
+    router.push("/ministerios/asignaciones")
   }
 
   if (loadingData) {
@@ -202,7 +211,10 @@ export default function NuevaAsignacionPage() {
   return (
     <div className="space-y-8">
       <div>
-        <Link href="/ministerios/asignaciones" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-4">
+        <Link
+          href="/ministerios/asignaciones"
+          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-4"
+        >
           <ArrowLeft className="h-4 w-4" />
           Volver a Asignaciones
         </Link>
@@ -211,20 +223,23 @@ export default function NuevaAsignacionPage() {
           Nueva Asignación de Rol en Ministerio
         </h1>
         <p className="mt-2 text-muted-foreground">
-          Asigna un rol en ministerio a una persona. Los permisos de sistema del rol se activan automáticamente.
+          Asigna un rol en ministerio a una persona. Los permisos de sistema del
+          rol se activan automáticamente.
         </p>
       </div>
 
       <Card className="border-border bg-card max-w-4xl">
         <CardHeader>
-          <CardTitle className="text-foreground">Datos de la Asignación</CardTitle>
+          <CardTitle className="text-foreground">
+            Datos de la Asignación
+          </CardTitle>
           <CardDescription>
-            Podés asignar roles en ministerios a cualquier persona. Si el rol tiene permisos de sistema configurados, se aplicarán al hacer login.
+            Podés asignar roles a cualquier persona. Si el rol tiene permisos de
+            sistema configurados, se aplicarán al hacer login.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-5">
-
             {/* Fila 1: Persona + Rol en Ministerio */}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -233,13 +248,16 @@ export default function NuevaAsignacionPage() {
                   id="persona_id"
                   required
                   value={form.persona_id}
-                  onChange={e => setForm(f => ({ ...f, persona_id: e.target.value }))}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, persona_id: e.target.value }))
+                  }
                   className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
                 >
                   <option value="">Selecciona una persona...</option>
-                  {personas.map(p => (
+                  {personas.map((p) => (
                     <option key={p.id} value={p.id}>
-                      {p.apellido}, {p.nombre}{p.email ? ` — ${p.email}` : ''}
+                      {p.apellido}, {p.nombre}
+                      {p.email ? ` — ${p.email}` : ""}
                     </option>
                   ))}
                 </select>
@@ -250,13 +268,16 @@ export default function NuevaAsignacionPage() {
                   id="ministerio_id"
                   required
                   value={form.ministerio_id}
-                  onChange={e => setForm(f => ({ ...f, ministerio_id: e.target.value }))}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, ministerio_id: e.target.value }))
+                  }
                   className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
                 >
                   <option value="">Selecciona un rol...</option>
-                  {ministerios.map(m => (
+                  {ministerios.map((m) => (
                     <option key={m.id} value={m.id}>
-                      {m.nombre} — {tipoLabel[m.tipo] ?? m.tipo}{m.nivel_acceso > 0 ? ` (nivel ${m.nivel_acceso})` : ''}
+                      {m.nombre} — {tipoLabel[m.tipo] ?? m.tipo}
+                      {m.nivel_acceso > 0 ? ` (nivel ${m.nivel_acceso})` : ""}
                     </option>
                   ))}
                 </select>
@@ -270,26 +291,34 @@ export default function NuevaAsignacionPage() {
                 <select
                   id="organizacion_id"
                   value={form.organizacion_id}
-                  onChange={e => setForm(f => ({ ...f, organizacion_id: e.target.value }))}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, organizacion_id: e.target.value }))
+                  }
                   className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
                 >
                   <option value="">Global (sin restricción)</option>
-                  {organizaciones.map(o => (
-                    <option key={o.id} value={o.id}>{o.nombre}</option>
+                  {organizaciones.map((o) => (
+                    <option key={o.id} value={o.id}>
+                      {o.nombre}
+                    </option>
                   ))}
                 </select>
-                <p className="text-xs text-muted-foreground">Vacío = acceso global</p>
+                <p className="text-xs text-muted-foreground">
+                  Vacío = acceso global
+                </p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="evento_id">Evento (opcional)</Label>
                 <select
                   id="evento_id"
                   value={form.evento_id}
-                  onChange={e => setForm(f => ({ ...f, evento_id: e.target.value }))}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, evento_id: e.target.value }))
+                  }
                   className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
                 >
                   <option value="">Sin evento específico</option>
-                  {eventos.map(ev => (
+                  {eventos.map((ev) => (
                     <option key={ev.id} value={ev.id}>
                       {ev.nombre} ({tipoEventoLabel[ev.tipo] ?? ev.tipo})
                     </option>
@@ -306,7 +335,9 @@ export default function NuevaAsignacionPage() {
                   id="estado"
                   required
                   value={form.estado}
-                  onChange={e => setForm(f => ({ ...f, estado: e.target.value }))}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, estado: e.target.value }))
+                  }
                   className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
                 >
                   <option value="activo">Activo</option>
@@ -318,7 +349,9 @@ export default function NuevaAsignacionPage() {
                 <select
                   id="motivo_fin"
                   value={form.motivo_fin}
-                  onChange={e => setForm(f => ({ ...f, motivo_fin: e.target.value }))}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, motivo_fin: e.target.value }))
+                  }
                   className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
                 >
                   <option value="">Sin motivo especificado</option>
@@ -339,19 +372,23 @@ export default function NuevaAsignacionPage() {
                   type="date"
                   required
                   value={form.fecha_inicio}
-                  onChange={e => setForm(f => ({ ...f, fecha_inicio: e.target.value }))}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, fecha_inicio: e.target.value }))
+                  }
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="fecha_fin">
-                  Fecha de fin {form.estado === 'inactivo' ? '*' : '(opcional)'}
+                  Fecha de fin {form.estado === "inactivo" ? "*" : "(opcional)"}
                 </Label>
                 <Input
                   id="fecha_fin"
                   type="date"
-                  required={form.estado === 'inactivo'}
+                  required={form.estado === "inactivo"}
                   value={form.fecha_fin}
-                  onChange={e => setForm(f => ({ ...f, fecha_fin: e.target.value }))}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, fecha_fin: e.target.value }))
+                  }
                 />
               </div>
             </div>
@@ -364,8 +401,12 @@ export default function NuevaAsignacionPage() {
                   <div className="flex items-center gap-3 rounded-md border border-border bg-muted px-3 py-2.5 text-sm">
                     <Paperclip className="h-4 w-4 shrink-0 text-muted-foreground" />
                     <div className="flex-1 min-w-0">
-                      <p className="truncate font-medium text-foreground">{adjunto.name}</p>
-                      <p className="text-xs text-muted-foreground">{(adjunto.size / 1024 / 1024).toFixed(2)} MB</p>
+                      <p className="truncate font-medium text-foreground">
+                        {adjunto.name}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {(adjunto.size / 1024 / 1024).toFixed(2)} MB
+                      </p>
                     </div>
                     <button
                       type="button"
@@ -382,13 +423,15 @@ export default function NuevaAsignacionPage() {
                   >
                     <Paperclip className="h-5 w-5" />
                     <span>Hacé clic para seleccionar</span>
-                    <span className="text-xs">PDF, Word o imagen — máx. 10 MB</span>
+                    <span className="text-xs">
+                      PDF, Word o imagen — máx. 10 MB
+                    </span>
                     <input
                       id="adjunto"
                       type="file"
                       accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
                       className="sr-only"
-                      onChange={e => setAdjunto(e.target.files?.[0] ?? null)}
+                      onChange={(e) => setAdjunto(e.target.files?.[0] ?? null)}
                     />
                   </label>
                 )}
@@ -399,7 +442,9 @@ export default function NuevaAsignacionPage() {
                   id="notas"
                   placeholder="Observaciones sobre esta asignación..."
                   value={form.notas}
-                  onChange={e => setForm(f => ({ ...f, notas: e.target.value }))}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, notas: e.target.value }))
+                  }
                   rows={4}
                 />
               </div>
@@ -409,10 +454,12 @@ export default function NuevaAsignacionPage() {
 
             <div className="flex gap-3 pt-2">
               <Button type="submit" disabled={loading}>
-                {loading ? 'Asignando...' : 'Asignar Rol en Ministerio'}
+                {loading ? "Asignando..." : "Asignar Rol en Ministerio"}
               </Button>
               <Link href="/ministerios/asignaciones">
-                <Button type="button" variant="outline">Cancelar</Button>
+                <Button type="button" variant="outline">
+                  Cancelar
+                </Button>
               </Link>
             </div>
           </form>

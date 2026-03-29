@@ -1,25 +1,31 @@
-export const dynamic = 'force-dynamic'
+export const dynamic = "force-dynamic"
 
-import Link from 'next/link'
-import { redirect } from 'next/navigation'
-import { Briefcase, UserCheck, ShieldCheck, Users } from 'lucide-react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { getUserContext, canPerform } from '@/lib/auth/context'
+import Link from "next/link"
+import { redirect } from "next/navigation"
+import { Briefcase, UserCheck, ShieldCheck, Users } from "lucide-react"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
+import { getUserContext, canPerform } from "@/lib/auth/context"
 
 export default async function MinisteriosPage() {
   const ctx = await getUserContext()
-  if (!ctx) redirect('/auth/login')
-  if (!canPerform(ctx, 'roles.assign')) redirect('/dashboard')
+  if (!ctx) redirect("/auth/login")
+  if (!canPerform(ctx, "roles.assign")) redirect("/dashboard")
 
   return (
     <div className="space-y-8">
       <div>
         <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
           <ShieldCheck className="h-8 w-8 text-primary" />
-          Roles en Ministerios y Acceso
+          Roles y Acceso
         </h1>
         <p className="mt-2 text-muted-foreground">
-          Gestión unificada de roles en ministerios pastorales y permisos de acceso al sistema.
+          Gestión unificada de roles y permisos de acceso al sistema.
         </p>
       </div>
 
@@ -32,14 +38,19 @@ export default async function MinisteriosPage() {
                   <Briefcase className="h-5 w-5 text-primary" />
                 </div>
                 <div>
-                  <CardTitle className="text-foreground">Catálogo de Roles en Ministerios</CardTitle>
-                  <CardDescription>Define roles en ministerios y sus permisos de sistema</CardDescription>
+                  <CardTitle className="text-foreground">
+                    Catálogo de Roles
+                  </CardTitle>
+                  <CardDescription>
+                    Define roles y sus permisos de sistema
+                  </CardDescription>
                 </div>
               </div>
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground">
-                Crea y configura roles en ministerios pastorales y técnicos. Cada rol puede tener permisos de acceso al sistema configurables.
+                Crea y configura roles. Cada rol puede tener permisos de acceso
+                al sistema configurables.
               </p>
             </CardContent>
           </Card>
@@ -53,14 +64,19 @@ export default async function MinisteriosPage() {
                   <UserCheck className="h-5 w-5 text-primary" />
                 </div>
                 <div>
-                  <CardTitle className="text-foreground">Asignaciones</CardTitle>
-                  <CardDescription>Qué personas tienen qué roles en ministerios</CardDescription>
+                  <CardTitle className="text-foreground">
+                    Asignaciones
+                  </CardTitle>
+                  <CardDescription>
+                    Qué personas tienen qué roles
+                  </CardDescription>
                 </div>
               </div>
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground">
-                Asigna roles en ministerios a personas. Los permisos de sistema del rol se activan automáticamente al hacer login.
+                Asigna roles a personas. Los permisos de sistema del rol se
+                activan automáticamente al hacer login.
               </p>
             </CardContent>
           </Card>
@@ -75,13 +91,16 @@ export default async function MinisteriosPage() {
                 </div>
                 <div>
                   <CardTitle className="text-foreground">Personas</CardTitle>
-                  <CardDescription>Ver perfil y roles en ministerios de cada persona</CardDescription>
+                  <CardDescription>
+                    Ver perfil y roles de cada persona
+                  </CardDescription>
                 </div>
               </div>
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground">
-                Accedé al perfil de cada persona para ver su historial de roles en ministerios y asignaciones desde el formulario de edición.
+                Accedé al perfil de cada persona para ver su historial de roles
+                y asignaciones desde el formulario de edición.
               </p>
             </CardContent>
           </Card>

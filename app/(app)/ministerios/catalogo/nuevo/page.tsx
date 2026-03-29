@@ -1,16 +1,22 @@
-'use client'
+"use client"
 
-export const dynamic = 'force-dynamic'
+export const dynamic = "force-dynamic"
 
-import { useState, useEffect, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
-import Link from 'next/link'
-import { Briefcase, ArrowLeft, Loader2 } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { createClient } from '@/lib/supabase/client'
+import { useState, useEffect, useCallback } from "react"
+import { useRouter } from "next/navigation"
+import Link from "next/link"
+import { Briefcase, ArrowLeft, Loader2 } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { createClient } from "@/lib/supabase/client"
 
 interface Permiso {
   id: string
@@ -21,11 +27,11 @@ interface Permiso {
 }
 
 const categoriaLabel: Record<string, string> = {
-  personas: 'Personas',
-  organizaciones: 'Organizaciones',
-  eventos: 'Eventos',
-  roles: 'Roles en Ministerios',
-  sistema: 'Sistema',
+  personas: "Personas",
+  organizaciones: "Organizaciones",
+  eventos: "Eventos",
+  roles: "Roles",
+  sistema: "Sistema",
 }
 
 export default function NuevoMinisterioPage() {
@@ -35,15 +41,17 @@ export default function NuevoMinisterioPage() {
   const [error, setError] = useState<string | null>(null)
 
   const [form, setForm] = useState({
-    nombre: '',
-    tipo: 'pastoral',
-    nivel: 'fraternidad',
+    nombre: "",
+    tipo: "pastoral",
+    nivel: "fraternidad",
     requiere_acta: false,
   })
-  const [tipoPersonalizado, setTipoPersonalizado] = useState('')
+  const [tipoPersonalizado, setTipoPersonalizado] = useState("")
 
   // Permisos disponibles cargados al montar
-  const [permisosPorCategoria, setPermisosPorCategoria] = useState<Record<string, Permiso[]>>({})
+  const [permisosPorCategoria, setPermisosPorCategoria] = useState<
+    Record<string, Permiso[]>
+  >({})
   const [totalPermisos, setTotalPermisos] = useState(0)
   const [loadingPermisos, setLoadingPermisos] = useState(true)
   const [seleccionados, setSeleccionados] = useState<Set<string>>(new Set())
@@ -51,11 +59,11 @@ export default function NuevoMinisterioPage() {
   useEffect(() => {
     const load = async () => {
       const { data } = await supabase
-        .from('permisos')
-        .select('id, clave, nombre, descripcion, categoria')
-        .eq('activo', true)
-        .order('categoria')
-        .order('nombre')
+        .from("permisos")
+        .select("id, clave, nombre, descripcion, categoria")
+        .eq("activo", true)
+        .order("categoria")
+        .order("nombre")
 
       const byCategoria: Record<string, Permiso[]> = {}
       for (const p of data ?? []) {
@@ -70,7 +78,7 @@ export default function NuevoMinisterioPage() {
   }, [])
 
   const togglePermiso = (id: string) => {
-    setSeleccionados(prev => {
+    setSeleccionados((prev) => {
       const next = new Set(prev)
       if (next.has(id)) next.delete(id)
       else next.add(id)
@@ -78,18 +86,24 @@ export default function NuevoMinisterioPage() {
     })
   }
 
-  const toggleCategoria = useCallback((categoria: string) => {
-    const ids = (permisosPorCategoria[categoria] ?? []).map(p => p.id)
-    setSeleccionados(prev => {
-      const allSelected = ids.every(id => prev.has(id))
-      const next = new Set(prev)
-      if (allSelected) ids.forEach(id => next.delete(id))
-      else ids.forEach(id => next.add(id))
-      return next
-    })
-  }, [permisosPorCategoria])
+  const toggleCategoria = useCallback(
+    (categoria: string) => {
+      const ids = (permisosPorCategoria[categoria] ?? []).map((p) => p.id)
+      setSeleccionados((prev) => {
+        const allSelected = ids.every((id) => prev.has(id))
+        const next = new Set(prev)
+        if (allSelected) ids.forEach((id) => next.delete(id))
+        else ids.forEach((id) => next.add(id))
+        return next
+      })
+    },
+    [permisosPorCategoria],
+  )
 
-  const nivelAcceso = totalPermisos === 0 ? 0 : Math.round((seleccionados.size / totalPermisos) * 100)
+  const nivelAcceso =
+    totalPermisos === 0
+      ? 0
+      : Math.round((seleccionados.size / totalPermisos) * 100)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -98,24 +112,25 @@ export default function NuevoMinisterioPage() {
 
     const nombre = form.nombre.trim()
     if (!nombre) {
-      setError('El nombre es obligatorio')
+      setError("El nombre es obligatorio")
       setLoading(false)
       return
     }
 
-    const tipoFinal = form.tipo === 'otro'
-      ? tipoPersonalizado.trim().toLowerCase().replace(/\s+/g, '_')
-      : form.tipo
+    const tipoFinal =
+      form.tipo === "otro"
+        ? tipoPersonalizado.trim().toLowerCase().replace(/\s+/g, "_")
+        : form.tipo
 
     if (!tipoFinal) {
-      setError('Especificá el tipo de ministerio')
+      setError("Especificá el tipo de ministerio")
       setLoading(false)
       return
     }
 
     // 1. Crear el ministerio
     const { data, error: err } = await supabase
-      .from('ministerios')
+      .from("ministerios")
       .insert({
         nombre,
         tipo: tipoFinal,
@@ -124,22 +139,26 @@ export default function NuevoMinisterioPage() {
         requiere_acta: form.requiere_acta,
         activo: true,
       })
-      .select('id')
+      .select("id")
       .single()
 
     if (err) {
-      setError(err.message.includes('unique') ? 'Ya existe un rol en ministerio con ese nombre' : 'Error al crear el rol: ' + err.message)
+      setError(
+        err.message.includes("unique")
+          ? "Ya existe un rol en ministerio con ese nombre"
+          : "Error al crear el rol: " + err.message,
+      )
       setLoading(false)
       return
     }
 
     // 2. Insertar permisos seleccionados
     if (seleccionados.size > 0) {
-      const rows = [...seleccionados].map(permiso_id => ({
+      const rows = [...seleccionados].map((permiso_id) => ({
         ministerio_id: data.id,
         permiso_id,
       }))
-      await supabase.from('ministerio_permisos').insert(rows)
+      await supabase.from("ministerio_permisos").insert(rows)
     }
 
     router.push(`/ministerios/catalogo/${data.id}`)
@@ -148,7 +167,10 @@ export default function NuevoMinisterioPage() {
   return (
     <div className="space-y-8">
       <div>
-        <Link href="/ministerios/catalogo" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-4">
+        <Link
+          href="/ministerios/catalogo"
+          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-4"
+        >
           <ArrowLeft className="h-4 w-4" />
           Volver al Catálogo de Roles
         </Link>
@@ -157,7 +179,8 @@ export default function NuevoMinisterioPage() {
           Nuevo Rol en Ministerio
         </h1>
         <p className="mt-2 text-muted-foreground">
-          Define los datos y permisos del rol. Todo se guarda al hacer clic en Crear.
+          Define los datos y permisos del rol. Todo se guarda al hacer clic en
+          Crear.
         </p>
       </div>
 
@@ -166,7 +189,9 @@ export default function NuevoMinisterioPage() {
         <div>
           <Card className="border-border bg-card">
             <CardHeader>
-              <CardTitle className="text-foreground">Datos del Rol en Ministerio</CardTitle>
+              <CardTitle className="text-foreground">
+                Datos del Rol en Ministerio
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
@@ -176,7 +201,9 @@ export default function NuevoMinisterioPage() {
                   required
                   placeholder="ej: Coordinador de Zona"
                   value={form.nombre}
-                  onChange={e => setForm(f => ({ ...f, nombre: e.target.value }))}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, nombre: e.target.value }))
+                  }
                 />
               </div>
 
@@ -186,7 +213,9 @@ export default function NuevoMinisterioPage() {
                   id="tipo"
                   required
                   value={form.tipo}
-                  onChange={e => setForm(f => ({ ...f, tipo: e.target.value }))}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, tipo: e.target.value }))
+                  }
                   className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
                 >
                   <option value="conduccion">Conducción</option>
@@ -195,11 +224,11 @@ export default function NuevoMinisterioPage() {
                   <option value="sistema">Sistema (acceso técnico)</option>
                   <option value="otro">Otro</option>
                 </select>
-                {form.tipo === 'otro' && (
+                {form.tipo === "otro" && (
                   <Input
                     placeholder="ej: Formación"
                     value={tipoPersonalizado}
-                    onChange={e => setTipoPersonalizado(e.target.value)}
+                    onChange={(e) => setTipoPersonalizado(e.target.value)}
                     className="mt-2"
                   />
                 )}
@@ -211,7 +240,9 @@ export default function NuevoMinisterioPage() {
                   id="nivel"
                   required
                   value={form.nivel}
-                  onChange={e => setForm(f => ({ ...f, nivel: e.target.value }))}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, nivel: e.target.value }))
+                  }
                   className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
                 >
                   <option value="comunidad">Comunidad</option>
@@ -226,7 +257,9 @@ export default function NuevoMinisterioPage() {
                   type="checkbox"
                   id="requiere_acta"
                   checked={form.requiere_acta}
-                  onChange={e => setForm(f => ({ ...f, requiere_acta: e.target.checked }))}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, requiere_acta: e.target.checked }))
+                  }
                   className="h-4 w-4 rounded border-border accent-primary"
                 />
                 <Label htmlFor="requiere_acta" className="cursor-pointer">
@@ -244,7 +277,9 @@ export default function NuevoMinisterioPage() {
                       style={{ width: `${nivelAcceso}%` }}
                     />
                   </div>
-                  <span className="text-sm font-semibold text-foreground tabular-nums w-8 text-right">{nivelAcceso}</span>
+                  <span className="text-sm font-semibold text-foreground tabular-nums w-8 text-right">
+                    {nivelAcceso}
+                  </span>
                 </div>
                 <p className="text-xs text-muted-foreground">
                   Se calcula automáticamente según los permisos seleccionados
@@ -255,10 +290,12 @@ export default function NuevoMinisterioPage() {
 
               <div className="flex gap-3 pt-2">
                 <Button type="submit" disabled={loading}>
-                  {loading ? 'Creando...' : 'Crear Rol en Ministerio'}
+                  {loading ? "Creando..." : "Crear Rol en Ministerio"}
                 </Button>
                 <Link href="/ministerios/catalogo">
-                  <Button type="button" variant="outline">Cancelar</Button>
+                  <Button type="button" variant="outline">
+                    Cancelar
+                  </Button>
                 </Link>
               </div>
             </CardContent>
@@ -269,9 +306,12 @@ export default function NuevoMinisterioPage() {
         <div className="lg:col-span-2">
           <Card className="border-border bg-card">
             <CardHeader>
-              <CardTitle className="text-foreground">Permisos del Rol en Ministerio</CardTitle>
+              <CardTitle className="text-foreground">
+                Permisos del Rol en Ministerio
+              </CardTitle>
               <CardDescription>
-                Seleccioná los permisos que tendrá este rol. El nivel de acceso se calcula automáticamente.
+                Seleccioná los permisos que tendrá este rol. El nivel de acceso
+                se calcula automáticamente.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -286,63 +326,74 @@ export default function NuevoMinisterioPage() {
                 </p>
               ) : (
                 <div className="space-y-6">
-                  {Object.keys(permisosPorCategoria).map(categoria => {
-                    const ids = permisosPorCategoria[categoria].map(p => p.id)
-                    const selectedCount = ids.filter(id => seleccionados.has(id)).length
+                  {Object.keys(permisosPorCategoria).map((categoria) => {
+                    const ids = permisosPorCategoria[categoria].map((p) => p.id)
+                    const selectedCount = ids.filter((id) =>
+                      seleccionados.has(id),
+                    ).length
                     const allSelected = selectedCount === ids.length
                     const someSelected = selectedCount > 0 && !allSelected
                     return (
-                    <div key={categoria}>
-                      <div className="flex items-center gap-2 mb-3">
-                        <input
-                          type="checkbox"
-                          id={`cat-${categoria}`}
-                          checked={allSelected}
-                          ref={el => { if (el) el.indeterminate = someSelected }}
-                          onChange={() => toggleCategoria(categoria)}
-                          className="h-4 w-4 rounded border-border accent-primary cursor-pointer"
-                        />
-                        <label htmlFor={`cat-${categoria}`} className="text-sm font-semibold text-foreground uppercase tracking-wide cursor-pointer">
-                          {categoriaLabel[categoria] ?? categoria}
-                        </label>
-                      </div>
-                      <div className="space-y-2 pl-6">
-                        {permisosPorCategoria[categoria].map(permiso => {
-                          const isActive = seleccionados.has(permiso.id)
-                          return (
-                            <div
-                              key={permiso.id}
-                              className="flex items-start gap-3 rounded-lg border border-border p-3 cursor-pointer hover:bg-muted/50 transition-colors"
-                              onClick={() => togglePermiso(permiso.id)}
-                            >
-                              <input
-                                type="checkbox"
-                                id={`perm-${permiso.id}`}
-                                checked={isActive}
-                                onChange={() => togglePermiso(permiso.id)}
-                                onClick={e => e.stopPropagation()}
-                                className="h-4 w-4 rounded border-border accent-primary cursor-pointer mt-0.5 shrink-0"
-                              />
-                              <div className="flex-1 min-w-0">
-                                <label
-                                  htmlFor={`perm-${permiso.id}`}
-                                  className="text-sm font-medium text-foreground cursor-pointer"
-                                  onClick={e => e.stopPropagation()}
-                                >
-                                  {permiso.nombre}
-                                </label>
-                                {permiso.descripcion && (
-                                  <p className="text-xs text-muted-foreground mt-0.5">{permiso.descripcion}</p>
-                                )}
-                                <p className="text-xs text-muted-foreground/60 mt-0.5 font-mono">{permiso.clave}</p>
+                      <div key={categoria}>
+                        <div className="flex items-center gap-2 mb-3">
+                          <input
+                            type="checkbox"
+                            id={`cat-${categoria}`}
+                            checked={allSelected}
+                            ref={(el) => {
+                              if (el) el.indeterminate = someSelected
+                            }}
+                            onChange={() => toggleCategoria(categoria)}
+                            className="h-4 w-4 rounded border-border accent-primary cursor-pointer"
+                          />
+                          <label
+                            htmlFor={`cat-${categoria}`}
+                            className="text-sm font-semibold text-foreground uppercase tracking-wide cursor-pointer"
+                          >
+                            {categoriaLabel[categoria] ?? categoria}
+                          </label>
+                        </div>
+                        <div className="space-y-2 pl-6">
+                          {permisosPorCategoria[categoria].map((permiso) => {
+                            const isActive = seleccionados.has(permiso.id)
+                            return (
+                              <div
+                                key={permiso.id}
+                                className="flex items-start gap-3 rounded-lg border border-border p-3 cursor-pointer hover:bg-muted/50 transition-colors"
+                                onClick={() => togglePermiso(permiso.id)}
+                              >
+                                <input
+                                  type="checkbox"
+                                  id={`perm-${permiso.id}`}
+                                  checked={isActive}
+                                  onChange={() => togglePermiso(permiso.id)}
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="h-4 w-4 rounded border-border accent-primary cursor-pointer mt-0.5 shrink-0"
+                                />
+                                <div className="flex-1 min-w-0">
+                                  <label
+                                    htmlFor={`perm-${permiso.id}`}
+                                    className="text-sm font-medium text-foreground cursor-pointer"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    {permiso.nombre}
+                                  </label>
+                                  {permiso.descripcion && (
+                                    <p className="text-xs text-muted-foreground mt-0.5">
+                                      {permiso.descripcion}
+                                    </p>
+                                  )}
+                                  <p className="text-xs text-muted-foreground/60 mt-0.5 font-mono">
+                                    {permiso.clave}
+                                  </p>
+                                </div>
                               </div>
-                            </div>
-                          )
-                        })}
+                            )
+                          })}
+                        </div>
                       </div>
-                    </div>
-                  )})}
-
+                    )
+                  })}
                 </div>
               )}
             </CardContent>

@@ -53,8 +53,7 @@ export default async function CatalogoMinisteriosPage() {
           Roles de la Plataforma
         </h1>
         <p className="mt-2 text-muted-foreground">
-          Administra los roles en ministerios y sus permisos de acceso al
-          sistema
+          Administra los roles y sus permisos de acceso al sistema
         </p>
       </div>
 
@@ -62,7 +61,7 @@ export default async function CatalogoMinisteriosPage() {
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
             <CardTitle className="text-foreground">
-              Roles en Ministerios Configurados
+              Roles Configurados
             </CardTitle>
             <CardDescription>
               Haz clic en un rol para ver y editar sus permisos
@@ -82,7 +81,7 @@ export default async function CatalogoMinisteriosPage() {
             <div className="py-12 text-center">
               <Briefcase className="mx-auto h-12 w-12 text-muted-foreground" />
               <h3 className="mt-4 text-lg font-semibold text-foreground">
-                No hay roles en ministerios configurados
+                No hay roles configurados
               </h3>
               <p className="mt-2 text-muted-foreground">
                 Ejecuta la migración 007 para cargar los roles del sistema

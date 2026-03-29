@@ -1,65 +1,28 @@
-'use client'
-
-import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { redirect } from 'next/navigation'
+import { getUserContext, canPerform } from '@/lib/auth/context'
 import { Sidebar } from '@/components/layout/sidebar'
-import { createClient } from '@/lib/supabase/client'
-import type { User } from '@supabase/supabase-js'
+import type { SidebarPermissions } from '@/components/layout/sidebar'
 
-export default function AppLayout({
+export default async function AppLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  const [user, setUser] = useState<User | null>(null)
-  const [loading, setLoading] = useState(true)
-  const router = useRouter()
-  const supabase = createClient()
+  const ctx = await getUserContext()
+  if (!ctx) redirect('/auth/login')
 
-  useEffect(() => {
-    const checkAuth = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-
-      if (!user) {
-        router.push('/')
-        return
-      }
-
-      setUser(user)
-      setLoading(false)
-    }
-
-    checkAuth()
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!session) {
-        router.push('/')
-      } else {
-        setUser(session.user)
-      }
-    })
-
-    return () => subscription.unsubscribe()
-  }, [router, supabase.auth])
-
-  if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="text-center">
-          <div className="mb-4 h-12 w-12 animate-spin rounded-full border-4 border-muted border-t-primary"></div>
-          <p className="text-muted-foreground">Cargando...</p>
-        </div>
-      </div>
-    )
-  }
-
-  if (!user) {
-    return null
+  const permissions: SidebarPermissions = {
+    canCreatePerson:       canPerform(ctx, 'person.create'),
+    canCreateOrganization: canPerform(ctx, 'organization.create'),
+    canCreateEvent:        canPerform(ctx, 'event.create'),
+    canViewRoles:          canPerform(ctx, 'roles.view') || canPerform(ctx, 'roles.assign'),
+    canAssignRoles:        canPerform(ctx, 'roles.assign'),
+    isAdmin:               ctx.is_admin,
   }
 
   return (
     <div className="flex h-screen bg-background">
-      <Sidebar />
+      <Sidebar permissions={permissions} />
       <main className="flex-1 overflow-y-auto">
         <div className="p-8">
           {children}

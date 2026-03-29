@@ -27,6 +27,15 @@ import {
 import { Button } from "@/components/ui/button"
 import { createClient } from "@/lib/supabase/client"
 
+export interface SidebarPermissions {
+  canCreatePerson: boolean
+  canCreateOrganization: boolean
+  canCreateEvent: boolean
+  canViewRoles: boolean
+  canAssignRoles: boolean
+  isAdmin: boolean
+}
+
 interface NavItem {
   icon: React.ReactNode
   label: string
@@ -34,120 +43,147 @@ interface NavItem {
   children?: NavItem[]
 }
 
-const navItems: NavItem[] = [
-  {
-    icon: <LayoutDashboard className="h-5 w-5" />,
-    label: "Panel de Inicio",
-    href: "/dashboard",
-  },
-  {
-    icon: <Users className="h-5 w-5" />,
-    label: "Personas",
-    href: "/personas",
-    children: [
-      {
-        icon: <List className="h-4 w-4" />,
-        label: "Lista de personas",
-        href: "/personas",
-      },
-      {
-        icon: <UserPlus className="h-4 w-4" />,
-        label: "Registrar persona",
-        href: "/personas/nueva",
-      },
-    ],
-  },
-  {
-    icon: <Home className="h-5 w-5" />,
-    label: "Confraternidades y Fraternidades",
-    href: "/organizaciones",
-    children: [
-      {
-        icon: <Building2 className="h-4 w-4" />,
-        label: "Lista de organizaciones",
-        href: "/organizaciones",
-      },
-      {
-        icon: <PlusCircle className="h-4 w-4" />,
-        label: "Nueva organización",
-        href: "/organizaciones/nueva",
-      },
-    ],
-  },
-  {
-    icon: <Hotel className="h-5 w-5" />,
-    label: "Casas de Retiro",
-    href: "/casas-retiro",
-    children: [
-      {
-        icon: <Building2 className="h-4 w-4" />,
-        label: "Lista de casas",
-        href: "/casas-retiro",
-      },
-      {
-        icon: <PlusCircle className="h-4 w-4" />,
-        label: "Nueva casa de retiro",
-        href: "/casas-retiro/nueva",
-      },
-    ],
-  },
-  {
-    icon: <ShieldCheck className="h-5 w-5" />,
-    label: "Roles de la Plataforma",
-    href: "/ministerios",
-    children: [
-      {
-        icon: <Briefcase className="h-4 w-4" />,
-        label: "Listado de roles",
-        href: "/ministerios/catalogo",
-      },
-    ],
-  },
-  {
-    icon: <UserCheck className="h-5 w-5" />,
-    label: "Asignaciones de roles",
-    href: "/ministerios/asignaciones",
-  },
-  {
-    icon: <Calendar className="h-5 w-5" />,
-    label: "Eventos",
-    href: "/eventos",
-    children: [
-      {
-        icon: <List className="h-4 w-4" />,
-        label: "Lista de eventos",
-        href: "/eventos",
-      },
-      {
-        icon: <PlusCircle className="h-4 w-4" />,
-        label: "Solicitar Evento",
-        href: "/eventos/nuevo",
-      },
-    ],
-  },
-  {
-    icon: <Tag className="h-5 w-5" />,
-    label: "Tipos de Eventos",
-    href: "/tipos-eventos",
-    children: [
-      {
-        icon: <List className="h-4 w-4" />,
-        label: "Lista de tipos",
-        href: "/tipos-eventos",
-      },
-      {
-        icon: <PlusCircle className="h-4 w-4" />,
-        label: "Nuevo tipo",
-        href: "/tipos-eventos/nuevo",
-      },
-    ],
-  },
-]
+function buildNavItems(p: SidebarPermissions): NavItem[] {
+  return [
+    {
+      icon: <LayoutDashboard className="h-5 w-5" />,
+      label: "Panel de Inicio",
+      href: "/dashboard",
+    },
+    {
+      icon: <Users className="h-5 w-5" />,
+      label: "Personas",
+      href: "/personas",
+      children: [
+        {
+          icon: <List className="h-4 w-4" />,
+          label: "Lista de personas",
+          href: "/personas",
+        },
+        ...(p.canCreatePerson
+          ? [
+              {
+                icon: <UserPlus className="h-4 w-4" />,
+                label: "Registrar persona",
+                href: "/personas/nueva",
+              },
+            ]
+          : []),
+      ],
+    },
+    {
+      icon: <Home className="h-5 w-5" />,
+      label: "Confraternidades y Fraternidades",
+      href: "/organizaciones",
+      children: [
+        {
+          icon: <Building2 className="h-4 w-4" />,
+          label: "Lista de organizaciones",
+          href: "/organizaciones",
+        },
+        ...(p.canCreateOrganization
+          ? [
+              {
+                icon: <PlusCircle className="h-4 w-4" />,
+                label: "Nueva organización",
+                href: "/organizaciones/nueva",
+              },
+            ]
+          : []),
+      ],
+    },
+    {
+      icon: <Hotel className="h-5 w-5" />,
+      label: "Casas de Retiro",
+      href: "/casas-retiro",
+      children: [
+        {
+          icon: <Building2 className="h-4 w-4" />,
+          label: "Lista de casas",
+          href: "/casas-retiro",
+        },
+        ...(p.canCreateOrganization
+          ? [
+              {
+                icon: <PlusCircle className="h-4 w-4" />,
+                label: "Nueva casa de retiro",
+                href: "/casas-retiro/nueva",
+              },
+            ]
+          : []),
+      ],
+    },
+    ...(p.canViewRoles
+      ? [
+          {
+            icon: <ShieldCheck className="h-5 w-5" />,
+            label: "Roles de la Plataforma",
+            href: "/ministerios",
+            children: [
+              {
+                icon: <Briefcase className="h-4 w-4" />,
+                label: "Listado de roles",
+                href: "/ministerios/catalogo",
+              },
+            ],
+          },
+          {
+            icon: <UserCheck className="h-5 w-5" />,
+            label: "Asignaciones de roles",
+            href: "/ministerios/asignaciones",
+          },
+        ]
+      : []),
+    {
+      icon: <Calendar className="h-5 w-5" />,
+      label: "Eventos",
+      href: "/eventos",
+      children: [
+        {
+          icon: <List className="h-4 w-4" />,
+          label: "Lista de eventos",
+          href: "/eventos",
+        },
+        ...(p.canCreateEvent
+          ? [
+              {
+                icon: <PlusCircle className="h-4 w-4" />,
+                label: "Solicitar Evento",
+                href: "/eventos/nuevo",
+              },
+            ]
+          : []),
+      ],
+    },
+    ...(p.canCreateOrganization
+      ? [
+          {
+            icon: <Tag className="h-5 w-5" />,
+            label: "Tipos de Eventos",
+            href: "/tipos-eventos",
+            children: [
+              {
+                icon: <List className="h-4 w-4" />,
+                label: "Lista de tipos",
+                href: "/tipos-eventos",
+              },
+              {
+                icon: <PlusCircle className="h-4 w-4" />,
+                label: "Nuevo tipo",
+                href: "/tipos-eventos/nuevo",
+              },
+            ],
+          },
+        ]
+      : []),
+  ]
+}
 
-export function Sidebar() {
+export function Sidebar({ permissions }: { permissions: SidebarPermissions }) {
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()
+  const navItems = buildNavItems(permissions)
   const [isOpen, setIsOpen] = useState(false)
   const [expandedItems, setExpandedItems] = useState<string[]>(() =>
     navItems

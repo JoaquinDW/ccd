@@ -113,7 +113,7 @@ export default async function AsignacionesPage({
               Asignaciones Activas
             </CardTitle>
             <CardDescription>
-              Gestiona los roles en ministerios asignados a cada persona
+              Gestiona los roles asignados a cada persona
             </CardDescription>
           </div>
           <Link href="/ministerios/asignaciones/nueva">
@@ -158,7 +158,7 @@ export default async function AsignacionesPage({
               defaultValue={ministerioFiltro ?? ""}
               className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
             >
-              <option value="">Todos los roles en ministerios</option>
+              <option value="">Todos los roles </option>
               {(ministerios ?? []).map((m: any) => (
                 <option key={m.id} value={m.id}>
                   {m.nombre} ({tipoLabel[m.tipo] ?? m.tipo})
