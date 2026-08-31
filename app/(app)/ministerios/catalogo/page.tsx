@@ -22,23 +22,29 @@ export default async function CatalogoMinisteriosPage() {
 
   const supabase = await createClient()
 
-  const [{ data: ministeriosRaw }, { data: conteoRaw }] = await Promise.all([
-    supabase
-      .from("ministerios")
-      .select("id, nombre, codigo_interno, tipo, nivel, nivel_acceso, activo")
-      .order("nivel_acceso", { ascending: false })
-      .order("nombre"),
-    supabase
-      .from("asignaciones_ministerio")
-      .select("ministerio_id")
-      .eq("estado", "activo"),
-  ])
+  const { data: ministeriosRaw } = await supabase
+    .from("ministerios")
+    .select("id, nombre, codigo_interno, tipo, nivel, nivel_acceso, activo")
+    .order("nivel_acceso", { ascending: false })
+    .order("nombre")
 
-  const conteoPorMinisterio: Record<string, number> = {}
-  for (const c of conteoRaw ?? []) {
-    conteoPorMinisterio[c.ministerio_id] =
-      (conteoPorMinisterio[c.ministerio_id] ?? 0) + 1
-  }
+  // Un conteo exacto por ministerio, en vez de traer todas las asignaciones y
+  // contarlas acá: PostgREST corta las respuestas en 1000 filas, y con más de
+  // 2000 asignaciones activas ese conteo en JS quedaba truncado (roles con
+  // cientos de asignaciones aparecían en 0). `head: true` no trae filas, y la
+  // cantidad de requests está acotada por el número de roles, no por el de
+  // asignaciones. Se apoya en el índice (ministerio_id, estado) de la 007.
+  const conteos = await Promise.all(
+    (ministeriosRaw ?? []).map(async (m: any) => {
+      const { count } = await supabase
+        .from("asignaciones_ministerio")
+        .select("id", { count: "exact", head: true })
+        .eq("estado", "activo")
+        .eq("ministerio_id", m.id)
+      return [m.id, count ?? 0] as const
+    }),
+  )
+  const conteoPorMinisterio = Object.fromEntries(conteos) as Record<string, number>
 
   const ministerios = (ministeriosRaw ?? []).map((m: any) => ({
     ...m,

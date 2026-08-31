@@ -8,7 +8,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getUserContext, canPerform } from '@/lib/auth/context'
 import PersonasTable from './_components/personas-table'
 import PersonasFilters, { type Ubicacion } from './_components/personas-filters'
-import PersonasPagination from './_components/personas-pagination'
+import DataPagination from '@/components/data-pagination'
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>
 
@@ -246,7 +246,7 @@ export default async function PersonasPage({
             totalCount={totalCount}
           />
           {totalCount > 0 && (
-            <PersonasPagination
+            <DataPagination
               page={page}
               totalPages={totalPages}
               totalCount={totalCount}

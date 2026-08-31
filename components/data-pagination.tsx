@@ -10,9 +10,19 @@ type Props = {
   totalPages: number
   totalCount: number
   pageSize: number
+  /** Sustantivo para el contador ("Mostrando 1–25 de 130 personas"). */
+  itemLabel?: string
+  itemLabelPlural?: string
 }
 
-export default function PersonasPagination({ page, totalPages, totalCount, pageSize }: Props) {
+export default function DataPagination({
+  page,
+  totalPages,
+  totalCount,
+  pageSize,
+  itemLabel = "persona",
+  itemLabelPlural,
+}: Props) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
 
@@ -34,11 +44,12 @@ export default function PersonasPagination({ page, totalPages, totalCount, pageS
 
   const from = totalCount === 0 ? 0 : (page - 1) * pageSize + 1
   const to = Math.min(page * pageSize, totalCount)
+  const label = totalCount === 1 ? itemLabel : (itemLabelPlural ?? `${itemLabel}s`)
 
   return (
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <span className="text-sm text-muted-foreground">
-        Mostrando {from}–{to} de {totalCount} persona{totalCount !== 1 ? "s" : ""}
+        Mostrando {from}–{to} de {totalCount} {label}
       </span>
       <div className="flex items-center gap-1">
         <Button asChild={page > 1} variant="outline" size="sm" disabled={page <= 1} className="gap-1">

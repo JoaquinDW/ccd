@@ -13,16 +13,18 @@ import {
 } from "@/components/ui/card"
 import { createClient } from "@/lib/supabase/server"
 import { getUserContext, canPerform } from "@/lib/auth/context"
+import DataPagination from "@/components/data-pagination"
+
+const PAGE_SIZE = 25
 
 export default async function AsignacionesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; ministerio?: string }>
+  searchParams: Promise<{ q?: string; ministerio?: string; page?: string }>
 }) {
-  const [{ q, ministerio: ministerioFiltro }, ctx] = await Promise.all([
-    searchParams,
-    getUserContext(),
-  ])
+  const [params, ctx] = await Promise.all([searchParams, getUserContext()])
+  const { q, ministerio: ministerioFiltro } = params
+  const page = Math.max(1, Number.parseInt(params.page ?? "1", 10) || 1)
   if (!ctx) redirect("/auth/login")
   if (!canPerform(ctx, "roles.assign")) redirect("/dashboard")
 
@@ -35,12 +37,34 @@ export default async function AsignacionesPage({
     .eq("activo", true)
     .order("nombre")
 
+  // La búsqueda por nombre/email se resuelve contra `personas` y se aplica como
+  // filtro relacional (mismo patrón que /personas): antes se filtraba en JS
+  // sobre las filas ya traídas, y como PostgREST corta en 1000 filas la persona
+  // buscada podía quedar fuera del corte y "no existir".
+  let personaIds: string[] | null = null
+  if (q) {
+    const { data } = await supabase
+      .from("personas")
+      .select("id")
+      .or(`nombre.ilike.%${q}%,apellido.ilike.%${q}%,email.ilike.%${q}%`)
+    personaIds = data?.map((p) => p.id) ?? []
+  }
+
+  const noResults = personaIds !== null && personaIds.length === 0
+
   // Cargar asignaciones activas desde asignaciones_ministerio, con la persona
   // embebida en la misma consulta (evita un segundo .in() con miles de ids).
-  let query = supabase
-    .from("asignaciones_ministerio")
-    .select(
-      `
+  let asignaciones: any[] = []
+  let totalCount = 0
+
+  if (!noResults) {
+    const from = (page - 1) * PAGE_SIZE
+    const to = from + PAGE_SIZE - 1
+
+    let query = supabase
+      .from("asignaciones_ministerio")
+      .select(
+        `
       id,
       fecha_inicio,
       persona_id,
@@ -48,25 +72,25 @@ export default async function AsignacionesPage({
       organizacion:organizaciones!organizacion_id(nombre),
       ministerio:ministerios!ministerio_id(nombre, tipo, nivel_acceso)
     `,
-    )
-    .eq("estado", "activo")
-    .order("fecha_inicio", { ascending: false })
+        { count: "exact" },
+      )
+      .eq("estado", "activo")
+      .order("fecha_inicio", { ascending: false })
+      .range(from, to)
 
-  if (ministerioFiltro) {
-    query = query.eq("ministerio_id", ministerioFiltro)
+    if (ministerioFiltro) {
+      query = query.eq("ministerio_id", ministerioFiltro)
+    }
+    if (personaIds !== null) {
+      query = query.in("persona_id", personaIds)
+    }
+
+    const { data, count } = await query
+    asignaciones = data ?? []
+    totalCount = count ?? 0
   }
 
-  const { data: asignaciones } = await query
-
-  // Filtrar por nombre si hay búsqueda
-  const asignacionesFiltradas = (asignaciones ?? []).filter((a: any) => {
-    if (!q) return true
-    const persona = a.persona
-    if (!persona) return false
-    const nombre = `${persona.nombre} ${persona.apellido}`.toLowerCase()
-    const email = (persona.email ?? "").toLowerCase()
-    return nombre.includes(q.toLowerCase()) || email.includes(q.toLowerCase())
-  })
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE))
 
   const tipoLabel: Record<string, string> = {
     conduccion: "Conducción",
@@ -152,9 +176,10 @@ export default async function AsignacionesPage({
           </form>
 
           {/* Tabla */}
-          {asignacionesFiltradas.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="w-full">
+          {asignaciones.length > 0 ? (
+            <>
+              <div className="overflow-x-auto">
+                <table className="w-full">
                 <thead>
                   <tr className="border-b border-border">
                     <th className="text-left py-3 px-4 font-semibold text-foreground">
@@ -175,7 +200,7 @@ export default async function AsignacionesPage({
                   </tr>
                 </thead>
                 <tbody>
-                  {asignacionesFiltradas.map((a: any) => {
+                  {asignaciones.map((a: any) => {
                     const persona = a.persona
                     const nombreCompleto = persona
                       ? `${persona.nombre} ${persona.apellido}`
@@ -239,8 +264,17 @@ export default async function AsignacionesPage({
                     )
                   })}
                 </tbody>
-              </table>
-            </div>
+                </table>
+              </div>
+              <DataPagination
+                page={page}
+                totalPages={totalPages}
+                totalCount={totalCount}
+                pageSize={PAGE_SIZE}
+                itemLabel="asignación"
+                itemLabelPlural="asignaciones"
+              />
+            </>
           ) : (
             <div className="py-12 text-center">
               <UserCheck className="mx-auto h-12 w-12 text-muted-foreground" />
