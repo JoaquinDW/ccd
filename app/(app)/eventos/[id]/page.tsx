@@ -17,6 +17,7 @@ import { IniciarEventoButton } from './_components/iniciar-evento-button'
 import { FinalizarEventoButton } from './_components/finalizar-evento-button'
 import FlyerUploadPanel from './_components/flyer-upload-panel'
 import CierrePanel from './_components/cierre-panel'
+import PensionBecasPanel from './_components/pension-becas-panel'
 import {
   canEditarCierre,
   canVerCierre,
@@ -26,6 +27,7 @@ import {
   type PreguntaInforme,
   type Movimiento,
 } from '@/lib/eventos/cierre'
+import { canGestionarPension } from '@/lib/eventos/pension'
 import { formatDateAR } from '@/lib/utils'
 
 const estadoClases: Record<string, string> = {
@@ -91,6 +93,7 @@ export default async function EventoDetailPage({
     .select(`
       id, nombre, tipo, estado, fecha_inicio, fecha_fin,
       modalidad, descripcion, notas, cupo_maximo, audiencia,
+      cuota_inscripcion, pension,
       requiere_discernimiento_confra, requiere_discernimiento_eqt,
       coordinadores_propuestos, asesor_propuesto, asesor_voluntario, es_apv,
       ciudad, codigo_postal, diocesis, provincia_evento, pais_evento,
@@ -173,6 +176,28 @@ export default async function EventoDetailPage({
     centralizador_3_persona_id: (evento as Record<string, unknown>).centralizador_3_persona_id as string | null,
   }
   const showCierre = canVerCierre(ctx, cierreEvento)
+
+  // ─── Becas en Pensión (independiente del cierre: aplica con el evento en vivo) ───
+  const canPension = canGestionarPension(ctx, cierreEvento)
+
+  type ParticipantePensionRow = {
+    id: string
+    valor_inscripcion: number | null
+    valor_pension: number | null
+    beca_pension: number
+    notas_beca: string | null
+    persona: { id: string; nombre: string; apellido: string } | null
+  }
+  let participantesPension: ParticipantePensionRow[] = []
+  if (canPension) {
+    const { data: pensionData } = await supabase
+      .from('evento_participantes')
+      .select('id, valor_inscripcion, valor_pension, beca_pension, notas_beca, persona:personas!persona_id(id, nombre, apellido)')
+      .eq('evento_id', id)
+      .eq('rol_en_evento', 'convivente')
+      .neq('estado_participacion', 'cancelado')
+    participantesPension = (pensionData ?? []) as unknown as ParticipantePensionRow[]
+  }
 
   type ParticipanteRow = {
     persona_id: string
@@ -1016,6 +1041,25 @@ export default async function EventoDetailPage({
       )}
 
       </div>
+
+      {/* Becas en Pensión — visible mientras el evento está publicado/en curso/finalizado */}
+      {canPension && (
+        <PensionBecasPanel
+          eventoId={id}
+          precioEvento={{
+            cuota_inscripcion: Number((evento as Record<string, unknown>).cuota_inscripcion ?? 0),
+            pension: Number((evento as Record<string, unknown>).pension ?? 0),
+          }}
+          participantes={participantesPension.map(p => ({
+            id: p.id,
+            persona: p.persona,
+            valor_inscripcion: p.valor_inscripcion,
+            valor_pension: p.valor_pension,
+            beca_pension: p.beca_pension,
+            notas_beca: p.notas_beca,
+          }))}
+        />
+      )}
 
       {/* Cierre de la Convivencia — visible en finalizado/cerrado a quien tenga acceso */}
       {showCierre && (
