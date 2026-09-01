@@ -82,8 +82,10 @@ type PersonaOpcion = { id: string; nombre: string; apellido: string }
 type AcompañamientoActual = {
   id: string
   fecha_inicio: string
-  acompanante_id: string
-  acompanante: { id: string; nombre: string; apellido: string }
+  /** Null cuando el acompañante se cargó como texto libre (ver acompanante_libre). */
+  acompanante_id: string | null
+  acompanante_libre?: string | null
+  acompanante: { id: string; nombre: string; apellido: string } | null
 } | null
 
 type AcompanadoRow = { id: string; persona: { nombre: string; apellido: string } | null }
@@ -323,7 +325,7 @@ export function EditPersonaForm({
         fecha_inicio: acompFechaInicio,
         notas: acompNotas || null,
       })
-      .select("id, fecha_inicio, acompanante_id, acompanante:personas!acompanante_id(id, nombre, apellido)")
+      .select("id, fecha_inicio, acompanante_id, acompanante_libre, acompanante:personas!acompanante_id(id, nombre, apellido)")
       .single()
 
     if (insertError) {
@@ -1095,7 +1097,9 @@ export function EditPersonaForm({
             {currentAcomp ? (
               <>
                 <span className="inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-sm font-medium text-primary">
-                  {currentAcomp.acompanante.apellido}, {currentAcomp.acompanante.nombre}
+                  {currentAcomp.acompanante
+                    ? `${currentAcomp.acompanante.apellido}, ${currentAcomp.acompanante.nombre}`
+                    : currentAcomp.acompanante_libre || "Sin datos"}
                 </span>
                 <span className="text-xs text-muted-foreground">
                   desde {currentAcomp.fecha_inicio}

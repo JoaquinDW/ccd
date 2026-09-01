@@ -63,7 +63,7 @@ export default async function EditPersonaPage({ params }: { params: Promise<{ id
       .order("apellido"),
     supabase
       .from("persona_acompanamiento")
-      .select("id, fecha_inicio, acompanante_id, acompanante:personas!acompanante_id(id, nombre, apellido)")
+      .select("id, fecha_inicio, acompanante_id, acompanante_libre, acompanante:personas!acompanante_id(id, nombre, apellido)")
       .eq("persona_id", id)
       .is("fecha_fin", null)
       .maybeSingle(),

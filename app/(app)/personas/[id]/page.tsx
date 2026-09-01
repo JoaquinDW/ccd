@@ -95,7 +95,7 @@ export default async function PersonaDetailPage({
       .is("fecha_fin", null),
     supabase
       .from("persona_acompanamiento")
-      .select("id, fecha_inicio, fecha_fin, notas, acompanante:personas!acompanante_id(id, nombre, apellido)")
+      .select("id, fecha_inicio, fecha_fin, notas, acompanante_libre, acompanante:personas!acompanante_id(id, nombre, apellido)")
       .eq("persona_id", id)
       .order("fecha_inicio", { ascending: false }),
     supabase
@@ -232,9 +232,13 @@ export default async function PersonaDetailPage({
                 <dd className="text-foreground text-sm mt-0.5">
                   {active ? (
                     <>
-                      <Link href={`/personas/${(active as any).acompanante.id}`} className="text-primary hover:underline">
-                        {(active as any).acompanante.apellido}, {(active as any).acompanante.nombre}
-                      </Link>
+                      {(active as any).acompanante ? (
+                        <Link href={`/personas/${(active as any).acompanante.id}`} className="text-primary hover:underline">
+                          {(active as any).acompanante.apellido}, {(active as any).acompanante.nombre}
+                        </Link>
+                      ) : (
+                        <span>{(active as any).acompanante_libre ?? "—"}</span>
+                      )}
                       <span className="ml-2 text-xs text-muted-foreground">
                         desde {formatDate((active as any).fecha_inicio)}
                       </span>
@@ -251,7 +255,7 @@ export default async function PersonaDetailPage({
               <dd className="text-foreground text-sm flex flex-col gap-0.5 mt-0.5">
                 {(acompanaA as any[]).map((r) => (
                   <Link key={r.persona_id} href={`/personas/${r.persona_id}`} className="text-primary hover:underline">
-                    {r.persona.apellido}, {r.persona.nombre}
+                    {r.persona ? `${r.persona.apellido}, ${r.persona.nombre}` : "—"}
                   </Link>
                 ))}
               </dd>
@@ -279,9 +283,13 @@ export default async function PersonaDetailPage({
                       }`}
                     >
                       <td className="py-2 pr-4">
-                        <Link href={`/personas/${r.acompanante.id}`} className="text-primary hover:underline">
-                          {r.acompanante.apellido}, {r.acompanante.nombre}
-                        </Link>
+                        {r.acompanante ? (
+                          <Link href={`/personas/${r.acompanante.id}`} className="text-primary hover:underline">
+                            {r.acompanante.apellido}, {r.acompanante.nombre}
+                          </Link>
+                        ) : (
+                          r.acompanante_libre ?? "—"
+                        )}
                       </td>
                       <td className="py-2 pr-4 text-muted-foreground">{formatDate(r.fecha_inicio)}</td>
                       <td className="py-2 pr-4 text-muted-foreground">
