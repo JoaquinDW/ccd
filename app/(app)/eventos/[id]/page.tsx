@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getUserContext, canPerform } from '@/lib/auth/context'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { ArrowLeft, Edit2, Calendar, MapPin, Users } from 'lucide-react'
+import { ArrowLeft, Edit2, Calendar, MapPin, Users, Settings2 } from 'lucide-react'
 import DiscernimientoPanel from './_components/approval-panel'
 import DatosNoticiasPannel from './_components/datos-noticias-panel'
 import AprobacionFinalPanel from './_components/aprobacion-final-panel'
@@ -23,6 +23,7 @@ import {
   canVerCierre,
   canVerInformesConfidenciales,
   canCerrarConvivencia,
+  esCentralizadorDeEvento,
   ROLES_SERVIDORES,
   type PreguntaInforme,
   type Movimiento,
@@ -414,6 +415,16 @@ export default async function EventoDetailPage({
     (evento.estado === 'publicado' || evento.estado === 'en_curso') &&
     canPerform(ctx, 'event.update', evento.organizacion_id ?? null)
 
+  // Gestión del Evento: administrador, timonel, responsable, enlace o centralizador,
+  // solo mientras el evento está publicado o en curso.
+  const canGestion = ctx &&
+    (evento.estado === 'publicado' || evento.estado === 'en_curso') &&
+    (
+      canPerform(ctx, 'event.update', evento.organizacion_id ?? null) ||
+      (evento.fraternidad_id ? canPerform(ctx, 'event.update', evento.fraternidad_id) : false) ||
+      esCentralizadorDeEvento(ctx, cierreEvento)
+    )
+
   // Datos noticias panel: visible when pendiente_datos_noticias and user has permission
   const esSolicitante = ctx?.persona_id && ctx.persona_id === (evento as Record<string, unknown>).solicitado_por
   const canDatosNoticias = ctx && evento.estado === 'pendiente_datos_noticias' && (
@@ -521,6 +532,14 @@ export default async function EventoDetailPage({
         <div className="flex items-center gap-2 flex-wrap">
           {canPublish && <PublicarButton eventoId={id} />}
           {canIniciar && <IniciarEventoButton eventoId={id} />}
+          {canGestion && (
+            <Link href={`/eventos/${id}/gestion`}>
+              <Button variant="outline" size="sm" className="gap-2 bg-transparent">
+                <Settings2 className="h-4 w-4" />
+                Gestionar evento
+              </Button>
+            </Link>
+          )}
           {canAsistencia && (
             <Link href={`/eventos/${id}/asistencia`}>
               <Button variant="outline" size="sm" className="gap-2 bg-transparent">
