@@ -15,7 +15,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { ArrowLeft, Paperclip, X } from "lucide-react"
+import { ArrowLeft, Eye, EyeOff, Paperclip, X } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { LocationFields } from "@/components/location-fields"
 
@@ -68,6 +68,9 @@ export default function NewPersonaPage() {
   const [eventos, setEventos] = useState<Evento[]>([])
   const [personas, setPersonas] = useState<PersonaOpcion[]>([])
   const [crearAcceso, setCrearAcceso] = useState(false)
+  const [passwordInicial, setPasswordInicial] = useState("")
+  const [confirmarPassword, setConfirmarPassword] = useState("")
+  const [mostrarPassword, setMostrarPassword] = useState(false)
   const [incluirAsignacion, setIncluirAsignacion] = useState(false)
   const [asignacion, setAsignacion] = useState({
     ministerio_id: "",
@@ -153,13 +156,17 @@ export default function NewPersonaPage() {
 
     try {
       if (!formData.documento)
-        throw new Error(
-          "El número de documento es requerido (se usará como contraseña inicial)",
-        )
+        throw new Error("El número de documento es requerido")
       if (crearAcceso && !formData.nombre_usuario)
         throw new Error(
           "El nombre de usuario es requerido para crear el acceso al sistema",
         )
+      if (crearAcceso && passwordInicial.length < 8)
+        throw new Error(
+          "La contraseña inicial debe tener al menos 8 caracteres",
+        )
+      if (crearAcceso && passwordInicial !== confirmarPassword)
+        throw new Error("Las contraseñas no coinciden")
       if (incluirAsignacion && !asignacion.ministerio_id)
         throw new Error("Seleccioná un ministerio para la asignación")
 
@@ -224,6 +231,7 @@ export default function NewPersonaPage() {
           body: JSON.stringify({
             nombre_usuario: formData.nombre_usuario,
             persona_id: personaId,
+            password: passwordInicial,
           }),
         })
         if (!inviteRes.ok) {
@@ -765,8 +773,8 @@ export default function NewPersonaPage() {
           <CardHeader>
             <CardTitle className="text-foreground">Acceso al Sistema</CardTitle>
             <CardDescription>
-              El documento se usará como contraseña inicial. El nombre de
-              usuario se usará para iniciar sesión.
+              Definí el usuario y una contraseña inicial para ingresar al
+              sistema. La persona deberá cambiarla en su primer acceso.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -777,7 +785,12 @@ export default function NewPersonaPage() {
                 checked={crearAcceso}
                 onChange={(e) => {
                   setCrearAcceso(e.target.checked)
-                  if (!e.target.checked) setIncluirAsignacion(false)
+                  if (!e.target.checked) {
+                    setPasswordInicial("")
+                    setConfirmarPassword("")
+                    setMostrarPassword(false)
+                    setIncluirAsignacion(false)
+                  }
                 }}
                 className="h-4 w-4 rounded border-border"
               />
@@ -795,6 +808,10 @@ export default function NewPersonaPage() {
                     placeholder="ej: juan.garcia"
                     value={formData.nombre_usuario}
                     onChange={handleChange}
+                    minLength={3}
+                    maxLength={30}
+                    pattern="[a-zA-Z0-9._-]+"
+                    required
                     autoCapitalize="none"
                     autoCorrect="off"
                   />
@@ -802,6 +819,62 @@ export default function NewPersonaPage() {
                     Solo letras minúsculas, números, puntos y guiones bajos.
                     3–30 caracteres.
                   </p>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="password_inicial">
+                      Contraseña inicial *
+                    </Label>
+                    <div className="relative">
+                      <Input
+                        id="password_inicial"
+                        type={mostrarPassword ? "text" : "password"}
+                        placeholder="Mínimo 8 caracteres"
+                        value={passwordInicial}
+                        onChange={(e) => setPasswordInicial(e.target.value)}
+                        minLength={8}
+                        required
+                        autoComplete="new-password"
+                        className="pr-10"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setMostrarPassword((actual) => !actual)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                        aria-label={
+                          mostrarPassword
+                            ? "Ocultar contraseñas"
+                            : "Mostrar contraseñas"
+                        }
+                      >
+                        {mostrarPassword ? (
+                          <EyeOff className="h-4 w-4" />
+                        ) : (
+                          <Eye className="h-4 w-4" />
+                        )}
+                      </button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Debe tener al menos 8 caracteres.
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="confirmar_password">
+                      Confirmar contraseña *
+                    </Label>
+                    <Input
+                      id="confirmar_password"
+                      type={mostrarPassword ? "text" : "password"}
+                      placeholder="Repetí la contraseña"
+                      value={confirmarPassword}
+                      onChange={(e) => setConfirmarPassword(e.target.value)}
+                      minLength={8}
+                      required
+                      autoComplete="new-password"
+                    />
+                  </div>
                 </div>
 
                 <div className="border-t border-border pt-4">

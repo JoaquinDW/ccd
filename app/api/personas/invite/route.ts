@@ -1,11 +1,51 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
+import { getUserContext, canPerform } from '@/lib/auth/context'
+import { internalEmailFor, normalizeUsername } from '@/lib/auth/username'
 
 export async function POST(request: Request) {
-  const { nombre_usuario, persona_id, rol_sistema_id, organizacion_id } = await request.json()
+  const ctx = await getUserContext()
 
-  if (!nombre_usuario || !persona_id) {
-    return NextResponse.json({ error: 'nombre_usuario y persona_id son requeridos' }, { status: 400 })
+  if (!ctx) {
+    return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
+  }
+
+  if (!canPerform(ctx, 'person.create')) {
+    return NextResponse.json(
+      { error: 'No tenés permiso para crear personas' },
+      { status: 403 }
+    )
+  }
+
+  const { nombre_usuario, persona_id, password, rol_sistema_id, organizacion_id } = await request.json()
+
+  if (!nombre_usuario || !persona_id || !password) {
+    return NextResponse.json(
+      { error: 'El nombre de usuario, la persona y la contraseña son requeridos' },
+      { status: 400 }
+    )
+  }
+
+  if (typeof password !== 'string' || password.length < 8) {
+    return NextResponse.json(
+      { error: 'La contraseña inicial debe tener al menos 8 caracteres' },
+      { status: 400 }
+    )
+  }
+
+  if (typeof nombre_usuario !== 'string' || typeof persona_id !== 'string') {
+    return NextResponse.json(
+      { error: 'Los datos para crear el acceso no son válidos' },
+      { status: 400 }
+    )
+  }
+
+  const username = normalizeUsername(nombre_usuario)
+  if (username.length < 3 || username.length > 30 || !/^[a-z0-9._-]+$/.test(username)) {
+    return NextResponse.json(
+      { error: 'El nombre de usuario debe tener entre 3 y 30 caracteres y solo puede contener letras, números, puntos, guiones y guiones bajos.' },
+      { status: 400 }
+    )
   }
 
   const supabaseAdmin = createClient(
@@ -14,29 +54,13 @@ export async function POST(request: Request) {
     { auth: { autoRefreshToken: false, persistSession: false } }
   )
 
-  // Fetch the persona's documento to use as initial password
-  const { data: persona, error: personaError } = await supabaseAdmin
-    .from('personas')
-    .select('documento')
-    .eq('id', persona_id)
-    .single()
-
-  if (personaError || !persona) {
-    return NextResponse.json({ error: 'No se encontró la persona' }, { status: 404 })
-  }
-
-  if (!persona.documento) {
-    return NextResponse.json(
-      { error: 'La persona no tiene número de documento. Agregalo antes de crear el acceso.' },
-      { status: 400 }
-    )
-  }
-
   // Persist nombre_usuario to personas table
-  const { error: usernameError } = await supabaseAdmin
+  const { data: persona, error: usernameError } = await supabaseAdmin
     .from('personas')
-    .update({ nombre_usuario: nombre_usuario.toLowerCase().trim() })
+    .update({ nombre_usuario: username, debe_cambiar_password: true })
     .eq('id', persona_id)
+    .select('id')
+    .maybeSingle()
 
   if (usernameError) {
     // Check for unique constraint violation
@@ -49,14 +73,18 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: usernameError.message }, { status: 400 })
   }
 
+  if (!persona) {
+    return NextResponse.json({ error: 'No se encontró la persona' }, { status: 404 })
+  }
+
   // Construct fake internal email — never exposed to users.
   // Convention: {username}@ccd.internal (non-routable domain)
-  const fakeEmail = `${nombre_usuario.toLowerCase().trim()}@ccd.internal`
+  const fakeEmail = internalEmailFor(username)
 
-  // Create user directly with documento as password (no email confirmation needed)
+  // Create user directly with the explicitly assigned temporary password.
   const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
     email: fakeEmail,
-    password: persona.documento,
+    password,
     email_confirm: true,
     user_metadata: { persona_id },
   })
