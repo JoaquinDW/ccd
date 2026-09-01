@@ -260,6 +260,21 @@ export default async function EventoDetailPage({
   const tipoEvento = (evento as Record<string, unknown>).tipo_evento as { preguntas_informe: PreguntaInforme[] } | null
   const preguntasInforme: PreguntaInforme[] = Array.isArray(tipoEvento?.preguntas_informe) ? tipoEvento!.preguntas_informe : []
 
+  // Solo Cecistas para el combo de entrega/recepción de manuales (punto 9 del cierre).
+  // Consulta separada de `personasCecistas` (que pese al nombre trae TODAS las personas
+  // activas, usada por otros paneles para elegir coordinador/asesor/centralizador).
+  let cecistasSoloList: { id: string; nombre: string; apellido: string }[] = []
+  if (showCierre) {
+    const { data: cecistasData } = await supabase
+      .from('personas')
+      .select('id, nombre, apellido')
+      .eq('estado', 'activo')
+      .eq('tipo_persona', 'cecista')
+      .order('apellido')
+      .order('nombre')
+    cecistasSoloList = cecistasData ?? []
+  }
+
   const campoLabel: Record<string, string> = {
     nombre: 'Nombre', fecha_inicio: 'Fecha inicio', fecha_fin: 'Fecha fin',
     ciudad: 'Ciudad', provincia_evento: 'Provincia', pais_evento: 'País',
@@ -1077,7 +1092,7 @@ export default async function EventoDetailPage({
           canCerrar={!!canCerrar}
           conviventes={conviventesCierre}
           servidores={servidoresCierre}
-          cecistas={(personasCecistas ?? []) as { id: string; nombre: string; apellido: string }[]}
+          cecistas={cecistasSoloList}
           preguntas={preguntasInforme}
           movimientos={movimientos}
           resumenPagos={resumenPagos}
@@ -1089,8 +1104,10 @@ export default async function EventoDetailPage({
             cierre_manuales_recibidos_de: (ev.cierre_manuales_recibidos_de as string | null) ?? null,
             cierre_manuales_entrego_a: (ev.cierre_manuales_entrego_a as string | null) ?? null,
             cierre_manuales_notas: (ev.cierre_manuales_notas as string | null) ?? null,
-            informe_coordinador_respuestas: (ev.informe_coordinador_respuestas as Record<string, string> | null) ?? null,
-            informe_carismas: (ev.informe_carismas as { persona_id: string; texto: string }[] | null) ?? null,
+            // Confidenciales: solo se envían al cliente si el usuario tiene permiso de verlos —
+            // de lo contrario viajarían en el payload aunque la UI las oculte.
+            informe_coordinador_respuestas: canVerConfidencial ? (ev.informe_coordinador_respuestas as Record<string, string> | null) ?? null : null,
+            informe_carismas: canVerConfidencial ? (ev.informe_carismas as { persona_id: string; texto: string }[] | null) ?? null : null,
           }}
         />
       )}
