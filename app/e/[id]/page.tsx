@@ -23,6 +23,30 @@ const MODALIDAD_LABELS: Record<string, string> = {
   bimodal: 'Bimodal',
 }
 
+// Estados en los que el evento ya tuvo existencia pública (se publicó en algún
+// momento) y por lo tanto su link /e/[id] debe seguir resolviendo — con las
+// inscripciones cerradas — en vez de devolver 404.
+const ESTADOS_VISIBLES_PUBLICO = ['publicado', 'en_curso', 'finalizado', 'cerrado', 'suspendido']
+
+const ESTADO_CERRADO_INFO: Record<string, { titulo: string; mensaje: string }> = {
+  en_curso: {
+    titulo: 'Convivencia en curso',
+    mensaje: 'Este evento ya comenzó y las inscripciones están cerradas.',
+  },
+  finalizado: {
+    titulo: 'Convivencia finalizada',
+    mensaje: 'Este evento ya finalizó. ¡Gracias a quienes participaron!',
+  },
+  cerrado: {
+    titulo: 'Convivencia finalizada',
+    mensaje: 'Este evento ya finalizó. ¡Gracias a quienes participaron!',
+  },
+  suspendido: {
+    titulo: 'Evento suspendido',
+    mensaje: 'Este evento fue suspendido. Consultá con la organización para más información.',
+  },
+}
+
 function formatDateRange(inicio: string, fin: string) {
   const start = new Date(inicio + 'T00:00:00')
   const end = new Date(fin + 'T00:00:00')
@@ -114,7 +138,7 @@ export default async function PublicEventDetailPage({
         asesor_asignado:personas!asesor_asignado_id(id, nombre, apellido)
       `)
       .eq('id', id)
-      .eq('estado', 'publicado')
+      .in('estado', ESTADOS_VISIBLES_PUBLICO)
       .single(),
     supabase
       .from('evento_fechas')
@@ -124,6 +148,8 @@ export default async function PublicEventDetailPage({
   ])
 
   if (!evento) notFound()
+
+  const inscripcionesAbiertas = evento.estado === 'publicado'
 
   if (pagoBanner) {
     const Icon = pagoBanner.icon
@@ -366,13 +392,13 @@ export default async function PublicEventDetailPage({
                 <div>
                   <p className="text-xs text-muted-foreground uppercase tracking-wide mb-0.5">Precio</p>
                   <p className="text-sm font-medium text-foreground">${montoInscripcion.toLocaleString('es-AR')}</p>
-                  {mpDisponible && datosPago ? (
+                  {inscripcionesAbiertas && (mpDisponible && datosPago ? (
                     <p className="text-xs text-muted-foreground/70 mt-0.5">Se abona con Mercado Pago o por transferencia al inscribirte</p>
                   ) : mpDisponible ? (
                     <p className="text-xs text-muted-foreground/70 mt-0.5">Se abona con Mercado Pago al inscribirte</p>
                   ) : datosPago ? (
                     <p className="text-xs text-muted-foreground/70 mt-0.5">Se abona por transferencia al inscribirte</p>
-                  ) : null}
+                  ) : null)}
                 </div>
               </div>
             )}
@@ -444,15 +470,28 @@ export default async function PublicEventDetailPage({
           )}
 
           {/* CTA */}
-          <div className="border-t border-border pt-6 flex flex-col sm:flex-row gap-3 items-start">
-            <InteresModalWrapper
-              eventoId={evento.id}
-              eventoNombre={evento.nombre}
-              montoInscripcion={montoInscripcion}
-              mpDisponible={mpDisponible}
-              datosPago={datosPago}
-              volverAlListadoHref="/#panel-eventos"
-            />
+          <div className="border-t border-border pt-6">
+            {inscripcionesAbiertas ? (
+              <div className="flex flex-col sm:flex-row gap-3 items-start">
+                <InteresModalWrapper
+                  eventoId={evento.id}
+                  eventoNombre={evento.nombre}
+                  montoInscripcion={montoInscripcion}
+                  mpDisponible={mpDisponible}
+                  datosPago={datosPago}
+                  volverAlListadoHref="/#panel-eventos"
+                />
+              </div>
+            ) : (
+              <div className="rounded-xl border border-border bg-muted/40 p-5 text-sm">
+                <p className="font-semibold text-foreground">
+                  {ESTADO_CERRADO_INFO[evento.estado]?.titulo ?? 'Inscripciones cerradas'}
+                </p>
+                <p className="mt-1 text-muted-foreground">
+                  {ESTADO_CERRADO_INFO[evento.estado]?.mensaje ?? 'Las inscripciones para este evento no están disponibles.'}
+                </p>
+              </div>
+            )}
           </div>
 
         </div>
