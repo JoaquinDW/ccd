@@ -89,6 +89,7 @@ export default async function LandingPage({
   if (filters.fecha_hasta) panelQuery = panelQuery.lte("fecha_fin", filters.fecha_hasta)
 
   const [
+    { data: { user } },
     { data: eventos },
     { data: eventosAnteriores },
     { data: panelEventosData },
@@ -97,6 +98,7 @@ export default async function LandingPage({
     { data: casasData },
     { data: ubicacionesData },
   ] = await Promise.all([
+    supabase.auth.getUser(),
     supabase
       .from("eventos")
       .select(eventosSelect)
@@ -171,7 +173,9 @@ export default async function LandingPage({
             </span>
           </Link>
           <Button asChild size="sm">
-            <Link href="/auth/login">Acceder a la plataforma</Link>
+            <Link href={user ? "/dashboard" : "/auth/login"}>
+              {user ? "Volver al panel" : "Acceder a la plataforma"}
+            </Link>
           </Button>
         </div>
       </header>
@@ -203,7 +207,9 @@ export default async function LandingPage({
           size="lg"
           className="bg-white text-[#F08020] hover:bg-orange-50 font-semibold shadow"
         >
-          <Link href="/auth/login">Acceder a la plataforma</Link>
+          <Link href={user ? "/dashboard" : "/auth/login"}>
+            {user ? "Volver al panel" : "Acceder a la plataforma"}
+          </Link>
         </Button>
       </section>
 
