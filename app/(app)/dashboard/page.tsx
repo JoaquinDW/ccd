@@ -135,6 +135,7 @@ export default async function DashboardPage() {
   const canCreateEvent = canPerform(ctx, "event.create")
   const canManageParticipants = canPerform(ctx, "event.manage_participants")
   const canVerifyPayments = canPerform(ctx, "payment.verify")
+  const canViewPublishedEvents = canPerform(ctx, "view.eventos_publicados")
   const hasPersonaId = ctx.persona_id !== null
 
   // ── Queries paralelas ────────────────────────────────────────────────────────
@@ -206,21 +207,19 @@ export default async function DashboardPage() {
       return q
     })(),
 
-    // 5. Próximos eventos lista (reemplaza mock)
-    (() => {
-      let q = supabase
-        .from("eventos")
-        .select(
-          "id, nombre, tipo, estado, fecha_inicio, organizacion:organizaciones!organizacion_id(nombre)",
-        )
-        .in("estado", ["aprobado", "publicado"])
-        .gte("fecha_inicio", today)
-        .order("fecha_inicio", { ascending: true })
-        .limit(5)
-      if (!ctx.is_admin && primaryOrgId)
-        q = q.eq("organizacion_id", primaryOrgId)
-      return q
-    })(),
+    // 5. Próximos eventos publicados. El mismo permiso protege la página
+    // /eventos/publicados y determina si este resumen existe en el dashboard.
+    canViewPublishedEvents
+      ? supabase
+          .from("eventos")
+          .select(
+            "id, nombre, tipo, estado, fecha_inicio, organizacion:organizaciones!organizacion_id(nombre)",
+          )
+          .eq("estado", "publicado")
+          .gte("fecha_inicio", today)
+          .order("fecha_inicio", { ascending: true })
+          .limit(5)
+      : Promise.resolve({ data: null, error: null }),
 
     // 8. Mis eventos solicitados (eventos en tránsito que yo solicité)
     canCreateEvent && hasPersonaId
@@ -1551,60 +1550,62 @@ export default async function DashboardPage() {
           </Card>
         )}
 
-      {/* Próximos Eventos */}
-      <Card className="border-border bg-card">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-foreground">
-            <Clock className="h-5 w-5 text-primary" />
-            {isCecista ? "Eventos en mi Confraternidad / Fraternidad" : "Próximos Eventos"}
-          </CardTitle>
-          <CardDescription>
-            Eventos programados en los próximos días
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {!proximosEventos || proximosEventos.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-4">
-              No hay eventos próximos programados
-            </p>
-          ) : (
-            <div className="space-y-3">
-              {proximosEventos.map((evento: any) => (
-                <Link
-                  key={evento.id}
-                  href={`/eventos/${evento.id}`}
-                  className="flex items-start justify-between rounded-lg border border-border p-3 hover:border-primary/50 transition-colors"
-                >
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-foreground truncate">
-                      {evento.nombre}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {evento.fecha_inicio
-                        ? formatDateLong(evento.fecha_inicio)
-                        : "Fecha por definir"}
-                      {evento.organizacion?.nombre
-                        ? ` · ${evento.organizacion.nombre}`
-                        : ""}
-                    </p>
-                  </div>
-                  <span
-                    className={`text-xs px-2 py-1 rounded font-medium ml-3 shrink-0 ${ESTADO_EVENT_COLORS[evento.estado] ?? ""}`}
+      {/* Próximos eventos publicados */}
+      {canViewPublishedEvents && (
+        <Card className="border-border bg-card">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-foreground">
+              <Clock className="h-5 w-5 text-primary" />
+              Próximos eventos publicados
+            </CardTitle>
+            <CardDescription>
+              Eventos publicados y disponibles para la comunidad
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {!proximosEventos || proximosEventos.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">
+                No hay eventos publicados próximamente
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {proximosEventos.map((evento: any) => (
+                  <Link
+                    key={evento.id}
+                    href={`/eventos/${evento.id}`}
+                    className="flex items-start justify-between rounded-lg border border-border p-3 hover:border-primary/50 transition-colors"
                   >
-                    {evento.estado}
-                  </span>
-                </Link>
-              ))}
-            </div>
-          )}
-          <Link href="/eventos" className="block mt-4">
-            <Button variant="outline" className="w-full bg-transparent">
-              Ver todos los eventos
-              <ArrowRight className="h-4 w-4 ml-2" />
-            </Button>
-          </Link>
-        </CardContent>
-      </Card>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-foreground truncate">
+                        {evento.nombre}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {evento.fecha_inicio
+                          ? formatDateLong(evento.fecha_inicio)
+                          : "Fecha por definir"}
+                        {evento.organizacion?.nombre
+                          ? ` · ${evento.organizacion.nombre}`
+                          : ""}
+                      </p>
+                    </div>
+                    <span
+                      className={`text-xs px-2 py-1 rounded font-medium ml-3 shrink-0 ${ESTADO_EVENT_COLORS[evento.estado] ?? ""}`}
+                    >
+                      {ESTADO_LABELS[evento.estado] ?? evento.estado}
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            )}
+            <Link href="/eventos/publicados" className="block mt-4">
+              <Button variant="outline" className="w-full bg-transparent">
+                Ver todos los eventos publicados
+                <ArrowRight className="h-4 w-4 ml-2" />
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Estado del sistema */}
       {/* <Card className="border-border bg-card">
