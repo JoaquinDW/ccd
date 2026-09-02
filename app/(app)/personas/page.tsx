@@ -67,7 +67,6 @@ export default async function PersonasPage({
     modo?: string
     ministerio_id?: string
     organizacion_id?: string
-    tipo_persona?: string
     persona?: string
     sortBy?: string
     sortDir?: string
@@ -83,7 +82,6 @@ export default async function PersonasPage({
   const modo = params.modo ?? ''
   const ministerio_id = params.ministerio_id ?? ''
   const organizacion_id = params.organizacion_id ?? ''
-  const tipo_persona = params.tipo_persona ?? ''
   const initialPersonaId = params.persona ?? null
   const sortBy = params.sortBy ?? ''
   const sortDir = (params.sortDir === 'asc' || params.sortDir === 'desc') ? params.sortDir : 'asc'
@@ -93,12 +91,15 @@ export default async function PersonasPage({
 
   const canCreate = ctx ? canPerform(ctx, 'person.create') : false
   const canUpdate = ctx ? canPerform(ctx, 'person.update') : false
+  const canManage = canCreate && canUpdate
   const canExport = ctx ? canPerform(ctx, 'personas.export') : false
   const supabase = await createClient()
 
   // Load ministerios for the filter select
   const [{ data: ministerios }, { data: organizaciones }] = await Promise.all([
-    supabase.from('ministerios').select('id, nombre').eq('activo', true).order('nombre'),
+    canManage
+      ? supabase.from('ministerios').select('id, nombre').eq('activo', true).order('nombre')
+      : Promise.resolve({ data: [] as { id: string; nombre: string }[] }),
     supabase.from('organizaciones').select('id, nombre, tipo').in('tipo', ['confraternidad', 'fraternidad']).is('fecha_baja', null).order('tipo').order('nombre'),
   ])
 
@@ -108,7 +109,7 @@ export default async function PersonasPage({
 
   // Relational filters: get persona ids matching modo/ministerio
   let modoIds: string[] | null = null
-  if (modo) {
+  if (modo && modo !== 'convivente' && modo !== 'otro') {
     const { data } = await supabase
       .from('persona_modos')
       .select('persona_id')
@@ -118,7 +119,7 @@ export default async function PersonasPage({
   }
 
   let ministerioIds: string[] | null = null
-  if (ministerio_id) {
+  if (canManage && ministerio_id) {
     const { data } = await supabase
       .from('asignaciones_ministerio')
       .select('persona_id')
@@ -147,10 +148,26 @@ export default async function PersonasPage({
   // If relational filter was set but no matches found, short-circuit
   const noResults = filterIds !== null && filterIds.length === 0
 
-  let personas: { id: string; nombre: string; apellido: string; email: string | null; telefono: string | null; localidad: string | null; estado: string | null; estado_eclesial: string | null }[] = []
+  type PersonaRow = {
+    id: string
+    nombre: string
+    apellido: string
+    email: string | null
+    telefono: string | null
+    localidad?: string | null
+    estado?: string | null
+    estado_eclesial?: string | null
+    confraternidad: string | null
+    fraternidad: string | null
+    modo_participacion: string | null
+  }
+
+  let personas: PersonaRow[] = []
   let totalCount = 0
 
-  const SORTABLE_PERSONAS = ['apellido', 'email', 'localidad', 'estado_eclesial', 'estado']
+  const SORTABLE_PERSONAS = canManage
+    ? ['apellido', 'email', 'localidad', 'estado_eclesial', 'estado']
+    : ['apellido', 'email']
   const sortCol = (sortBy && SORTABLE_PERSONAS.includes(sortBy)) ? sortBy : 'apellido'
   const sortAsc = sortBy ? sortDir === 'asc' : true
 
@@ -160,7 +177,7 @@ export default async function PersonasPage({
 
     let query = supabase
       .from('personas')
-      .select('id, nombre, apellido, email, telefono, localidad, estado, estado_eclesial', { count: 'exact' })
+      .select('id, nombre, apellido, email, telefono, localidad, estado, estado_eclesial, tipo_persona', { count: 'exact' })
       .is('fecha_baja', null)
       .order(sortCol, { ascending: sortAsc })
       .range(from, to)
@@ -168,33 +185,102 @@ export default async function PersonasPage({
     if (q) {
       query = query.or(`nombre.ilike.%${q}%,apellido.ilike.%${q}%,email.ilike.%${q}%`)
     }
-    if (estado) query = query.eq('estado', estado)
-    if (estado_eclesial) query = query.eq('estado_eclesial', estado_eclesial)
+    if (canManage && estado) query = query.eq('estado', estado)
+    if (canManage && estado_eclesial) query = query.eq('estado_eclesial', estado_eclesial)
     if (provincia) query = query.ilike('provincia', provincia)
     if (localidad) query = query.ilike('localidad', localidad)
-    if (tipo_persona) query = query.eq('tipo_persona', tipo_persona)
+    // Convivente y Otro son categorías de persona, pero se presentan junto a los
+    // modos institucionales para que el filtro coincida con el lenguaje de la lista.
+    if (modo === 'convivente') query = query.in('tipo_persona', ['convivente', 'no_cecista'])
+    if (modo === 'otro') query = query.eq('tipo_persona', 'otro')
     if (filterIds !== null) query = query.in('id', filterIds)
 
     const { data, count } = await query
-    personas = data ?? []
     totalCount = count ?? 0
+
+    const personaRows = data ?? []
+    const personaIds = personaRows.map(persona => persona.id)
+
+    let modosActuales: { persona_id: string; modo: string }[] = []
+    let organizacionesActuales: {
+      persona_id: string
+      tipo_relacion: string
+      organizacion: { nombre: string } | null
+    }[] = []
+
+    if (personaIds.length > 0) {
+      const [{ data: modosData }, { data: organizacionesData }] = await Promise.all([
+        supabase
+          .from('persona_modos')
+          .select('persona_id, modo')
+          .in('persona_id', personaIds)
+          .is('fecha_fin', null),
+        supabase
+          .from('persona_organizacion')
+          .select('persona_id, tipo_relacion, organizacion:organizaciones!organizacion_id(nombre)')
+          .in('persona_id', personaIds)
+          .is('fecha_fin', null),
+      ])
+
+      modosActuales = modosData ?? []
+      organizacionesActuales = (organizacionesData ?? []) as unknown as typeof organizacionesActuales
+    }
+
+    const modoPorPersona = new Map(modosActuales.map(row => [row.persona_id, row.modo]))
+    const organizacionesPorPersona = new Map<string, { confraternidad: string | null; fraternidad: string | null }>()
+
+    for (const row of organizacionesActuales) {
+      const actual = organizacionesPorPersona.get(row.persona_id) ?? { confraternidad: null, fraternidad: null }
+      if (row.tipo_relacion === 'confraternidad') actual.confraternidad = row.organizacion?.nombre ?? null
+      if (row.tipo_relacion === 'fraternidad') actual.fraternidad = row.organizacion?.nombre ?? null
+      organizacionesPorPersona.set(row.persona_id, actual)
+    }
+
+    personas = personaRows.map(persona => {
+      const organizacion = organizacionesPorPersona.get(persona.id)
+      const modoParticipacion = persona.tipo_persona === 'otro'
+        ? 'otro'
+        : persona.tipo_persona === 'convivente' || persona.tipo_persona === 'no_cecista'
+          ? 'convivente'
+          : modoPorPersona.get(persona.id) ?? null
+
+      return {
+        id: persona.id,
+        nombre: persona.nombre,
+        apellido: persona.apellido,
+        email: persona.email,
+        telefono: persona.telefono,
+        ...(canManage
+          ? {
+              localidad: persona.localidad,
+              estado: persona.estado,
+              estado_eclesial: persona.estado_eclesial,
+            }
+          : {}),
+        confraternidad: organizacion?.confraternidad ?? null,
+        fraternidad: organizacion?.fraternidad ?? null,
+        modo_participacion: modoParticipacion,
+      }
+    })
   }
 
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE))
 
-  const hasFilters = !!(q || estado || estado_eclesial || provincia || localidad || modo || ministerio_id || organizacion_id || tipo_persona)
+  const hasFilters = !!(
+    q || provincia || localidad || modo || organizacion_id ||
+    (canManage && (estado || estado_eclesial || ministerio_id))
+  )
 
   // Build search string for export button
   const exportParams = new URLSearchParams()
   if (q) exportParams.set('q', q)
-  if (estado) exportParams.set('estado', estado)
-  if (estado_eclesial) exportParams.set('estado_eclesial', estado_eclesial)
+  if (canManage && estado) exportParams.set('estado', estado)
+  if (canManage && estado_eclesial) exportParams.set('estado_eclesial', estado_eclesial)
   if (provincia) exportParams.set('provincia', provincia)
   if (localidad) exportParams.set('localidad', localidad)
   if (modo) exportParams.set('modo', modo)
-  if (ministerio_id) exportParams.set('ministerio_id', ministerio_id)
+  if (canManage && ministerio_id) exportParams.set('ministerio_id', ministerio_id)
   if (organizacion_id) exportParams.set('organizacion_id', organizacion_id)
-  if (tipo_persona) exportParams.set('tipo_persona', tipo_persona)
   const exportSearch = exportParams.size > 0 ? `?${exportParams.toString()}` : ''
 
   return (
@@ -205,7 +291,9 @@ export default async function PersonasPage({
           Gestión de Personas
         </h1>
         <p className="mt-2 text-muted-foreground">
-          Administra los datos de todas las personas en el sistema
+          {canManage
+            ? 'Administra los datos de todas las personas en el sistema'
+            : 'Consulta la información de contacto y participación de las personas'}
         </p>
       </div>
 
@@ -230,17 +318,27 @@ export default async function PersonasPage({
             ministerios={ministerios ?? []}
             organizaciones={organizaciones ?? []}
             ubicaciones={ubicaciones}
-            defaults={{ q, estado, estado_eclesial, provincia, localidad, modo, ministerio_id, organizacion_id, tipo_persona }}
+            canManage={canManage}
+            defaults={{
+              q,
+              estado: canManage ? estado : '',
+              estado_eclesial: canManage ? estado_eclesial : '',
+              provincia,
+              localidad,
+              modo,
+              ministerio_id: canManage ? ministerio_id : '',
+              organizacion_id,
+            }}
           />
 
           {/* Table — always rendered so ?persona=id deep-links work even with active filters */}
           <PersonasTable
             personas={personas}
-            canCreate={canCreate}
             canUpdate={canUpdate}
-            canExport={canExport}
+            canViewDetails={canManage}
+            canExport={canManage && canExport}
             exportSearch={exportSearch}
-            initialPersonaId={initialPersonaId}
+            initialPersonaId={canManage ? initialPersonaId : null}
             sortBy={sortBy}
             sortDir={sortDir}
             totalCount={totalCount}

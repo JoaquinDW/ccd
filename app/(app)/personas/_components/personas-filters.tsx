@@ -23,6 +23,7 @@ type Props = {
   ministerios: Ministerio[]
   organizaciones: Organizacion[]
   ubicaciones: Ubicacion[]
+  canManage: boolean
   defaults: {
     q: string
     estado: string
@@ -32,7 +33,6 @@ type Props = {
     modo: string
     ministerio_id: string
     organizacion_id: string
-    tipo_persona: string
   }
 }
 
@@ -40,7 +40,7 @@ const selectClass = "w-full rounded-md border border-border bg-background px-3 p
 // Iguala la altura y el padding de los <select> vecinos (el Button del Combobox es h-9 px-4).
 const comboboxClass = "h-[38px] border-border px-3 text-sm shadow-none"
 
-export default function PersonasFilters({ ministerios, organizaciones, ubicaciones, defaults }: Props) {
+export default function PersonasFilters({ ministerios, organizaciones, ubicaciones, canManage, defaults }: Props) {
   const router = useRouter()
   const formRef = useRef<HTMLFormElement>(null)
   const [provincia, setProvincia] = useState(defaults.provincia)
@@ -122,38 +122,37 @@ export default function PersonasFilters({ ministerios, organizaciones, ubicacion
 
       {/* Grid de filtros */}
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
-        <select name="tipo_persona" defaultValue={defaults.tipo_persona} className={selectClass}>
-          <option value="">Tipo de persona</option>
-          <option value="cecista">Cecista</option>
-          <option value="no_cecista">No cecista</option>
-          <option value="otro">Otro</option>
-        </select>
-
-        <select name="estado" defaultValue={defaults.estado} className={selectClass}>
-          <option value="">Todos los estados</option>
-          <option value="activo">Activo</option>
-          <option value="inactivo">Inactivo</option>
-        </select>
+        {canManage && (
+          <select name="estado" defaultValue={defaults.estado} className={selectClass}>
+            <option value="">Todos los estados</option>
+            <option value="activo">Activo</option>
+            <option value="inactivo">Inactivo</option>
+          </select>
+        )}
 
         <select name="modo" defaultValue={defaults.modo} className={selectClass}>
           <option value="">Modo de participación</option>
+          <option value="convivente">Convivente</option>
           <option value="colaborador">Colaborador</option>
           <option value="servidor">Servidor</option>
           <option value="asesor">Asesor</option>
           <option value="familiar">Familiar</option>
           <option value="orante">Orante</option>
           <option value="intercesor">Intercesor</option>
+          <option value="otro">Otro</option>
         </select>
 
-        <select name="estado_eclesial" defaultValue={defaults.estado_eclesial} className={selectClass}>
-          <option value="">Estado eclesiástico</option>
-          <option value="laico">Laico</option>
-          <option value="religioso">Religioso/a</option>
-          <option value="diacono">Diácono</option>
-          <option value="sacerdote">Sacerdote</option>
-          <option value="obispo">Obispo</option>
-          <option value="cardenal">Cardenal</option>
-        </select>
+        {canManage && (
+          <select name="estado_eclesial" defaultValue={defaults.estado_eclesial} className={selectClass}>
+            <option value="">Estado eclesiástico</option>
+            <option value="laico">Laico</option>
+            <option value="religioso">Religioso/a</option>
+            <option value="diacono">Diácono</option>
+            <option value="sacerdote">Sacerdote</option>
+            <option value="obispo">Obispo</option>
+            <option value="cardenal">Cardenal</option>
+          </select>
+        )}
 
         <div>
           <input type="hidden" name="provincia" value={provincia} />
@@ -192,7 +191,7 @@ export default function PersonasFilters({ ministerios, organizaciones, ubicacion
           </select>
         )}
 
-        {ministerios.length > 0 && (
+        {canManage && ministerios.length > 0 && (
           <select name="ministerio_id" defaultValue={defaults.ministerio_id} className={selectClass}>
             <option value="">Rol asignado</option>
             {ministerios.map((m) => (

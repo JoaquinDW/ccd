@@ -22,15 +22,18 @@ type Persona = {
   apellido: string
   email: string | null
   telefono: string | null
-  localidad: string | null
-  estado: string | null
-  estado_eclesial: string | null
+  localidad?: string | null
+  estado?: string | null
+  estado_eclesial?: string | null
+  confraternidad: string | null
+  fraternidad: string | null
+  modo_participacion: string | null
 }
 
 type Props = {
   personas: Persona[]
-  canCreate: boolean
   canUpdate: boolean
+  canViewDetails: boolean
   canExport: boolean
   exportSearch: string
   initialPersonaId: string | null
@@ -41,8 +44,8 @@ type Props = {
 
 export default function PersonasTable({
   personas,
-  canCreate,
   canUpdate,
+  canViewDetails,
   canExport,
   exportSearch,
   initialPersonaId,
@@ -64,6 +67,17 @@ export default function PersonasTable({
   const hoveredPersona = hoveredId ? personas.find((p) => p.id === hoveredId) : null
   const [hoverActive, setHoverActive] = useState<string | null>(null)
   const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const modoLabels: Record<string, string> = {
+    convivente: "Convivente",
+    colaborador: "Colaborador",
+    servidor: "Servidor",
+    asesor: "Asesor",
+    familiar: "Familiar",
+    orante: "Orante",
+    intercesor: "Intercesor",
+    otro: "Otro",
+  }
 
   function handleHoverEnter(id: string) {
     if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current)
@@ -198,12 +212,14 @@ export default function PersonasTable({
 
   return (
     <>
-      <style>{`
-        @keyframes hover-progress {
-          from { stroke-dashoffset: 37.7; }
-          to   { stroke-dashoffset: 0; }
-        }
-      `}</style>
+      {canViewDetails && (
+        <style>{`
+          @keyframes hover-progress {
+            from { stroke-dashoffset: 37.7; }
+            to   { stroke-dashoffset: 0; }
+          }
+        `}</style>
+      )}
       {personas.length > 0 && (
         <>
           <div className="flex items-center justify-between mb-2">
@@ -219,10 +235,20 @@ export default function PersonasTable({
                   <SortableHeader column="apellido" label="Nombre" currentSort={sortBy} currentDir={sortDir} />
                   <SortableHeader column="email" label="Email" currentSort={sortBy} currentDir={sortDir} />
                   <th className="text-left py-3 px-4 font-semibold text-foreground">Teléfono</th>
-                  <SortableHeader column="localidad" label="Localidad" currentSort={sortBy} currentDir={sortDir} />
-                  <SortableHeader column="estado_eclesial" label="Estado ecl." currentSort={sortBy} currentDir={sortDir} />
-                  <SortableHeader column="estado" label="Estado" currentSort={sortBy} currentDir={sortDir} />
-                  <th className="text-center py-3 px-4 font-semibold text-foreground">Acciones</th>
+                  {canViewDetails ? (
+                    <>
+                      <SortableHeader column="localidad" label="Localidad" currentSort={sortBy} currentDir={sortDir} />
+                      <SortableHeader column="estado_eclesial" label="Estado ecl." currentSort={sortBy} currentDir={sortDir} />
+                      <SortableHeader column="estado" label="Estado" currentSort={sortBy} currentDir={sortDir} />
+                      <th className="text-center py-3 px-4 font-semibold text-foreground">Acciones</th>
+                    </>
+                  ) : (
+                    <>
+                      <th className="text-left py-3 px-4 font-semibold text-foreground">Confraternidad</th>
+                      <th className="text-left py-3 px-4 font-semibold text-foreground">Fraternidad</th>
+                      <th className="text-left py-3 px-4 font-semibold text-foreground">Modo de participación</th>
+                    </>
+                  )}
                 </tr>
               </thead>
               <tbody>
@@ -233,17 +259,23 @@ export default function PersonasTable({
                   >
                     <td
                       className="py-3 px-4 font-medium"
-                      onMouseEnter={() => handleHoverEnter(persona.id)}
-                      onMouseLeave={handleHoverLeave}
+                      onMouseEnter={canViewDetails ? () => handleHoverEnter(persona.id) : undefined}
+                      onMouseLeave={canViewDetails ? handleHoverLeave : undefined}
                     >
                       <div className="flex items-center gap-2">
-                        <Link
-                          href={`/personas/${persona.id}`}
-                          className="text-foreground hover:text-primary hover:underline"
-                        >
-                          {persona.apellido}, {persona.nombre}
-                        </Link>
-                        {hoverActive === persona.id && (
+                        {canViewDetails ? (
+                          <Link
+                            href={`/personas/${persona.id}`}
+                            className="text-foreground hover:text-primary hover:underline"
+                          >
+                            {persona.apellido}, {persona.nombre}
+                          </Link>
+                        ) : (
+                          <span className="text-foreground">
+                            {persona.apellido}, {persona.nombre}
+                          </span>
+                        )}
+                        {canViewDetails && hoverActive === persona.id && (
                           <svg className="h-4 w-4 text-primary shrink-0" viewBox="0 0 16 16" fill="none">
                             <circle cx="8" cy="8" r="6" stroke="currentColor" strokeOpacity="0.2" strokeWidth="2" />
                             <circle
@@ -268,48 +300,66 @@ export default function PersonasTable({
                     <td className="py-3 px-4 text-muted-foreground">
                       {persona.telefono ?? "—"}
                     </td>
-                    <td className="py-3 px-4 text-muted-foreground">
-                      {persona.localidad ?? "—"}
-                    </td>
-                    <td className="py-3 px-4 text-muted-foreground capitalize">
-                      {persona.estado_eclesial ?? "laico"}
-                    </td>
-                    <td className="py-3 px-4">
-                      <span
-                        className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-                          persona.estado === "activo"
-                            ? "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400"
-                            : "bg-muted text-muted-foreground"
-                        }`}
-                      >
-                        {persona.estado}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4">
-                      <div className="flex items-center justify-center gap-1">
-                        <Link href={`/personas/${persona.id}`} title="Ver detalle">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-8 w-8 p-0"
+                    {canViewDetails ? (
+                      <>
+                        <td className="py-3 px-4 text-muted-foreground">
+                          {persona.localidad ?? "—"}
+                        </td>
+                        <td className="py-3 px-4 text-muted-foreground capitalize">
+                          {persona.estado_eclesial ?? "laico"}
+                        </td>
+                        <td className="py-3 px-4">
+                          <span
+                            className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                              persona.estado === "activo"
+                                ? "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400"
+                                : "bg-muted text-muted-foreground"
+                            }`}
                           >
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                        </Link>
-                        {canUpdate && (
-                          <Link href={`/personas/${persona.id}/editar`}>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-8 w-8 p-0"
-                              title="Editar"
-                            >
-                              <Edit2 className="h-4 w-4" />
-                            </Button>
-                          </Link>
-                        )}
-                      </div>
-                    </td>
+                            {persona.estado}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4">
+                          <div className="flex items-center justify-center gap-1">
+                            <Link href={`/personas/${persona.id}`} title="Ver detalle">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-8 w-8 p-0"
+                              >
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                            </Link>
+                            {canUpdate && (
+                              <Link href={`/personas/${persona.id}/editar`}>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-8 w-8 p-0"
+                                  title="Editar"
+                                >
+                                  <Edit2 className="h-4 w-4" />
+                                </Button>
+                              </Link>
+                            )}
+                          </div>
+                        </td>
+                      </>
+                    ) : (
+                      <>
+                        <td className="py-3 px-4 text-muted-foreground">
+                          {persona.confraternidad ?? "—"}
+                        </td>
+                        <td className="py-3 px-4 text-muted-foreground">
+                          {persona.fraternidad ?? "—"}
+                        </td>
+                        <td className="py-3 px-4 text-muted-foreground">
+                          {persona.modo_participacion
+                            ? modoLabels[persona.modo_participacion] ?? persona.modo_participacion
+                            : "—"}
+                        </td>
+                      </>
+                    )}
                   </tr>
                 ))}
               </tbody>
@@ -319,7 +369,7 @@ export default function PersonasTable({
       )}
 
       {/* Hover preview modal */}
-      <Dialog open={!!hoveredId} onOpenChange={(open) => { if (!open) setHoveredId(null) }}>
+      {canViewDetails && <Dialog open={!!hoveredId} onOpenChange={(open) => { if (!open) setHoveredId(null) }}>
         <DialogContent
           className="sm:max-w-2xl max-h-[80vh] overflow-y-auto"
         >
@@ -345,10 +395,10 @@ export default function PersonasTable({
           )}
           {hoveredId && <PersonaDetailModal personaId={hoveredId} />}
         </DialogContent>
-      </Dialog>
+      </Dialog>}
 
       {/* Deep-link modal (?persona=UUID) */}
-      <Dialog
+      {canViewDetails && <Dialog
         open={!!selectedId}
         onOpenChange={(open) => {
           if (!open) handleClose()
@@ -414,7 +464,7 @@ export default function PersonasTable({
             {selectedId && <PersonaDetailModal personaId={selectedId} />}
           </div>
         </DialogContent>
-      </Dialog>
+      </Dialog>}
     </>
   )
 }
