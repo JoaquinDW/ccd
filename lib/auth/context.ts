@@ -17,6 +17,12 @@ export type UserRole = {
   organizacion_id: string | null
 }
 
+export type UserMinistry = {
+  nombre: string
+  nivel_acceso: number
+  organizacion_id: string | null
+}
+
 export type UserContext = {
   auth_user_id: string
   persona_id: string | null
@@ -32,6 +38,8 @@ export type UserContext = {
   db_permissions: string[]
   /** Nombre del ministerio institucional principal del usuario (si tiene asignación activa). */
   ministerio_nombre: string | null
+  /** Ministerios/roles activos, disponibles para mostrar todas las asignaciones del usuario. */
+  ministerios: UserMinistry[]
 }
 
 /**
@@ -108,7 +116,7 @@ export async function getUserContext(): Promise<UserContext | null> {
   let ministerioNivelMax = 0
   let ministerioIsAdmin = false
   let ministerioOrgIds: string[] = []
-  let ministerioNombre: string | null = null
+  const ministerios: UserMinistry[] = []
 
   const persona_id = perfil?.persona_id ?? null
   if (persona_id) {
@@ -129,8 +137,14 @@ export async function getUserContext(): Promise<UserContext | null> {
     for (const a of asignaciones ?? []) {
       const min = a.ministerio as any
       if (!min) continue
-      if (!ministerioNombre && min.nombre) ministerioNombre = min.nombre
       const nivelAcceso = min.nivel_acceso ?? 0
+      if (min.nombre) {
+        ministerios.push({
+          nombre: min.nombre,
+          nivel_acceso: nivelAcceso,
+          organizacion_id: a.organizacion_id ?? null,
+        })
+      }
       ministerioNivelMax = Math.max(ministerioNivelMax, nivelAcceso)
       if (nivelAcceso >= 100) ministerioIsAdmin = true
       if (a.organizacion_id) ministerioOrgIds.push(a.organizacion_id as string)
@@ -163,6 +177,12 @@ export async function getUserContext(): Promise<UserContext | null> {
   const merged_is_admin = is_admin || ministerioIsAdmin
   const merged_org_ids = [...new Set([...org_ids, ...ministerioOrgIds])]
   const db_permissions = [...new Set([...legacyPermissions, ...ministerioPermissions])]
+  const ministeriosOrdenados = ministerios.sort(
+    (a, b) =>
+      b.nivel_acceso - a.nivel_acceso ||
+      Number(a.nombre === 'Cecista') - Number(b.nombre === 'Cecista') ||
+      a.nombre.localeCompare(b.nombre, 'es'),
+  )
 
   return {
     auth_user_id: user.id,
@@ -172,7 +192,7 @@ export async function getUserContext(): Promise<UserContext | null> {
     is_admin: merged_is_admin,
     nivel_max: merged_nivel_max,
     db_permissions,
-    ministerio_nombre: ministerioNombre,
+    ministerio_nombre: ministeriosOrdenados[0]?.nombre ?? null,
+    ministerios: ministeriosOrdenados,
   }
 }
-
