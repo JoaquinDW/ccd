@@ -6,6 +6,7 @@ const TIPO_PERSONA_LABELS: Record<string, string> = {
   interesado: 'Interesado/a',
   inscripto: 'Inscripto/a',
   convivente: 'Convivente',
+  no_cecista: 'Convivente',
   cecista: 'Cecista',
   otro: 'Otro',
 }
@@ -17,7 +18,11 @@ function tipoPersonaLabel(tipo: string | null | undefined): string {
 export async function GET(req: NextRequest) {
   const ctx = await getUserContext()
   if (!ctx) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
-  if (!canPerform(ctx, 'personas.export')) {
+  if (
+    !canPerform(ctx, 'personas.export') ||
+    !canPerform(ctx, 'person.create') ||
+    !canPerform(ctx, 'person.update')
+  ) {
     return NextResponse.json({ error: 'Sin permiso para exportar personas' }, { status: 403 })
   }
 
@@ -34,7 +39,7 @@ export async function GET(req: NextRequest) {
 
   // Relational filters: get matching persona ids
   let modoIds: string[] | null = null
-  if (modo) {
+  if (modo && modo !== 'convivente' && modo !== 'otro') {
     const { data } = await supabase
       .from('persona_modos')
       .select('persona_id')
@@ -84,6 +89,8 @@ export async function GET(req: NextRequest) {
   if (estado_eclesial) query = query.eq('estado_eclesial', estado_eclesial)
   if (provincia) query = query.ilike('provincia', provincia)
   if (localidad) query = query.ilike('localidad', localidad)
+  if (modo === 'convivente') query = query.in('tipo_persona', ['convivente', 'no_cecista'])
+  if (modo === 'otro') query = query.eq('tipo_persona', 'otro')
   if (filterIds !== null) query = query.in('id', filterIds)
 
   const { data: personas, error } = await query
@@ -150,7 +157,11 @@ export async function GET(req: NextRequest) {
     'Socio asociación': p.socio_asociacion ? 'Sí' : 'No',
     'Referente comunidad': p.referente_comunidad ? 'Sí' : 'No',
     'Cecista dedicado': p.cecista_dedicado ? 'Sí' : 'No',
-    'Modo actual': modoByPersona[p.id] ?? '',
+    'Modo actual': p.tipo_persona === 'otro'
+      ? 'otro'
+      : p.tipo_persona === 'convivente' || p.tipo_persona === 'no_cecista'
+        ? 'convivente'
+        : modoByPersona[p.id] ?? '',
     'Ministerio actual': ministerioByPersona[p.id] ?? '',
   }))
 

@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic"
 
 import Link from "next/link"
-import { notFound } from "next/navigation"
+import { notFound, redirect } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ArrowLeft, Edit2, Paperclip } from "lucide-react"
@@ -29,6 +29,15 @@ const nivelEstudiosLabel: Record<string, string> = {
   terciario: "Terciario",
   universitario: "Universitario",
   posgrado_doctorado: "Posgrado / Doctorado",
+}
+
+const tipoPersonaLabel: Record<string, string> = {
+  cecista: "Cecista",
+  no_cecista: "No Cecista",
+  otro: "Otro",
+  interesado: "Interesado/a",
+  inscripto: "Inscripto/a",
+  convivente: "Convivente",
 }
 
 // Etiquetas de votos del cecista — deben coincidir con VOTO_TIPOS de settings/page.tsx
@@ -59,6 +68,14 @@ export default async function PersonaDetailPage({
 }) {
   const { id } = await params
   const [supabase, ctx] = await Promise.all([createClient(), getUserContext()])
+
+  if (
+    !ctx ||
+    !canPerform(ctx, "person.create") ||
+    !canPerform(ctx, "person.update")
+  ) {
+    redirect("/personas")
+  }
 
   const [
     { data: persona, error },
@@ -322,7 +339,7 @@ export default async function PersonaDetailPage({
               label="Categoría"
               value={
                 persona.tipo_persona
-                  ? ({ cecista: "Cecista", no_cecista: "No Cecista", otro: "Otro", interesado: "Interesado/a", inscripto: "Inscripto/a", convivente: "Convivente" }[persona.tipo_persona] ?? persona.tipo_persona)
+                  ? (tipoPersonaLabel[persona.tipo_persona] ?? persona.tipo_persona)
                   : null
               }
             />
