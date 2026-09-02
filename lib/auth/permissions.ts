@@ -16,6 +16,7 @@ export type Permission =
   | 'person.update'
   | 'person.delete'       // soft delete — solo admin
   | 'person.merge'        // fusión de duplicados — solo admin
+  | 'person.edit_socio_activo' // tildar "Socio Activo de la Asociación Civil" en el propio perfil — ministerios de conducción/tesorería
   | 'votos.edit'          // editar votos de Dedicados (Referente/Responsable) — global
   | 'votos.list'          // ver listado consolidado de votos (Animadores) — solo lectura
   | 'personas.export'      // exportar listado de personas a Excel / detalle a PDF
@@ -56,6 +57,7 @@ export const rolePermissions: Record<SystemRole, Permission[]> = {
     'person.update',
     'person.delete',
     'person.merge',
+    'person.edit_socio_activo',
     'votos.edit',
     'votos.list',
     'personas.export',

@@ -289,6 +289,9 @@ export default function SettingsPage() {
   const [editLoading, setEditLoading] = useState(false)
   const [editError, setEditError] = useState<string | null>(null)
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle')
+  // Solo Enlaces/Delegados/Responsables/Tesoreros/Timonel pueden tildar
+  // "Socio Activo" — ver app/api/personas/me/socio-activo/route.ts
+  const [canEditSocioActivo, setCanEditSocioActivo] = useState(false)
 
   // Acompañamiento (histórico — ver persona_acompanamiento)
   const [currentAcomp, setCurrentAcomp] = useState<AcompanamientoActual | null>(null)
@@ -418,6 +421,11 @@ export default function SettingsPage() {
           socio_asociacion: data.socio_asociacion ?? false,
           modo_participacion_ingreso: data.modo_participacion_ingreso ?? '',
         })
+
+        fetch('/api/personas/me/socio-activo')
+          .then(res => res.json())
+          .then(json => setCanEditSocioActivo(!!json.canEdit))
+          .catch(() => setCanEditSocioActivo(false))
 
         const { data: acompData } = await supabase
           .from('persona_acompanamiento')
@@ -633,7 +641,9 @@ export default function SettingsPage() {
           anio_ingreso: editForm.anio_ingreso ? Number(editForm.anio_ingreso) : null,
           anio_ultimo_cambio_modo: editForm.anio_ultimo_cambio_modo ? Number(editForm.anio_ultimo_cambio_modo) : null,
           notas: editForm.notas || null,
-          socio_asociacion: modoActual === 'servidor' ? editForm.socio_asociacion : false,
+          // socio_asociacion NO se guarda acá: tiene su propio endpoint con
+          // chequeo de permiso server-side (ver toggleSocioActivo más abajo,
+          // y app/api/personas/me/socio-activo/route.ts).
           modo_participacion_ingreso: editForm.modo_participacion_ingreso || null,
         })
         .eq('id', persona.id)
@@ -655,6 +665,26 @@ export default function SettingsPage() {
   function handleSaveProfile(e: React.SyntheticEvent<HTMLFormElement>) {
     e.preventDefault()
     void saveProfile(true)
+  }
+
+  // "Socio Activo" tiene su propio endpoint (permiso restringido a ministerios
+  // de conducción/tesorería) en vez del guardado masivo de saveProfile.
+  async function toggleSocioActivo(checked: boolean) {
+    if (!canEditSocioActivo) return
+    setEditForm(prev => ({ ...prev, socio_asociacion: checked }))
+    await runSave(async () => {
+      const res = await fetch('/api/personas/me/socio-activo', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ socio_asociacion: checked }),
+      })
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        setEditForm(prev => ({ ...prev, socio_asociacion: !checked }))
+        return { error: { message: body.error ?? 'No se pudo guardar' } }
+      }
+      return { error: null }
+    })
   }
 
   function field(key: keyof EditForm, value: string) {
@@ -1050,18 +1080,25 @@ export default function SettingsPage() {
                 </CardContent>
 
                 {/* Subsección editable — la completa el propio cecista */}
-                {modoActual === 'servidor' && (
+                {(modoActual === 'servidor' || modoActual === 'familiar') && (
                   <CardContent className="grid gap-4 border-t border-border pt-6 md:grid-cols-2">
-                    <div className="flex items-center gap-3 md:col-span-2">
-                      <input
-                        id="p-socio-activo"
-                        type="checkbox"
-                        checked={editForm.socio_asociacion}
-                        onChange={e => setEditForm(prev => ({ ...prev, socio_asociacion: e.target.checked }))}
-                        disabled={editLoading}
-                        className="h-4 w-4 rounded border-border"
-                      />
-                      <Label htmlFor="p-socio-activo">Socio Activo de la Asociación Civil</Label>
+                    <div className="md:col-span-2 space-y-1">
+                      <div className="flex items-center gap-3">
+                        <input
+                          id="p-socio-activo"
+                          type="checkbox"
+                          checked={editForm.socio_asociacion}
+                          onChange={e => toggleSocioActivo(e.target.checked)}
+                          disabled={editLoading || !canEditSocioActivo}
+                          className="h-4 w-4 rounded border-border"
+                        />
+                        <Label htmlFor="p-socio-activo">Socio Activo de la Asociación Civil</Label>
+                      </div>
+                      {!canEditSocioActivo && (
+                        <p className="text-xs text-muted-foreground">
+                          Solo lo pueden modificar Enlaces de Fraternidad, Delegados, Responsables de Confraternidad, Tesoreros y Equipo Timón.
+                        </p>
+                      )}
                     </div>
                   </CardContent>
                 )}
