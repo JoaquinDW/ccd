@@ -630,94 +630,118 @@ export default async function DashboardPage() {
 
       {/* Stats Grid */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card className="border-border bg-card hover:border-primary/50 transition-colors">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-foreground">
-              {primaryOrgId ? "Cecistas" : "Personas"}
-            </CardTitle>
-            <Users className="h-4 w-4 text-primary" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-foreground">
-              {totalPersonas}
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              {primaryOrgId
-                ? "En tu Confraternidad / Fraternidad"
-                : "Registradas en el sistema"}
-            </p>
-          </CardContent>
-        </Card>
-
-        {canPerform(ctx, "view.all") && (
-          <Card className="border-border bg-card hover:border-primary/50 transition-colors">
+        <Link
+          href="/personas"
+          aria-label="Ver lista de personas"
+          className="group block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+        >
+          <Card className="h-full cursor-pointer border-border bg-card transition-all group-hover:border-primary/50 group-hover:shadow-sm">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium text-foreground">
-                Confraternidades & Fraternidades
+                {primaryOrgId ? "Cecistas" : "Personas"}
               </CardTitle>
-              <Building2 className="h-4 w-4 text-primary" />
+              <Users className="h-4 w-4 text-primary" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-foreground">
-                {totalConfraternidades + totalFraternidades}
+                {totalPersonas}
               </div>
-              {ctx.is_admin ? (
-                <div className="flex gap-3 mt-1">
-                  <p className="text-xs text-muted-foreground">
-                    <span className="font-medium text-foreground">
-                      {totalConfraternidades}
-                    </span>{" "}
-                    confra
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    <span className="font-medium text-foreground">
-                      {totalFraternidades}
-                    </span>{" "}
-                    frat
-                  </p>
-                </div>
-              ) : (
-                <p className="text-xs text-muted-foreground mt-1">
-                  Asignadas a tu perfil
-                </p>
-              )}
+              <p className="text-xs text-muted-foreground mt-1">
+                {primaryOrgId
+                  ? "En tu Confraternidad / Fraternidad"
+                  : "Registradas en el sistema"}
+              </p>
             </CardContent>
           </Card>
+        </Link>
+
+        {canPerform(ctx, "view.all") && (
+          <Link
+            href="/organizaciones"
+            aria-label="Ver lista de confraternidades y fraternidades"
+            className="group block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+          >
+            <Card className="h-full cursor-pointer border-border bg-card transition-all group-hover:border-primary/50 group-hover:shadow-sm">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium text-foreground">
+                  Confraternidades & Fraternidades
+                </CardTitle>
+                <Building2 className="h-4 w-4 text-primary" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-foreground">
+                  {totalConfraternidades + totalFraternidades}
+                </div>
+                {ctx.is_admin ? (
+                  <div className="flex gap-3 mt-1">
+                    <p className="text-xs text-muted-foreground">
+                      <span className="font-medium text-foreground">
+                        {totalConfraternidades}
+                      </span>{" "}
+                      confra
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      <span className="font-medium text-foreground">
+                        {totalFraternidades}
+                      </span>{" "}
+                      frat
+                    </p>
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Asignadas a tu perfil
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          </Link>
         )}
 
-        <Card className="border-border bg-card hover:border-primary/50 transition-colors">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-foreground">
-              Eventos
-            </CardTitle>
-            <Calendar className="h-4 w-4 text-primary" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-foreground">
-              {totalEventos}
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Aprobados o publicados
-            </p>
-          </CardContent>
-        </Card>
+        <Link
+          href="/eventos"
+          aria-label="Ver lista de eventos"
+          className="group block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+        >
+          <Card className="h-full cursor-pointer border-border bg-card transition-all group-hover:border-primary/50 group-hover:shadow-sm">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-foreground">
+                Eventos
+              </CardTitle>
+              <Calendar className="h-4 w-4 text-primary" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-foreground">
+                {totalEventos}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Aprobados o publicados
+              </p>
+            </CardContent>
+          </Card>
+        </Link>
 
-        <Card className="border-border bg-card hover:border-primary/50 transition-colors">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-foreground">
-              Próximos
-            </CardTitle>
-            <TrendingUp className="h-4 w-4 text-primary" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-foreground">
-              {proximosCount}
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              En los próximos 30 días
-            </p>
-          </CardContent>
-        </Card>
+        <Link
+          href={`/eventos?fecha_desde=${today}&fecha_hasta=${in30}`}
+          aria-label="Ver eventos de los próximos 30 días"
+          className="group block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+        >
+          <Card className="h-full cursor-pointer border-border bg-card transition-all group-hover:border-primary/50 group-hover:shadow-sm">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-foreground">
+                Próximos
+              </CardTitle>
+              <TrendingUp className="h-4 w-4 text-primary" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-foreground">
+                {proximosCount}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                En los próximos 30 días
+              </p>
+            </CardContent>
+          </Card>
+        </Link>
 
         {canApprove && (
           <Card className="bg-card hover:border-amber-500/50 transition-colors border-amber-200 dark:border-amber-900">
