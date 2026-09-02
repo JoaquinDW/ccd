@@ -27,7 +27,7 @@ import {
   FileText,
   TrendingUp,
   ArrowRight,
-  Clock,
+  Globe,
   AlertCircle,
   AlertTriangle,
 } from "lucide-react"
@@ -149,7 +149,7 @@ export default async function DashboardPage() {
     fraternidadesCountResult,
     eventosCountResult,
     proximosCountResult,
-    proximosEventosResult,
+    publishedEventsResult,
     misEventosResult,
     discernimientoContraResult,
     discernimientoEqtResult,
@@ -207,7 +207,7 @@ export default async function DashboardPage() {
       return q
     })(),
 
-    // 5. Próximos eventos publicados. El mismo permiso protege la página
+    // 5. Eventos publicados. El mismo permiso protege la página
     // /eventos/publicados y determina si este resumen existe en el dashboard.
     canViewPublishedEvents
       ? supabase
@@ -216,9 +216,8 @@ export default async function DashboardPage() {
             "id, nombre, tipo, estado, fecha_inicio, organizacion:organizaciones!organizacion_id(nombre)",
           )
           .eq("estado", "publicado")
-          .gte("fecha_inicio", today)
           .order("fecha_inicio", { ascending: true })
-          .limit(5)
+          .limit(3)
       : Promise.resolve({ data: null, error: null }),
 
     // 8. Mis eventos solicitados (eventos en tránsito que yo solicité)
@@ -503,7 +502,7 @@ export default async function DashboardPage() {
     pagosPendientes = visibles.slice(0, 5)
   }
 
-  const proximosEventos = (proximosEventosResult as any).data as any[] | null
+  const publishedEvents = (publishedEventsResult as any).data as any[] | null
   const misEventos = (misEventosResult as any).data as any[] | null
   const discernimientoConfra = (discernimientoContraResult as any).data as
     | any[]
@@ -1574,26 +1573,26 @@ export default async function DashboardPage() {
           </Card>
         )}
 
-      {/* Próximos eventos publicados */}
+      {/* Eventos publicados */}
       {canViewPublishedEvents && (
         <Card className="border-border bg-card">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-foreground">
-              <Clock className="h-5 w-5 text-primary" />
-              Próximos eventos publicados
+              <Globe className="h-5 w-5 text-primary" />
+              Eventos publicados
             </CardTitle>
             <CardDescription>
-              Eventos publicados y disponibles para la comunidad
+              Disponibles para toda la comunidad
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {!proximosEventos || proximosEventos.length === 0 ? (
+            {!publishedEvents || publishedEvents.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-4">
-                No hay eventos publicados próximamente
+                No hay eventos publicados actualmente
               </p>
             ) : (
               <div className="space-y-3">
-                {proximosEventos.map((evento: any) => (
+                {publishedEvents.map((evento: any) => (
                   <Link
                     key={evento.id}
                     href={`/eventos/${evento.id}`}
