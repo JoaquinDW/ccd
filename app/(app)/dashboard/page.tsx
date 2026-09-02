@@ -14,6 +14,11 @@ import {
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
+import {
   Users,
   User,
   Building2,
@@ -511,12 +516,36 @@ export default async function DashboardPage() {
   const pendienteDatosNoticias = (pendienteDatosNoticiasResult as any).data as any[] | null
   const pendienteAprobacionFinal = (pendienteAprobacionFinalResult as any).data as any[] | null
 
-  const primaryRole = ctx.roles[0]?.rol ?? null
-  const roleName =
-    ctx.ministerio_nombre ??
-    (primaryRole && primaryRole !== "solo_lectura"
-      ? (ROLE_LABELS[primaryRole] ?? primaryRole)
-      : null)
+  const rolesByName = new Map<string, { name: string; accessLevel: number }>()
+  const addRole = (name: string, accessLevel: number) => {
+    const displayName = ROLE_LABELS[name] ?? name
+    const key = displayName.trim().toLocaleLowerCase("es")
+    const current = rolesByName.get(key)
+    if (!current || accessLevel > current.accessLevel) {
+      rolesByName.set(key, { name: displayName, accessLevel })
+    }
+  }
+
+  if (ctx.ministerios.length > 0) {
+    for (const ministerio of ctx.ministerios) {
+      addRole(ministerio.nombre, ministerio.nivel_acceso)
+    }
+  } else {
+    // Compatibilidad para cuentas que todavía no fueron migradas al modelo
+    // unificado de asignaciones_ministerio.
+    for (const role of ctx.roles) {
+      addRole(role.rol, role.nivel_acceso)
+    }
+  }
+
+  const displayRoles = [...rolesByName.values()].sort(
+    (a, b) =>
+      b.accessLevel - a.accessLevel ||
+      Number(a.name === "Cecista") - Number(b.name === "Cecista") ||
+      a.name.localeCompare(b.name, "es"),
+  )
+  const primaryRole = displayRoles[0] ?? null
+  const otherRoles = displayRoles.slice(1)
 
   return (
     <div className="space-y-8">
@@ -531,10 +560,40 @@ export default async function DashboardPage() {
           </p>
         </div>
         <div className="flex flex-col items-end gap-2 mt-1">
-          {roleName && (
-            <Badge variant="secondary" className="text-sm">
-              {roleName}
-            </Badge>
+          {primaryRole && (
+            <div className="flex items-center gap-1.5">
+              <Badge variant="secondary" className="text-sm">
+                {primaryRole.name}
+              </Badge>
+              {otherRoles.length > 0 && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      className="rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                      aria-label={`${otherRoles.length} ${otherRoles.length === 1 ? "rol adicional" : "roles adicionales"}: ${otherRoles.map((role) => role.name).join(", ")}`}
+                    >
+                      <Badge
+                        variant="outline"
+                        className="cursor-help text-xs text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
+                      >
+                        +{otherRoles.length}
+                      </Badge>
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" align="end" className="max-w-72 py-2.5">
+                    <p className="mb-1.5 font-semibold">
+                      {otherRoles.length === 1 ? "Otro rol" : "Otros roles"}
+                    </p>
+                    <ul className="space-y-1">
+                      {otherRoles.map((role) => (
+                        <li key={role.name}>{role.name}</li>
+                      ))}
+                    </ul>
+                  </TooltipContent>
+                </Tooltip>
+              )}
+            </div>
           )}
           {hasPersonaId && (
             <Link href="/settings?tab=perfil">
