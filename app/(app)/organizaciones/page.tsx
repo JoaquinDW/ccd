@@ -54,29 +54,40 @@ export default async function OrganizacionesPage({
 
   const canCreate = ctx ? canPerform(ctx, "organization.create") : false
   const canExport = ctx ? canPerform(ctx, "organizaciones.export") : false
+  const canManage = ctx ? canPerform(ctx, "organization.update") : false
   // canUpdate se evalúa por org en la tabla (ver uso abajo)
   const canUpdateOrg = (orgId: string) =>
     ctx ? canPerform(ctx, "organization.update", orgId) : false
   const supabase = await createClient()
 
-  const SORTABLE_ORGS = ["nombre", "tipo", "localidad", "estado"]
-  const sortCol = sortBy && SORTABLE_ORGS.includes(sortBy) ? sortBy : "nombre"
-  const sortAsc = sortBy ? sortDir === "asc" : true
+  const SORTABLE_ORGS = canManage
+    ? ["nombre", "tipo", "localidad", "estado"]
+    : ["nombre"]
+  const sortCol =
+    canManage && sortBy && SORTABLE_ORGS.includes(sortBy) ? sortBy : "nombre"
+  const sortAsc = canManage && sortBy ? sortDir === "asc" : true
 
   let query = supabase
     .from("organizaciones")
     .select(
-      "id, codigo, nombre, tipo, localidad, provincia, estado, parent:organizaciones!parent_id(nombre)",
+      "id, codigo, nombre, tipo, localidad, provincia, estado, parent_id",
       { count: "exact" },
     )
     .is("fecha_baja", null)
     .order(sortCol, { ascending: sortAsc })
 
-  if (q) query = query.ilike("nombre", `%${q}%`)
-  if (tipo) query = query.eq("tipo", tipo)
-  if (estado) query = query.eq("estado", estado)
-  if (provincia) query = query.ilike("provincia", `%${provincia}%`)
-  if (localidad) query = query.ilike("localidad", `%${localidad}%`)
+  if (canManage) {
+    if (q) query = query.ilike("nombre", `%${q}%`)
+    if (tipo) query = query.eq("tipo", tipo)
+    if (estado) query = query.eq("estado", estado)
+    if (provincia) query = query.ilike("provincia", `%${provincia}%`)
+    if (localidad) query = query.ilike("localidad", `%${localidad}%`)
+  } else {
+    // Vista restringida: solo confraternidades (incluye el nodo agrupador
+    // "Fraternidades Dependientes del Equipo Timón", que también es tipo='confraternidad')
+    query = query.eq("tipo", "confraternidad")
+    if (q) query = query.ilike("nombre", `%${q}%`)
+  }
 
   const from = (pageNum - 1) * PAGE_SIZE
   const to = from + PAGE_SIZE - 1
@@ -84,6 +95,28 @@ export default async function OrganizacionesPage({
 
   const total = count ?? 0
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
+
+  // Nota: no se usa el embed `organizaciones!parent_id(...)` porque, al ser
+  // organizaciones auto-referenciada, PostgREST resuelve el hint de forma
+  // ambigua y trae la relación inversa (hijos) en vez del padre. Se busca
+  // aparte, en lote, solo para las orgs de esta página.
+  const parentNames: Record<string, string> = {}
+  if (canManage) {
+    const parentIds = [
+      ...new Set(
+        (organizaciones ?? [])
+          .map((o: any) => o.parent_id)
+          .filter((id: string | null): id is string => !!id),
+      ),
+    ]
+    if (parentIds.length > 0) {
+      const { data: parents } = await supabase
+        .from("organizaciones")
+        .select("id, nombre")
+        .in("id", parentIds)
+      for (const p of parents ?? []) parentNames[p.id] = p.nombre
+    }
+  }
 
   // Build a URL for a given page preserving current filters/sort
   const buildPageHref = (target: number) => {
@@ -109,7 +142,9 @@ export default async function OrganizacionesPage({
     otra: "Otra",
   }
 
-  const hasFilters = !!(q || tipo || estado || provincia || localidad)
+  const hasFilters = canManage
+    ? !!(q || tipo || estado || provincia || localidad)
+    : !!q
 
   const exportParams = new URLSearchParams()
   if (q) exportParams.set("q", q)
@@ -128,7 +163,9 @@ export default async function OrganizacionesPage({
           Comunidad Convivencia con Dios
         </h1>
         <p className="mt-2 text-muted-foreground">
-          Administra las confraternidades, fraternidades y su jerarquía
+          {canManage
+            ? "Administra las confraternidades, fraternidades y su jerarquía"
+            : "Consultá las confraternidades y su jerarquía"}
         </p>
       </div>
 
@@ -136,10 +173,14 @@ export default async function OrganizacionesPage({
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
             <CardTitle className="text-foreground">
-              Confraternidades y Fraternidades de Comunidad Convivencia con Dios
+              {canManage
+                ? "Confraternidades y Fraternidades de Comunidad Convivencia con Dios"
+                : "Confraternidades de Comunidad Convivencia con Dios"}
             </CardTitle>
             <CardDescription>
-              Lista completa de confraternidades y fraternidades en el sistema
+              {canManage
+                ? "Lista completa de confraternidades y fraternidades en el sistema"
+                : "Listado de confraternidades"}
             </CardDescription>
           </div>
           {canCreate && (
@@ -177,41 +218,45 @@ export default async function OrganizacionesPage({
               </svg>
             </div>
 
-            <select
-              name="tipo"
-              defaultValue={tipo}
-              className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
-            >
-              <option value="">Todos los tipos</option>
-              <option value="comunidad">Comunidad</option>
-              <option value="confraternidad">Confraternidad</option>
-              <option value="fraternidad">Fraternidad</option>
-              <option value="otra">Otra</option>
-            </select>
+            {canManage && (
+              <>
+                <select
+                  name="tipo"
+                  defaultValue={tipo}
+                  className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+                >
+                  <option value="">Todos los tipos</option>
+                  <option value="comunidad">Comunidad</option>
+                  <option value="confraternidad">Confraternidad</option>
+                  <option value="fraternidad">Fraternidad</option>
+                  <option value="otra">Otra</option>
+                </select>
 
-            <select
-              name="estado"
-              defaultValue={estado}
-              className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
-            >
-              <option value="">Todos los estados</option>
-              <option value="activa">Activa</option>
-              <option value="inactiva">Inactiva</option>
-            </select>
+                <select
+                  name="estado"
+                  defaultValue={estado}
+                  className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+                >
+                  <option value="">Todos los estados</option>
+                  <option value="activa">Activa</option>
+                  <option value="inactiva">Inactiva</option>
+                </select>
 
-            <input
-              name="provincia"
-              defaultValue={provincia}
-              placeholder="Provincia..."
-              className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground w-32"
-            />
+                <input
+                  name="provincia"
+                  defaultValue={provincia}
+                  placeholder="Provincia..."
+                  className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground w-32"
+                />
 
-            <input
-              name="localidad"
-              defaultValue={localidad}
-              placeholder="Localidad..."
-              className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground w-32"
-            />
+                <input
+                  name="localidad"
+                  defaultValue={localidad}
+                  placeholder="Localidad..."
+                  className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground w-32"
+                />
+              </>
+            )}
 
             <button
               type="submit"
@@ -235,9 +280,13 @@ export default async function OrganizacionesPage({
             <>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">
-                  {total === 1
-                    ? "1 confraternidad / fraternidad"
-                    : `${total} confraternidades / fraternidades`}
+                  {canManage
+                    ? total === 1
+                      ? "1 confraternidad / fraternidad"
+                      : `${total} confraternidades / fraternidades`
+                    : total === 1
+                      ? "1 confraternidad"
+                      : `${total} confraternidades`}
                   {total > PAGE_SIZE && (
                     <>
                       {" · "}
@@ -251,36 +300,42 @@ export default async function OrganizacionesPage({
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-border">
-                      <th className="text-left py-3 px-4 font-semibold text-foreground">
-                        Código
-                      </th>
+                      {canManage && (
+                        <th className="text-left py-3 px-4 font-semibold text-foreground">
+                          Código
+                        </th>
+                      )}
                       <SortableHeader
                         column="nombre"
                         label="Nombre"
                         currentSort={sortBy}
                         currentDir={sortDir}
                       />
-                      <SortableHeader
-                        column="tipo"
-                        label="Tipo"
-                        currentSort={sortBy}
-                        currentDir={sortDir}
-                      />
-                      <th className="text-left py-3 px-4 font-semibold text-foreground">
-                        Relación
-                      </th>
-                      <SortableHeader
-                        column="localidad"
-                        label="Localidad"
-                        currentSort={sortBy}
-                        currentDir={sortDir}
-                      />
-                      <th className="text-left py-3 px-4 font-semibold text-foreground">
-                        Provincia
-                      </th>
-                      <th className="text-center py-3 px-4 font-semibold text-foreground">
-                        Acciones
-                      </th>
+                      {canManage && (
+                        <>
+                          <SortableHeader
+                            column="tipo"
+                            label="Tipo"
+                            currentSort={sortBy}
+                            currentDir={sortDir}
+                          />
+                          <th className="text-left py-3 px-4 font-semibold text-foreground">
+                            Relación
+                          </th>
+                          <SortableHeader
+                            column="localidad"
+                            label="Localidad"
+                            currentSort={sortBy}
+                            currentDir={sortDir}
+                          />
+                          <th className="text-left py-3 px-4 font-semibold text-foreground">
+                            Provincia
+                          </th>
+                          <th className="text-center py-3 px-4 font-semibold text-foreground">
+                            Acciones
+                          </th>
+                        </>
+                      )}
                     </tr>
                   </thead>
                   <tbody>
@@ -289,9 +344,11 @@ export default async function OrganizacionesPage({
                         key={org.id}
                         className="border-b border-border hover:bg-muted/50 transition-colors"
                       >
-                        <td className="py-3 px-4 text-muted-foreground font-mono text-xs">
-                          {org.codigo ?? "—"}
-                        </td>
+                        {canManage && (
+                          <td className="py-3 px-4 text-muted-foreground font-mono text-xs">
+                            {org.codigo ?? "—"}
+                          </td>
+                        )}
                         <td className="py-3 px-4 font-medium">
                           <Link
                             href={`/organizaciones/${org.id}`}
@@ -300,31 +357,35 @@ export default async function OrganizacionesPage({
                             {org.nombre}
                           </Link>
                         </td>
-                        <td className="py-3 px-4 text-muted-foreground">
-                          {tipoLabel[org.tipo] ?? org.tipo}
-                        </td>
-                        <td className="py-3 px-4 text-muted-foreground">
-                          {org.parent?.nombre ?? "—"}
-                        </td>
-                        <td className="py-3 px-4 text-muted-foreground">
-                          {org.localidad ?? "—"}
-                        </td>
-                        <td className="py-3 px-4 text-muted-foreground">
-                          {org.provincia ?? "—"}
-                        </td>
-                        <td className="py-3 px-4 text-center">
-                          {canUpdateOrg(org.id) && (
-                            <Link href={`/organizaciones/${org.id}/editar`}>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="h-8 w-8 p-0"
-                              >
-                                <Edit2 className="h-4 w-4" />
-                              </Button>
-                            </Link>
-                          )}
-                        </td>
+                        {canManage && (
+                          <>
+                            <td className="py-3 px-4 text-muted-foreground">
+                              {tipoLabel[org.tipo] ?? org.tipo}
+                            </td>
+                            <td className="py-3 px-4 text-muted-foreground">
+                              {(org.parent_id && parentNames[org.parent_id]) ?? "—"}
+                            </td>
+                            <td className="py-3 px-4 text-muted-foreground">
+                              {org.localidad ?? "—"}
+                            </td>
+                            <td className="py-3 px-4 text-muted-foreground">
+                              {org.provincia ?? "—"}
+                            </td>
+                            <td className="py-3 px-4 text-center">
+                              {canUpdateOrg(org.id) && (
+                                <Link href={`/organizaciones/${org.id}/editar`}>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-8 w-8 p-0"
+                                  >
+                                    <Edit2 className="h-4 w-4" />
+                                  </Button>
+                                </Link>
+                              )}
+                            </td>
+                          </>
+                        )}
                       </tr>
                     ))}
                   </tbody>

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ArrowLeft, Edit2 } from "lucide-react"
 import { createClient } from "@/lib/supabase/server"
+import { getUserContext, canPerform } from "@/lib/auth/context"
 import { formatDateAR } from "@/lib/utils"
 
 const tipoLabel: Record<string, string> = {
@@ -34,7 +35,9 @@ export default async function OrganizacionDetailPage({
   params: Promise<{ id: string }>
 }) {
   const { id } = await params
-  const supabase = await createClient()
+  const [supabase, ctx] = await Promise.all([createClient(), getUserContext()])
+  const canManage = ctx ? canPerform(ctx, "organization.update") : false
+  const canEdit = ctx ? canPerform(ctx, "organization.update", id) : false
 
   const [
     { data: org, error },
@@ -44,7 +47,7 @@ export default async function OrganizacionDetailPage({
     supabase
       .from("organizaciones")
       .select(
-        "id, nombre, tipo, codigo, estado, mail_org, sede_fisica, direccion_calle, direccion_nro, ciudad, cp, diocesis, localidad, provincia, pais, notas, telefono_1, telefono_2, parent:organizaciones!parent_id(id, nombre, tipo)",
+        "id, nombre, tipo, codigo, estado, mail_org, sede_fisica, direccion_calle, direccion_nro, ciudad, cp, diocesis, localidad, provincia, pais, notas, telefono_1, telefono_2, parent_id",
       )
       .eq("id", id)
       .single(),
@@ -66,9 +69,19 @@ export default async function OrganizacionDetailPage({
 
   if (error || !org) notFound()
 
-  const parent = Array.isArray(org.parent)
-    ? null
-    : (org.parent as { id: string; nombre: string; tipo: string } | null)
+  // Nota: no se usa el embed `organizaciones!parent_id(...)` porque, al ser
+  // organizaciones auto-referenciada, PostgREST resuelve el hint de forma
+  // ambigua y termina trayendo la relación inversa (hijos) en vez del padre.
+  // Por eso el padre se busca aparte, por su id.
+  let parent: { id: string; nombre: string; tipo: string } | null = null
+  if (org.parent_id) {
+    const { data: parentData } = await supabase
+      .from("organizaciones")
+      .select("id, nombre, tipo")
+      .eq("id", org.parent_id)
+      .maybeSingle()
+    parent = parentData ?? null
+  }
 
   return (
     <div className="space-y-6 max-w-3xl">
@@ -81,15 +94,18 @@ export default async function OrganizacionDetailPage({
           <ArrowLeft className="h-4 w-4" />
           Volver a Confraternidades / Fraternidades
         </Link>
-        <Link href={`/organizaciones/${id}/editar`}>
-          <Button variant="outline" size="sm" className="gap-2">
-            <Edit2 className="h-4 w-4" />
-            Editar
-          </Button>
-        </Link>
+        {canEdit && (
+          <Link href={`/organizaciones/${id}/editar`}>
+            <Button variant="outline" size="sm" className="gap-2">
+              <Edit2 className="h-4 w-4" />
+              Editar
+            </Button>
+          </Link>
+        )}
       </div>
 
       {/* Main data card */}
+      {canManage && (
       <Card className="border-border bg-card">
         <CardHeader>
           <CardTitle className="text-foreground">
@@ -235,6 +251,7 @@ export default async function OrganizacionDetailPage({
           </div>
         </CardContent>
       </Card>
+      )}
 
       {/* Organizaciones Dependientes */}
       <Card className="border-border bg-card">
@@ -244,11 +261,7 @@ export default async function OrganizacionDetailPage({
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {(orgsDependientes ?? []).length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              Sin confraternidades / fraternidades dependientes
-            </p>
-          ) : (
+          {(orgsDependientes ?? []).length > 0 ? (
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border">
@@ -275,6 +288,33 @@ export default async function OrganizacionDetailPage({
                 ))}
               </tbody>
             </table>
+          ) : parent ? (
+            // Orgs sin dependientes (ej. fraternidades): mostrar la org padre en su lugar.
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border">
+                  <th className="text-left py-2 font-medium text-muted-foreground">
+                    Nombre
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr className="border-b border-border/50 last:border-0">
+                  <td className="py-2">
+                    <Link
+                      href={`/organizaciones/${parent.id}`}
+                      className="text-primary hover:underline"
+                    >
+                      {parent.nombre}
+                    </Link>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Sin confraternidades / fraternidades dependientes
+            </p>
           )}
         </CardContent>
       </Card>
@@ -301,18 +341,22 @@ export default async function OrganizacionDetailPage({
                   <th className="text-left py-2 px-3 font-medium text-muted-foreground">
                     Rol
                   </th>
-                  <th className="text-left py-2 px-3 font-medium text-muted-foreground">
-                    Evento
-                  </th>
-                  <th className="text-left py-2 px-3 font-medium text-muted-foreground">
-                    Estado
-                  </th>
-                  <th className="text-left py-2 px-3 font-medium text-muted-foreground">
-                    Inicio
-                  </th>
-                  <th className="text-left py-2 px-3 font-medium text-muted-foreground">
-                    Fin
-                  </th>
+                  {canManage && (
+                    <>
+                      <th className="text-left py-2 px-3 font-medium text-muted-foreground">
+                        Evento
+                      </th>
+                      <th className="text-left py-2 px-3 font-medium text-muted-foreground">
+                        Estado
+                      </th>
+                      <th className="text-left py-2 px-3 font-medium text-muted-foreground">
+                        Inicio
+                      </th>
+                      <th className="text-left py-2 px-3 font-medium text-muted-foreground">
+                        Fin
+                      </th>
+                    </>
+                  )}
                 </tr>
               </thead>
               <tbody>
@@ -336,18 +380,22 @@ export default async function OrganizacionDetailPage({
                     <td className="py-2 px-3">
                       {asig.ministerio?.nombre ?? "—"}
                     </td>
-                    <td className="py-2 px-3 text-muted-foreground">
-                      {asig.evento?.nombre ?? "—"}
-                    </td>
-                    <td className="py-2 px-3 capitalize">{asig.estado}</td>
-                    <td className="py-2 px-3 text-muted-foreground">
-                      {asig.fecha_inicio
-                        ? formatDateAR(asig.fecha_inicio)
-                        : "—"}
-                    </td>
-                    <td className="py-2 px-3 text-muted-foreground">
-                      {asig.fecha_fin ? formatDateAR(asig.fecha_fin) : "—"}
-                    </td>
+                    {canManage && (
+                      <>
+                        <td className="py-2 px-3 text-muted-foreground">
+                          {asig.evento?.nombre ?? "—"}
+                        </td>
+                        <td className="py-2 px-3 capitalize">{asig.estado}</td>
+                        <td className="py-2 px-3 text-muted-foreground">
+                          {asig.fecha_inicio
+                            ? formatDateAR(asig.fecha_inicio)
+                            : "—"}
+                        </td>
+                        <td className="py-2 px-3 text-muted-foreground">
+                          {asig.fecha_fin ? formatDateAR(asig.fecha_fin) : "—"}
+                        </td>
+                      </>
+                    )}
                   </tr>
                 ))}
               </tbody>

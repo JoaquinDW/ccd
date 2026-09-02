@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
 
   let query = supabase
     .from('organizaciones')
-    .select('nombre, tipo, localidad, provincia, estado, fecha_creacion, telefono_1, telefono_2, parent:organizaciones!parent_id(nombre)')
+    .select('nombre, tipo, localidad, provincia, estado, fecha_creacion, telefono_1, telefono_2, parent_id')
     .is('fecha_baja', null)
     .order('nombre', { ascending: true })
 
@@ -34,6 +34,16 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
+  // Nota: no se usa el embed `organizaciones!parent_id(...)` porque, al ser
+  // organizaciones auto-referenciada, PostgREST resuelve el hint de forma
+  // ambigua y trae la relación inversa (hijos) en vez del padre.
+  const parentIds = [...new Set((data ?? []).map((o: any) => o.parent_id).filter(Boolean))]
+  const parentNames: Record<string, string> = {}
+  if (parentIds.length > 0) {
+    const { data: parents } = await supabase.from('organizaciones').select('id, nombre').in('id', parentIds)
+    for (const p of parents ?? []) parentNames[p.id] = p.nombre
+  }
+
   const tipoLabel: Record<string, string> = {
     comunidad: 'Comunidad',
     confraternidad: 'Confraternidad',
@@ -46,7 +56,7 @@ export async function GET(req: NextRequest) {
   const rows = (data ?? []).map((org: any) => ({
     Nombre: org.nombre,
     Tipo: tipoLabel[org.tipo] ?? org.tipo,
-    'Depende de': org.parent?.nombre ?? '',
+    'Depende de': (org.parent_id && parentNames[org.parent_id]) ?? '',
     Localidad: org.localidad ?? '',
     Provincia: org.provincia ?? '',
     Estado: org.estado,
