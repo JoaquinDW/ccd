@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic'
 
 import Link from "next/link"
 import { formatDateAR } from "@/lib/utils"
-import { Calendar, Users, Building2, ArrowRight } from "lucide-react"
+import { Calendar, Users, Building2, ArrowRight, MessageSquareWarning } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { createClient } from "@/lib/supabase/server"
@@ -140,6 +140,12 @@ export default async function AdminDashboardPage() {
               <Button className="w-full justify-start gap-2 bg-transparent" variant="outline">
                 <Users className="h-4 w-4" />
                 Gestionar Inscripciones
+              </Button>
+            </Link>
+            <Link href="/admin/solicitudes-correccion">
+              <Button className="w-full justify-start gap-2 bg-transparent" variant="outline">
+                <MessageSquareWarning className="h-4 w-4" />
+                Ver Correcciones Reportadas
               </Button>
             </Link>
           </CardContent>

@@ -1,7 +1,7 @@
 import React from "react"
 import { redirect } from "next/navigation"
 import Link from "next/link"
-import { Home, Calendar, Users, Building2, Newspaper, Settings } from "lucide-react"
+import { Home, Calendar, Users, Building2, Newspaper, Settings, MessageSquareWarning } from "lucide-react"
 import { getUserContext, canPerform } from "@/lib/auth/context"
 
 const navItems = [
@@ -10,6 +10,7 @@ const navItems = [
   { href: "/admin/inscripciones", icon: Users, label: "Inscripciones" },
   { href: "/admin/cofradias", icon: Building2, label: "Cofradías" },
   { href: "/admin/noticias", icon: Newspaper, label: "Noticias" },
+  { href: "/admin/solicitudes-correccion", icon: MessageSquareWarning, label: "Correcciones" },
 ]
 
 export default async function AdminLayout({

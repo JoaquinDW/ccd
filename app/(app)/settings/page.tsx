@@ -9,6 +9,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Textarea } from '@/components/ui/textarea'
 import { Settings, Lock, Loader2, Eye, EyeOff, User, Home, Check, AlertCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
@@ -30,6 +32,13 @@ const FONT_SIZE_OPTIONS: { value: FontSize; label: string; preview: string }[] =
   { value: 'small', label: 'Pequeño', preview: 'A' },
   { value: 'medium', label: 'Mediano', preview: 'A' },
   { value: 'large', label: 'Grande', preview: 'A' },
+]
+
+// Campos bloqueados en Configuración que el propio cecista no puede editar
+// (ver tarjeta "Datos institucionales" y nota de Nombre/Apellido más abajo).
+const CAMPOS_BLOQUEADOS = [
+  'Nombre', 'Apellido', 'Categoría', 'Estado', 'Modo de participación', 'Usuario',
+  'Código Interno', 'Mail CcD', 'Confraternidad', 'Fraternidad', 'Socio Activo', 'Otro',
 ]
 
 const NIVELES_ESTUDIOS = [
@@ -268,6 +277,13 @@ export default function SettingsPage() {
   const [pwSuccess, setPwSuccess] = useState(false)
   const [showPw, setShowPw] = useState({ actual: false, nueva: false, confirmar: false })
 
+  // Reportar dato incorrecto (campos bloqueados de "Datos institucionales" / Nombre-Apellido)
+  const [correctionOpen, setCorrectionOpen] = useState(false)
+  const [correctionForm, setCorrectionForm] = useState({ campo: '', descripcion: '' })
+  const [correctionLoading, setCorrectionLoading] = useState(false)
+  const [correctionError, setCorrectionError] = useState<string | null>(null)
+  const [correctionSuccess, setCorrectionSuccess] = useState(false)
+
   // Perfil tab state
   const [persona, setPersona] = useState<Persona | null>(null)
   const [modoActual, setModoActual] = useState<string | null>(null)
@@ -363,6 +379,47 @@ export default function SettingsPage() {
     setTimeout(() => {
       setPwOpen(false)
       setPwSuccess(false)
+    }, 1500)
+  }
+
+  const openCorrectionDialog = (campo: string) => {
+    setCorrectionForm({ campo, descripcion: '' })
+    setCorrectionError(null)
+    setCorrectionSuccess(false)
+    setCorrectionOpen(true)
+  }
+
+  const handleReportarCorreccion = async (e: React.SyntheticEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    setCorrectionError(null)
+
+    if (!correctionForm.campo) {
+      setCorrectionError('Elegí qué dato está mal.')
+      return
+    }
+    if (!correctionForm.descripcion.trim()) {
+      setCorrectionError('Contanos qué está mal para poder corregirlo.')
+      return
+    }
+
+    setCorrectionLoading(true)
+    const res = await fetch('/api/solicitudes-correccion', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(correctionForm),
+    })
+    setCorrectionLoading(false)
+
+    if (!res.ok) {
+      const { error } = await res.json().catch(() => ({ error: null }))
+      setCorrectionError(error ?? 'No se pudo enviar la solicitud. Probá de nuevo.')
+      return
+    }
+
+    setCorrectionSuccess(true)
+    setTimeout(() => {
+      setCorrectionOpen(false)
+      setCorrectionSuccess(false)
     }, 1500)
   }
 
@@ -1036,13 +1093,20 @@ export default function SettingsPage() {
               {/* Datos institucionales — solo lectura (gestionados por la Administración de CcD) */}
               <Card className="border-border bg-card">
                 <CardHeader>
-                  <CardTitle className="text-foreground flex items-center gap-2">
-                    <Lock className="h-5 w-5 text-primary" />
-                    Datos institucionales
-                  </CardTitle>
-                  <CardDescription>
-                    Estos datos los administra la comunidad y se importan desde la Administración de CcD. No son editables desde acá.
-                  </CardDescription>
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <CardTitle className="text-foreground flex items-center gap-2">
+                        <Lock className="h-5 w-5 text-primary" />
+                        Datos institucionales
+                      </CardTitle>
+                      <CardDescription>
+                        Estos datos los administra la comunidad y se importan desde la Administración de CcD. No son editables desde acá.
+                      </CardDescription>
+                    </div>
+                    <Button type="button" variant="link" className="h-auto p-0 text-xs whitespace-nowrap" onClick={() => openCorrectionDialog('')}>
+                      ¿Algo está mal? Reportalo
+                    </Button>
+                  </div>
                 </CardHeader>
                 <CardContent className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
@@ -1104,6 +1168,66 @@ export default function SettingsPage() {
                 )}
               </Card>
 
+              {/* Reportar dato incorrecto — abierto desde los botones de arriba */}
+              <Dialog open={correctionOpen} onOpenChange={(open) => { setCorrectionOpen(open); if (!open) { setCorrectionForm({ campo: '', descripcion: '' }); setCorrectionError(null); setCorrectionSuccess(false) } }}>
+                <DialogContent className="sm:max-w-md">
+                  <DialogHeader>
+                    <DialogTitle>Reportar un dato incorrecto</DialogTitle>
+                    <DialogDescription>
+                      Estos campos los administra la comunidad. Contanos qué está mal y la Administración de CcD lo corrige.
+                    </DialogDescription>
+                  </DialogHeader>
+
+                  {correctionSuccess ? (
+                    <p className="text-sm text-green-600 py-4 text-center">¡Solicitud enviada! La Administración de CcD la va a revisar.</p>
+                  ) : (
+                    <form onSubmit={handleReportarCorreccion} className="space-y-4 py-2">
+                      <div className="space-y-1">
+                        <Label htmlFor="correction-campo">¿Qué dato está mal?</Label>
+                        <Select
+                          value={correctionForm.campo}
+                          onValueChange={(value) => setCorrectionForm(prev => ({ ...prev, campo: value }))}
+                          disabled={correctionLoading}
+                        >
+                          <SelectTrigger id="correction-campo" className="w-full">
+                            <SelectValue placeholder="Elegí un campo" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {CAMPOS_BLOQUEADOS.map(campo => (
+                              <SelectItem key={campo} value={campo}>{campo}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-1">
+                        <Label htmlFor="correction-descripcion">Contanos qué está mal</Label>
+                        <Textarea
+                          id="correction-descripcion"
+                          value={correctionForm.descripcion}
+                          onChange={(e) => setCorrectionForm(prev => ({ ...prev, descripcion: e.target.value }))}
+                          placeholder="Ej.: Mi apellido figura como &quot;Gonzales&quot; y es &quot;González&quot;."
+                          rows={4}
+                          required
+                          disabled={correctionLoading}
+                        />
+                      </div>
+
+                      {correctionError && <p className="text-sm text-destructive">{correctionError}</p>}
+
+                      <DialogFooter className="pt-2">
+                        <Button type="button" variant="outline" onClick={() => setCorrectionOpen(false)} disabled={correctionLoading}>
+                          Cancelar
+                        </Button>
+                        <Button type="submit" disabled={correctionLoading}>
+                          {correctionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Enviar'}
+                        </Button>
+                      </DialogFooter>
+                    </form>
+                  )}
+                </DialogContent>
+              </Dialog>
+
               {/* Edit form */}
               <form onSubmit={handleSaveProfile}>
                 <Card className="border-border bg-card">
@@ -1134,6 +1258,9 @@ export default function SettingsPage() {
                     </div>
                     <p className="-mt-3 text-xs text-muted-foreground flex items-center gap-1.5">
                       <Lock className="h-3 w-3" /> Nombre y apellido los gestiona la Administración de CcD.
+                      <Button type="button" variant="link" className="h-auto p-0 text-xs" onClick={() => openCorrectionDialog('Nombre')}>
+                        ¿Están mal? Reportalo
+                      </Button>
                     </p>
 
                     {/* Teléfono / Fecha nacimiento */}
