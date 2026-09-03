@@ -319,6 +319,7 @@ export default function SettingsPage() {
   // Ministerios que ejerce (áreas de servicio autodeclaradas)
   const [areasServicio, setAreasServicio] = useState<AreaServicio[]>([])
   const [misAreasServicio, setMisAreasServicio] = useState<string[]>([])
+  const [otrosComentario, setOtrosComentario] = useState('')
 
   // Secciones cecista
   const [casas, setCasas] = useState<CasaComunitaria[]>([])
@@ -592,9 +593,11 @@ export default function SettingsPage() {
 
         const { data: misAreasData } = await supabase
           .from('persona_areas_servicio')
-          .select('area_servicio_id')
+          .select('area_servicio_id, comentario')
           .eq('persona_id', data.id)
         setMisAreasServicio((misAreasData ?? []).map((r: { area_servicio_id: string }) => r.area_servicio_id))
+        const otrosId = (areasData ?? []).find((a: AreaServicio) => a.nombre === 'Otros')?.id
+        setOtrosComentario((misAreasData ?? []).find((r: { area_servicio_id: string; comentario: string | null }) => r.area_servicio_id === otrosId)?.comentario ?? '')
       }
 
       // Cargar cecistas activos para el selector de acompañante (paginado: son
@@ -938,6 +941,8 @@ export default function SettingsPage() {
     const added = newValues.filter(v => !misAreasServicio.includes(v))
     const removed = misAreasServicio.filter(v => !newValues.includes(v))
     setMisAreasServicio(newValues)
+    const otrosId = areasServicio.find(a => a.nombre === 'Otros')?.id
+    if (otrosId && removed.includes(otrosId)) setOtrosComentario('')
     for (const areaId of added) {
       void runSave(() =>
         createClient()
@@ -954,6 +959,21 @@ export default function SettingsPage() {
           .eq('area_servicio_id', areaId)
       )
     }
+  }
+
+  function setOtrosComentarioValue(value: string) {
+    setOtrosComentario(value)
+    const otrosId = areasServicio.find(a => a.nombre === 'Otros')?.id
+    if (!persona || !otrosId || !misAreasServicio.includes(otrosId)) return
+    debounceSave('otros-comentario', () => {
+      void runSave(() =>
+        createClient()
+          .from('persona_areas_servicio')
+          .update({ comentario: value || null })
+          .eq('persona_id', persona.id)
+          .eq('area_servicio_id', otrosId)
+      )
+    })
   }
 
   const selectClass = 'w-full rounded-md border border-border bg-background px-3 py-2 text-foreground text-sm'
@@ -1412,6 +1432,21 @@ export default function SettingsPage() {
                           disabled={editLoading}
                         />
                         <p className="text-xs text-muted-foreground">Marcá todos los que correspondan.</p>
+                        {(() => {
+                          const otrosId = areasServicio.find(a => a.nombre === 'Otros')?.id
+                          if (!otrosId || !misAreasServicio.includes(otrosId)) return null
+                          return (
+                            <div className="space-y-1 pt-1">
+                              <Label htmlFor="p-otros-ministerio">¿Cuál?</Label>
+                              <Input
+                                id="p-otros-ministerio"
+                                value={otrosComentario}
+                                onChange={e => setOtrosComentarioValue(e.target.value)}
+                                disabled={editLoading}
+                              />
+                            </div>
+                          )
+                        })()}
                       </div>
                     )}
 
