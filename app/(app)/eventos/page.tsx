@@ -73,6 +73,11 @@ const FILTROS = [
   { value: "suspendido", label: "Suspendidos" },
 ]
 
+// Estados que un cecista sin event.view_all_estados puede ver en el listado
+// — el resto (borrador, discernimiento, rechazado, suspendido, cancelado)
+// solo lo ven los ministerios de conducción con ese permiso asignado.
+const ESTADOS_VISIBLES_SIN_PERMISO = ["aprobado", "publicado", "en_curso", "finalizado"]
+
 type EventoRow = {
   id: string
   nombre: string
@@ -161,6 +166,7 @@ export default async function EventosPage({
   const [supabase, ctx] = await Promise.all([createClient(), getUserContext()])
   const canCreate = ctx && (ctx.is_admin || ctx.nivel_max >= 50)
   const canSuspend = ctx && canPerform(ctx, "event.suspend")
+  const canViewAllEstados = ctx ? canPerform(ctx, "event.view_all_estados") : false
 
   // Build main query
   let query = supabase
@@ -170,6 +176,7 @@ export default async function EventosPage({
     )
     .order("fecha_inicio", { ascending: false })
 
+  if (!canViewAllEstados) query = query.in("estado", ESTADOS_VISIBLES_SIN_PERMISO)
   if (q) query = query.ilike("nombre", `%${q}%`)
   if (estadoFiltro) query = query.eq("estado", estadoFiltro)
   if (tipoFiltro) query = query.eq("tipo", tipoFiltro)
@@ -400,7 +407,10 @@ export default async function EventosPage({
               defaultValue={estadoFiltro ?? ""}
               className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
             >
-              {FILTROS.map((f) => (
+              {(canViewAllEstados
+                ? FILTROS
+                : FILTROS.filter((f) => f.value === "" || ESTADOS_VISIBLES_SIN_PERMISO.includes(f.value))
+              ).map((f) => (
                 <option key={f.value} value={f.value}>
                   {f.label}
                 </option>
