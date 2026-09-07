@@ -46,6 +46,7 @@ export type Permission =
   | 'view.eventos_publicados'  // ver página de eventos publicados (panel comunitario)
   | 'view.casas_retiro'        // ver sección de casas de retiro (fuera de la vista ordinaria)
   | 'event.view_all_estados'   // ver el listado de eventos en cualquier estado (no solo aprobado/publicado/en_curso/finalizado)
+  | 'view.interesados'         // ver la sección Interesados dentro de Eventos, scopeado a la propia organización
 
 // ─── Mapa de permisos por rol ─────────────────────────────────────────────────
 //
@@ -85,6 +86,7 @@ export const rolePermissions: Record<SystemRole, Permission[]> = {
     'view.eventos_publicados',
     'view.casas_retiro',
     'event.view_all_estados',
+    'view.interesados',
   ],
 
   tecnico_confraternidad: [

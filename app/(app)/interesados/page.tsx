@@ -1,11 +1,13 @@
 export const dynamic = "force-dynamic"
 
 import Link from "next/link"
+import { redirect } from "next/navigation"
 import { Calendar, MapPin, Mail, Phone, UserCheck, Search } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { createClient } from "@/lib/supabase/server"
-import { getUserContext } from "@/lib/auth/context"
+import { getUserContext, canPerform } from "@/lib/auth/context"
+import { eventoIdsComoCoordinadorOCentralizador } from "@/lib/eventos/roles"
 import { formatDateLong, formatDateAR } from "@/lib/utils"
 import { SeguimientoActions } from "./seguimiento-actions"
 
@@ -42,6 +44,32 @@ export default async function InteresadosPage({
   const { q, evento_id, estado_contacto } = await searchParams
   const [supabase, ctx] = await Promise.all([createClient(), getUserContext()])
 
+  if (!ctx) redirect('/dashboard')
+
+  // Enlace/Responsable (permiso de catálogo, scopeado a su organización) o
+  // Coordinador/Centralizador de algún evento puntual (columnas en eventos,
+  // ver lib/eventos/roles.ts) — sin ninguna de las dos, no ve esta sección.
+  const canViewAll = canPerform(ctx, 'view.interesados')
+
+  let allowedEventoIds: string[] | null = null // null = sin restricción (ve todo)
+  if (!ctx.is_admin) {
+    const eventoIdsPropios = ctx.persona_id
+      ? await eventoIdsComoCoordinadorOCentralizador(supabase, ctx.persona_id)
+      : []
+
+    let eventoIdsPorOrg: string[] = []
+    if (canViewAll && ctx.org_ids.length > 0) {
+      const orFilter = ctx.org_ids.map((id) => `organizacion_id.eq.${id},fraternidad_id.eq.${id}`).join(',')
+      const { data: eventosOrg } = await supabase.from('eventos').select('id').or(orFilter)
+      eventoIdsPorOrg = (eventosOrg ?? []).map((e) => e.id as string)
+    }
+
+    allowedEventoIds = [...new Set([...eventoIdsPropios, ...eventoIdsPorOrg])]
+  }
+
+  const hasAccess = ctx.is_admin || canViewAll || (allowedEventoIds !== null && allowedEventoIds.length > 0)
+  if (!hasAccess) redirect('/dashboard')
+
   // Relational search by persona name/email → resolve matching persona ids
   let personaIds: string[] | null = null
   if (q) {
@@ -53,11 +81,13 @@ export default async function InteresadosPage({
   }
   const noResults = personaIds !== null && personaIds.length === 0
 
-  // Event dropdown options: events that have interesados
-  const { data: eventoRows } = await supabase
+  // Event dropdown options: events that have interesados (dentro de lo permitido)
+  let eventoRowsQuery = supabase
     .from("evento_participantes")
     .select("evento:eventos!evento_id(id, nombre)")
     .eq("estado_participacion", "interesado")
+  if (allowedEventoIds !== null) eventoRowsQuery = eventoRowsQuery.in("evento_id", allowedEventoIds)
+  const { data: eventoRows } = await eventoRowsQuery
   const eventosMap = new Map<string, string>()
   for (const row of (eventoRows as any[]) ?? []) {
     if (row.evento?.id) eventosMap.set(row.evento.id, row.evento.nombre)
@@ -79,6 +109,7 @@ export default async function InteresadosPage({
       .eq("estado_participacion", "interesado")
       .order("fecha_inscripcion", { ascending: false })
 
+    if (allowedEventoIds !== null) query = query.in("evento_id", allowedEventoIds)
     if (personaIds !== null) query = query.in("persona_id", personaIds)
     if (evento_id) query = query.eq("evento_id", evento_id)
     if (estado_contacto) query = query.eq("estado_contacto", estado_contacto)
