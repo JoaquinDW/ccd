@@ -43,6 +43,7 @@ export interface SidebarPermissions {
   canRequestSuspend: boolean
   canVerifyPayments: boolean
   canViewVotos: boolean
+  canViewCasasRetiro: boolean
   isAdmin: boolean
 }
 
@@ -111,27 +112,31 @@ function buildNavItems(p: SidebarPermissions): NavItem[] {
           : []),
       ],
     },
-    {
-      icon: <Hotel className="h-5 w-5" />,
-      label: "Casas de Retiro",
-      href: "/casas-retiro",
-      children: [
-        {
-          icon: <Building2 className="h-4 w-4" />,
-          label: "Lista de casas",
-          href: "/casas-retiro",
-        },
-        ...(p.canCreateOrganization
-          ? [
+    ...(p.canViewCasasRetiro
+      ? [
+          {
+            icon: <Hotel className="h-5 w-5" />,
+            label: "Casas de Retiro",
+            href: "/casas-retiro",
+            children: [
               {
-                icon: <PlusCircle className="h-4 w-4" />,
-                label: "Nueva casa de retiro",
-                href: "/casas-retiro/nueva",
+                icon: <Building2 className="h-4 w-4" />,
+                label: "Lista de casas",
+                href: "/casas-retiro",
               },
-            ]
-          : []),
-      ],
-    },
+              ...(p.canCreateOrganization
+                ? [
+                    {
+                      icon: <PlusCircle className="h-4 w-4" />,
+                      label: "Nueva casa de retiro",
+                      href: "/casas-retiro/nueva",
+                    },
+                  ]
+                : []),
+            ],
+          },
+        ]
+      : []),
     ...(p.canCreateOrganization
       ? [
           {

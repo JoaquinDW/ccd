@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic'
 
 import Link from 'next/link'
+import { redirect } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Hotel, Plus, Edit2, MapPin } from 'lucide-react'
@@ -22,6 +23,11 @@ export default async function CasasRetiroPage({
   }>
 }) {
   const [params, ctx] = await Promise.all([searchParams, getUserContext()])
+
+  // Módulo fuera de la vista ordinaria: requiere el permiso view.casas_retiro
+  // (lo asigna el Equipo Timón por rol/ministerio desde /ministerios/catalogo).
+  if (!ctx || !canPerform(ctx, 'view.casas_retiro')) redirect('/dashboard')
+
   const q = params.q ?? ''
   const estado = params.estado ?? ''
   const provincia = params.provincia ?? ''
