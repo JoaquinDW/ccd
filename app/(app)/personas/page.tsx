@@ -33,7 +33,7 @@ async function fetchUbicaciones(supabase: SupabaseServerClient): Promise<Ubicaci
       .from('personas')
       .select('provincia, localidad')
       .is('fecha_baja', null)
-      .not('provincia', 'is', null)
+      .or('provincia.not.is.null,localidad.not.is.null')
       .order('id')
       .range(i * CHUNK, i * CHUNK + CHUNK - 1)
 
@@ -41,8 +41,8 @@ async function fetchUbicaciones(supabase: SupabaseServerClient): Promise<Ubicaci
 
     for (const row of data) {
       const prov = (row.provincia ?? '').trim()
-      if (!prov) continue
       const loc = (row.localidad ?? '').trim()
+      if (!prov && !loc) continue
       const key = `${normalizarUbicacion(prov)}|${normalizarUbicacion(loc)}`
       if (vistos.has(key)) continue
       vistos.add(key)
