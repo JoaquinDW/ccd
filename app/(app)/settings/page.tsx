@@ -137,9 +137,11 @@ const TIPOS_PERSONA_LABEL: Record<string, string> = {
 
 // Tipos de dedicación (no excluyentes, cada una con año de inicio).
 // Lista ampliable — ver scripts/039_cecista_perfil.sql.
+const DEDICACION_VIVIENDO_COMO_SI = 'viviendo_como_dedicado'
+
 const DEDICACION_TIPOS = [
   { value: 'dedicado', label: 'Dedicado/a' },
-  { value: 'viviendo_como_dedicado', label: 'Viviendo como dedicado/a' },
+  { value: DEDICACION_VIVIENDO_COMO_SI, label: 'Viviendo como si el/los votos...' },
 ]
 
 // Votos del cecista (mockup Pantalla Cecistas).
@@ -154,7 +156,7 @@ const VOTO_TIPOS = [
   { value: 'otros_familiares', label: 'Solo familiares — otros votos' },
 ]
 
-type DedicacionState = { checked: boolean; anio: string }
+type DedicacionState = { checked: boolean; anio: string; votos: string[] }
 type VotoState = { anio: string; perpetuo: boolean; temporal: string }
 type EventoRealizadoState = { checked: boolean; anio: string }
 type CasaComunitaria = { id: string; nombre: string; codigo: string | null; tipo: string | null }
@@ -539,12 +541,16 @@ export default function SettingsPage() {
 
         const { data: dedData } = await supabase
           .from('persona_dedicaciones')
-          .select('tipo, anio_inicio')
+          .select('tipo, anio_inicio, votos_como_si')
           .eq('persona_id', data.id)
         const dedMap: Record<string, DedicacionState> = {}
-        for (const t of DEDICACION_TIPOS) dedMap[t.value] = { checked: false, anio: '' }
+        for (const t of DEDICACION_TIPOS) dedMap[t.value] = { checked: false, anio: '', votos: [] }
         for (const d of dedData ?? []) {
-          dedMap[d.tipo] = { checked: true, anio: d.anio_inicio != null ? String(d.anio_inicio) : '' }
+          dedMap[d.tipo] = {
+            checked: true,
+            anio: d.anio_inicio != null ? String(d.anio_inicio) : '',
+            votos: (d as any).votos_como_si ?? [],
+          }
         }
         setDedicaciones(dedMap)
 
@@ -764,19 +770,30 @@ export default function SettingsPage() {
   }
 
   // ── Dedicaciones (no excluyentes, año de inicio) ──
+  function persistDedicacion(tipo: string, row: DedicacionState) {
+    if (!persona) return
+    void runSave(() =>
+      createClient()
+        .from('persona_dedicaciones')
+        .upsert(
+          {
+            persona_id: persona.id,
+            tipo,
+            anio_inicio: row.anio ? Number(row.anio) : null,
+            votos_como_si: tipo === DEDICACION_VIVIENDO_COMO_SI ? row.votos : [],
+          },
+          { onConflict: 'persona_id,tipo' }
+        )
+    )
+  }
+
   function toggleDedicacion(tipo: string, checked: boolean) {
-    const anio = dedicaciones[tipo]?.anio ?? ''
-    setDedicaciones(prev => ({ ...prev, [tipo]: { checked, anio } }))
+    const prevRow = dedicaciones[tipo] ?? { checked: false, anio: '', votos: [] }
+    const row: DedicacionState = { ...prevRow, checked }
+    setDedicaciones(prev => ({ ...prev, [tipo]: row }))
     if (!persona) return
     if (checked) {
-      void runSave(() =>
-        createClient()
-          .from('persona_dedicaciones')
-          .upsert(
-            { persona_id: persona.id, tipo, anio_inicio: anio ? Number(anio) : null },
-            { onConflict: 'persona_id,tipo' }
-          )
-      )
+      persistDedicacion(tipo, row)
     } else {
       void runSave(() =>
         createClient()
@@ -789,18 +806,17 @@ export default function SettingsPage() {
   }
 
   function setDedicacionAnio(tipo: string, anio: string) {
-    setDedicaciones(prev => ({ ...prev, [tipo]: { checked: prev[tipo]?.checked ?? false, anio } }))
-    if (!persona || !dedicaciones[tipo]?.checked) return
-    debounceSave(`ded-${tipo}`, () => {
-      void runSave(() =>
-        createClient()
-          .from('persona_dedicaciones')
-          .upsert(
-            { persona_id: persona.id, tipo, anio_inicio: anio ? Number(anio) : null },
-            { onConflict: 'persona_id,tipo' }
-          )
-      )
-    })
+    const row: DedicacionState = { ...(dedicaciones[tipo] ?? { checked: false, anio: '', votos: [] }), anio }
+    setDedicaciones(prev => ({ ...prev, [tipo]: row }))
+    if (!persona || !row.checked) return
+    debounceSave(`ded-${tipo}`, () => persistDedicacion(tipo, row))
+  }
+
+  function setDedicacionVotos(tipo: string, votos: string[]) {
+    const row: DedicacionState = { ...(dedicaciones[tipo] ?? { checked: false, anio: '', votos: [] }), votos }
+    setDedicaciones(prev => ({ ...prev, [tipo]: row }))
+    if (!persona || !row.checked) return
+    persistDedicacion(tipo, row)
   }
 
   // ── Votos (temporales o perpetuos) ──
@@ -1520,12 +1536,12 @@ export default function SettingsPage() {
                 </Card>
               </form>
 
-              {/* Actividad — recorrido de la persona en la comunidad */}
+              {/* Mi recorrido — recorrido de la persona en la comunidad */}
               <Card className="border-border bg-card">
                 <CardHeader>
                   <div className="flex items-start justify-between gap-2">
                     <div>
-                      <CardTitle className="text-foreground">Actividad</CardTitle>
+                      <CardTitle className="text-foreground">Mi recorrido</CardTitle>
                       <CardDescription>Tu recorrido en la comunidad — se guarda automáticamente</CardDescription>
                     </div>
                     <SaveIndicator status={saveStatus} />
@@ -1715,27 +1731,45 @@ export default function SettingsPage() {
                       <p className="text-sm text-muted-foreground">Marcá las que correspondan e indicá el año de inicio.</p>
                     </div>
                     {DEDICACION_TIPOS.map(t => {
-                      const ded = dedicaciones[t.value] ?? { checked: false, anio: '' }
+                      const ded = dedicaciones[t.value] ?? { checked: false, anio: '', votos: [] }
+                      const esComoSi = t.value === DEDICACION_VIVIENDO_COMO_SI
                       return (
-                        <div key={t.value} className="flex items-center gap-3">
-                          <input
-                            id={`ded-${t.value}`}
-                            type="checkbox"
-                            checked={ded.checked}
-                            onChange={e => toggleDedicacion(t.value, e.target.checked)}
-                            className="h-4 w-4 rounded border-border"
-                          />
-                          <Label htmlFor={`ded-${t.value}`} className="flex-1">{t.label}</Label>
-                          <Input
-                            type="number"
-                            min="1950"
-                            max={new Date().getFullYear()}
-                            placeholder="Año inicio"
-                            value={ded.anio}
-                            onChange={e => setDedicacionAnio(t.value, e.target.value)}
-                            disabled={!ded.checked}
-                            className="w-32"
-                          />
+                        <div key={t.value} className="space-y-2">
+                          <div className="flex items-center gap-3">
+                            <input
+                              id={`ded-${t.value}`}
+                              type="checkbox"
+                              checked={ded.checked}
+                              onChange={e => toggleDedicacion(t.value, e.target.checked)}
+                              className="h-4 w-4 rounded border-border"
+                            />
+                            <Label htmlFor={`ded-${t.value}`} className="flex-1">{t.label}</Label>
+                            <Input
+                              type="number"
+                              min="1950"
+                              max={new Date().getFullYear()}
+                              placeholder="Año inicio"
+                              value={ded.anio}
+                              onChange={e => setDedicacionAnio(t.value, e.target.value)}
+                              disabled={!ded.checked}
+                              className="w-32"
+                            />
+                          </div>
+                          {esComoSi && ded.checked && (
+                            <div className="ml-7 space-y-2">
+                              <Label className="text-sm text-muted-foreground">
+                                ¿Qué votos estás viviendo “como si”?
+                              </Label>
+                              <MultiCombobox
+                                values={ded.votos}
+                                onChange={vals => setDedicacionVotos(t.value, vals)}
+                                options={VOTO_TIPOS}
+                                placeholder="Seleccioná los votos"
+                                searchPlaceholder="Buscar voto..."
+                                emptyText="No se encontraron votos."
+                              />
+                            </div>
+                          )}
                         </div>
                       )
                     })}
