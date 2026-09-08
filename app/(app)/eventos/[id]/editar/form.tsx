@@ -631,8 +631,11 @@ export default function EditarEventoForm({
               />
             </div>
 
-            {/* Link de pago Mercado Pago */}
-            <div className="space-y-2">
+            {/* Link de pago Mercado Pago — OCULTO: quedó obsoleto/en desuso. El cobro va por la
+                cuenta de Mercado Pago conectada de la organización, no por un link manual.
+                El campo link_pago_mercadopago se sigue leyendo/guardando para no romper datos
+                existentes, pero ya no se edita desde la UI. */}
+            {/* <div className="space-y-2">
               <Label htmlFor="link_pago_mercadopago">Link de Pago Mercado Pago</Label>
               <Input
                 id="link_pago_mercadopago"
@@ -645,7 +648,7 @@ export default function EditarEventoForm({
               <p className="text-xs text-muted-foreground">
                 Link para que los participantes realicen la preinscripción. Se mostrará en la página del evento.
               </p>
-            </div>
+            </div> */}
 
             {/* Ubicación */}
             <LocationFields

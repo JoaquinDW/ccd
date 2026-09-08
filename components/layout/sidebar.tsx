@@ -3,7 +3,7 @@
 import Link from "next/link"
 import Image from "next/image"
 import { usePathname, useRouter } from "next/navigation"
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import {
   LayoutDashboard,
   Users,
@@ -275,18 +275,6 @@ export function Sidebar({ permissions }: { permissions: SidebarPermissions }) {
       )
       .map((item) => item.href),
   )
-  const [userEmail, setUserEmail] = useState<string | null>(null)
-
-  useEffect(() => {
-    const loadUser = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-      setUserEmail(user?.email ?? null)
-    }
-    loadUser()
-  }, [])
-
   const handleSignOut = async () => {
     await supabase.auth.signOut()
     router.push("/")
@@ -406,11 +394,6 @@ export function Sidebar({ permissions }: { permissions: SidebarPermissions }) {
 
           {/* User + Sign out */}
           <div className="border-t border-border p-4 space-y-2">
-            {userEmail && (
-              <p className="px-3 text-xs text-muted-foreground truncate">
-                {userEmail}
-              </p>
-            )}
             <Link
               href="/settings"
               onClick={() => setIsOpen(false)}
