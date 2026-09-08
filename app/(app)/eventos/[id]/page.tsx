@@ -688,7 +688,7 @@ export default async function EventoDetailPage({
             <div>
               <p className="text-xs text-muted-foreground">Costo</p>
               {evento.es_apv ? (
-                <p className="text-sm text-foreground">Aporte de valor voluntario</p>
+                <p className="text-sm text-foreground">De Aporte Voluntario (DAV)</p>
               ) : (evento as Record<string, unknown>).precio != null && Number((evento as Record<string, unknown>).precio) > 0 ? (
                 <p className="text-sm text-foreground">${Number((evento as Record<string, unknown>).precio).toLocaleString('es-AR')}</p>
               ) : (

@@ -302,7 +302,7 @@ export default async function PublicEventDetailPage({
               {evento.modalidad && evento.modalidad !== 'presencial' && (
                 <Badge variant="outline">{MODALIDAD_LABELS[evento.modalidad] ?? evento.modalidad}</Badge>
               )}
-              {ev.es_apv && <Badge variant="outline" className="text-xs">Aporte voluntario</Badge>}
+              {ev.es_apv && <Badge variant="outline" className="text-xs">DAV</Badge>}
             </div>
             <h1 className="text-3xl font-bold tracking-tight text-foreground leading-snug">{evento.nombre}</h1>
             {(org?.nombre || fraternidad?.nombre) && (

@@ -444,7 +444,7 @@ export default function NuevoEventoForm({
               </div>
             )}
 
-            {/* 5. Aporte Voluntario */}
+            {/* 5. De Aporte Voluntario (DAV) */}
             <div className="flex items-center gap-3">
               <input
                 type="checkbox"
@@ -458,7 +458,7 @@ export default function NuevoEventoForm({
                 htmlFor="es_apv"
                 className="text-sm text-foreground cursor-pointer"
               >
-                Es de Aporte de Valor Voluntario (APV)
+                Es De Aporte Voluntario (DAV)
               </label>
             </div>
 
