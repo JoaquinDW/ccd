@@ -1,17 +1,43 @@
 "use client"
 
 import { useRouter } from "next/navigation"
-import { useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { Combobox, type ComboboxOption } from "@/components/ui/combobox"
+import { getSubdivisiones } from "@/lib/geo/subdivisiones"
+import type { Ubicacion } from "@/lib/personas/ubicaciones"
 
 type Ministerio = { id: string; nombre: string }
 type Organizacion = { id: string; nombre: string; tipo: string }
-/** Par provincia + localidad presente entre las personas (deduplicado en el server component). */
-export type Ubicacion = { provincia: string; localidad: string | null }
 
 /** Minúsculas y sin tildes, para comparar variantes de la misma provincia/localidad. */
 function normalizar(text: string): string {
   return text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim()
+}
+
+const GEOREF_BASE = "https://apis.datos.gob.ar/georef/api"
+/** Tope de opciones renderizadas en el combobox de ciudad (el catálogo argentino son miles). */
+const MAX_LOCALIDADES = 80
+
+function useDebounce<T>(value: T, delay: number): T {
+  const [debounced, setDebounced] = useState(value)
+  useEffect(() => {
+    const t = setTimeout(() => setDebounced(value), delay)
+    return () => clearTimeout(t)
+  }, [value, delay])
+  return debounced
+}
+
+/** Ordena alfabéticamente pero adelanta lo que empieza con el texto buscado. */
+function ordenarPorRelevancia(valores: string[], query: string): string[] {
+  const q = normalizar(query)
+  return valores.sort((a, b) => {
+    if (q) {
+      const pa = normalizar(a).startsWith(q) ? 0 : 1
+      const pb = normalizar(b).startsWith(q) ? 0 : 1
+      if (pa !== pb) return pa - pb
+    }
+    return a.localeCompare(b, "es")
+  })
 }
 
 const tipoLabel: Record<string, string> = {
@@ -46,54 +72,124 @@ export default function PersonasFilters({ ministerios, organizaciones, ubicacion
   const [provincia, setProvincia] = useState(defaults.provincia)
   const [localidad, setLocalidad] = useState(defaults.localidad)
 
+  // Países presentes entre las personas: definen qué catálogos de provincias se ofrecen.
+  // Sin dato de país se asume Argentina, que es el caso por defecto de la comunidad.
+  const paisesPresentes = useMemo(() => {
+    const paises = new Set<string>(["Argentina"])
+    for (const u of ubicaciones) {
+      const pais = (u.pais ?? "").trim()
+      if (pais) paises.add(pais)
+    }
+    return [...paises]
+  }, [ubicaciones])
+
+  // Se ofrece el catálogo completo de provincias, no solo las que tienen personas cargadas:
+  // elegir una sin resultados es válido y el listado responde "No se encontraron personas".
   const provinciaOptions = useMemo<ComboboxOption[]>(() => {
     const vistas = new Map<string, string>()
-    for (const u of ubicaciones) {
-      const key = normalizar(u.provincia)
-      if (key && !vistas.has(key)) vistas.set(key, u.provincia)
+    const agregar = (nombre: string) => {
+      const key = normalizar(nombre)
+      if (key && !vistas.has(key)) vistas.set(key, nombre)
     }
+    for (const pais of paisesPresentes) {
+      for (const nombre of getSubdivisiones(pais) ?? []) agregar(nombre)
+    }
+    // Valores realmente cargados que no figuran en el catálogo (variantes, países sin listado):
+    // sin ellos esas personas quedarían fuera de alcance del filtro.
+    for (const u of ubicaciones) agregar(u.provincia)
     // Conserva un valor que venga de la URL aunque ya no exista entre las personas visibles.
-    if (defaults.provincia && !vistas.has(normalizar(defaults.provincia))) {
-      vistas.set(normalizar(defaults.provincia), defaults.provincia)
+    if (defaults.provincia) agregar(defaults.provincia)
+    return ordenarPorRelevancia([...vistas.values()], "").map((n) => ({ label: n, value: n }))
+  }, [paisesPresentes, ubicaciones, defaults.provincia])
+
+  // Ciudades: no hay catálogo estático, se consulta Georef igual que en los formularios de carga.
+  const [localidadQuery, setLocalidadQuery] = useState("")
+  const debouncedLocalidadQuery = useDebounce(localidadQuery, 300)
+  const [georefLocalidades, setGeorefLocalidades] = useState<string[]>([])
+  const [localidadesLoading, setLocalidadesLoading] = useState(false)
+
+  /** Nombre oficial de Georef si la provincia elegida es argentina; si no, null. */
+  const provinciaArgentina = useMemo(() => {
+    if (!provincia) return null
+    const key = normalizar(provincia)
+    return (getSubdivisiones("Argentina") ?? []).find((p) => normalizar(p) === key) ?? null
+  }, [provincia])
+
+  useEffect(() => {
+    const q = debouncedLocalidadQuery.trim()
+    // Sin provincia argentina elegida la consulta abarca todo el país: hace falta algo escrito.
+    if (!provinciaArgentina && q.length < 2) {
+      setGeorefLocalidades([])
+      setLocalidadesLoading(false)
+      return
     }
-    return [...vistas.values()]
-      .sort((a, b) => a.localeCompare(b, "es"))
-      .map((n) => ({ label: n, value: n }))
-  }, [ubicaciones, defaults.provincia])
+    const params = new URLSearchParams({ max: "50", campos: "id,nombre" })
+    if (provinciaArgentina) params.set("provincia", provinciaArgentina)
+    if (q) params.set("nombre", q)
+
+    let cancelado = false
+    setLocalidadesLoading(true)
+    fetch(`${GEOREF_BASE}/localidades?${params}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (cancelado) return
+        setGeorefLocalidades(
+          ((data.localidades ?? []) as { nombre: string }[]).map((l) => l.nombre)
+        )
+      })
+      .catch(() => {
+        if (!cancelado) setGeorefLocalidades([])
+      })
+      .finally(() => {
+        if (!cancelado) setLocalidadesLoading(false)
+      })
+    return () => {
+      cancelado = true
+    }
+  }, [provinciaArgentina, debouncedLocalidadQuery])
 
   const localidadOptions = useMemo<ComboboxOption[]>(() => {
+    // El Combobox delega la búsqueda (onSearch), así que el filtrado por texto se hace acá.
+    const q = normalizar(localidadQuery)
     const provKey = normalizar(provincia)
     const vistas = new Map<string, string>()
+    const agregar = (nombre: string) => {
+      const key = normalizar(nombre)
+      if (!key || vistas.has(key)) return
+      if (q && !key.includes(q)) return
+      vistas.set(key, nombre)
+    }
+    // Primero lo que está cargado entre las personas (acotado a la provincia elegida),
+    // después el catálogo de Georef.
     for (const u of ubicaciones) {
       if (!u.localidad) continue
       if (provKey && normalizar(u.provincia) !== provKey) continue
-      const key = normalizar(u.localidad)
-      if (key && !vistas.has(key)) vistas.set(key, u.localidad)
+      agregar(u.localidad)
     }
-    if (defaults.localidad && !vistas.has(normalizar(defaults.localidad))) {
-      vistas.set(normalizar(defaults.localidad), defaults.localidad)
-    }
-    return [...vistas.values()]
-      .sort((a, b) => a.localeCompare(b, "es"))
+    for (const nombre of georefLocalidades) agregar(nombre)
+    if (defaults.localidad) agregar(defaults.localidad)
+    return ordenarPorRelevancia([...vistas.values()], localidadQuery)
+      .slice(0, MAX_LOCALIDADES)
       .map((n) => ({ label: n, value: n }))
-  }, [ubicaciones, provincia, defaults.localidad])
+  }, [ubicaciones, provincia, georefLocalidades, localidadQuery, defaults.localidad])
 
   function handleProvinciaChange(val: string) {
     setProvincia(val)
-    // Si la ciudad elegida no pertenece a la nueva provincia, se descarta.
-    if (!localidad) return
-    const sigueValiendo = ubicaciones.some(
-      (u) =>
-        u.localidad &&
-        normalizar(u.localidad) === normalizar(localidad) &&
-        (!val || normalizar(u.provincia) === normalizar(val))
+    setLocalidadQuery("")
+    if (!localidad || !val) return
+    // Solo se descarta la ciudad si está cargada entre las personas y pertenece a otra
+    // provincia; si vino del catálogo no hay con qué contrastarla y se conserva.
+    const cargada = ubicaciones.filter(
+      (u) => u.localidad && normalizar(u.localidad) === normalizar(localidad)
     )
-    if (!sigueValiendo) setLocalidad("")
+    if (cargada.length === 0) return
+    if (!cargada.some((u) => normalizar(u.provincia) === normalizar(val))) setLocalidad("")
   }
 
   function handleClear() {
     setProvincia("")
     setLocalidad("")
+    setLocalidadQuery("")
     router.push("/personas")
   }
 
@@ -162,7 +258,7 @@ export default function PersonasFilters({ ministerios, organizaciones, ubicacion
             options={provinciaOptions}
             placeholder="Provincia"
             searchPlaceholder="Buscar provincia..."
-            emptyText="Sin provincias cargadas."
+            emptyText="Sin resultados."
             className={comboboxClass}
           />
         </div>
@@ -175,7 +271,14 @@ export default function PersonasFilters({ ministerios, organizaciones, ubicacion
             options={localidadOptions}
             placeholder="Ciudad / Localidad"
             searchPlaceholder="Buscar ciudad..."
-            emptyText={provincia ? "Sin ciudades en esa provincia." : "Sin ciudades cargadas."}
+            emptyText={
+              !provinciaArgentina && localidadQuery.trim().length < 2
+                ? "Escribí al menos 2 letras para buscar."
+                : "Sin resultados."
+            }
+            onSearch={setLocalidadQuery}
+            // Solo se tapa la lista con "Cargando..." si todavía no hay nada que mostrar.
+            loading={localidadesLoading && localidadOptions.length === 0}
             className={comboboxClass}
           />
         </div>

@@ -7,53 +7,9 @@ import { Users, Plus } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { getUserContext, canPerform } from '@/lib/auth/context'
 import PersonasTable from './_components/personas-table'
-import PersonasFilters, { type Ubicacion } from './_components/personas-filters'
+import PersonasFilters from './_components/personas-filters'
 import DataPagination from '@/components/data-pagination'
-
-type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>
-
-/** Normaliza a minúsculas sin tildes, para deduplicar variantes de la misma provincia/localidad. */
-function normalizarUbicacion(text: string): string {
-  return text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim()
-}
-
-/**
- * Pares provincia + localidad existentes entre las personas activas, deduplicados.
- * Alimenta los combobox de Provincia y Ciudad del filtro: solo se ofrecen valores
- * que realmente están cargados (y que el usuario puede ver, porque RLS aplica acá también).
- */
-async function fetchUbicaciones(supabase: SupabaseServerClient): Promise<Ubicacion[]> {
-  const CHUNK = 1000
-  const MAX_CHUNKS = 20
-  const vistos = new Set<string>()
-  const ubicaciones: Ubicacion[] = []
-
-  for (let i = 0; i < MAX_CHUNKS; i++) {
-    const { data, error } = await supabase
-      .from('personas')
-      .select('provincia, localidad')
-      .is('fecha_baja', null)
-      .or('provincia.not.is.null,localidad.not.is.null')
-      .order('id')
-      .range(i * CHUNK, i * CHUNK + CHUNK - 1)
-
-    if (error || !data) break
-
-    for (const row of data) {
-      const prov = (row.provincia ?? '').trim()
-      const loc = (row.localidad ?? '').trim()
-      if (!prov && !loc) continue
-      const key = `${normalizarUbicacion(prov)}|${normalizarUbicacion(loc)}`
-      if (vistos.has(key)) continue
-      vistos.add(key)
-      ubicaciones.push({ provincia: prov, localidad: loc || null })
-    }
-
-    if (data.length < CHUNK) break
-  }
-
-  return ubicaciones
-}
+import { fetchUbicaciones, variantesDe } from '@/lib/personas/ubicaciones'
 
 export default async function PersonasPage({
   searchParams,
@@ -103,9 +59,10 @@ export default async function PersonasPage({
     supabase.from('organizaciones').select('id, nombre, tipo').in('tipo', ['confraternidad', 'fraternidad']).is('fecha_baja', null).order('tipo').order('nombre'),
   ])
 
-  // Ubicaciones existentes (provincia + localidad) para los combobox de filtro.
+  // Ubicaciones cargadas (país + provincia + localidad): completan los catálogos de los
+  // combobox y dicen cómo está escrito cada valor en la base, para poder filtrar por él.
   // Supabase no expone DISTINCT, así que se traen las columnas en tandas y se deduplican acá.
-  const ubicaciones = await fetchUbicaciones(supabase)
+  const { ubicaciones, variantesProvincia, variantesLocalidad } = await fetchUbicaciones(supabase)
 
   // Relational filters: get persona ids matching modo/ministerio
   let modoIds: string[] | null = null
@@ -187,8 +144,16 @@ export default async function PersonasPage({
     }
     if (canManage && estado) query = query.eq('estado', estado)
     if (canManage && estado_eclesial) query = query.eq('estado_eclesial', estado_eclesial)
-    if (provincia) query = query.ilike('provincia', provincia)
-    if (localidad) query = query.ilike('localidad', localidad)
+    // Se filtra por las variantes guardadas ("Cordoba" además de "Córdoba"); si la
+    // provincia/ciudad elegida del catálogo no la tiene nadie, el ilike da cero resultados.
+    if (provincia) {
+      const variantes = variantesDe(provincia, variantesProvincia)
+      query = variantes.length ? query.in('provincia', variantes) : query.ilike('provincia', provincia)
+    }
+    if (localidad) {
+      const variantes = variantesDe(localidad, variantesLocalidad)
+      query = variantes.length ? query.in('localidad', variantes) : query.ilike('localidad', localidad)
+    }
     // Convivente y Otro son categorías de persona, pero se presentan junto a los
     // modos institucionales para que el filtro coincida con el lenguaje de la lista.
     if (modo === 'convivente') query = query.in('tipo_persona', ['convivente', 'no_cecista'])
@@ -358,7 +323,9 @@ export default async function PersonasPage({
                 {hasFilters ? 'No se encontraron personas' : 'No hay personas registradas'}
               </h3>
               <p className="mt-2 text-muted-foreground">
-                {hasFilters ? 'Probá con otros filtros' : 'Comienza agregando la primera persona al sistema'}
+                {hasFilters
+                  ? '0 resultados para los filtros aplicados. Probá con otros.'
+                  : 'Comienza agregando la primera persona al sistema'}
               </p>
               {!hasFilters && canCreate && (
                 <Link href="/personas/nueva" className="mt-4 inline-block">

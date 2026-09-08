@@ -85,6 +85,8 @@ export function Combobox({
     onSelect(option.value === value ? "" : option.value)
     setOpen(false)
     setSearch("")
+    // Avisa también al buscador remoto, para que la próxima apertura no quede filtrada.
+    onSearch?.("")
   }
 
   return (

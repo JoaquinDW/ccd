@@ -1,6 +1,7 @@
 // Divisiones de primer nivel (provincia / estado / departamento / región) por país.
-// Argentina NO está acá: sus provincias y localidades se resuelven contra la API
-// de Georef (apis.datos.gob.ar) en `components/location-fields.tsx`.
+// En los formularios de carga (`components/location-fields.tsx`) Argentina se resuelve
+// contra la API de Georef (apis.datos.gob.ar), que también trae localidades; el listado
+// estático de acá se usa para poblar filtros sin depender de la red.
 // Si un país no figura en este mapa, el campo se completa como texto libre.
 
 export const SUBDIVISIONES: Record<string, string[]> = {
@@ -8,6 +9,14 @@ export const SUBDIVISIONES: Record<string, string[]> = {
     'Baden-Wurtemberg', 'Baja Sajonia', 'Baviera', 'Berlín', 'Brandeburgo', 'Bremen',
     'Hamburgo', 'Hesse', 'Mecklemburgo-Pomerania Occidental', 'Renania del Norte-Westfalia',
     'Renania-Palatinado', 'Sajonia', 'Sajonia-Anhalt', 'Sarre', 'Schleswig-Holstein', 'Turingia',
+  ],
+  // Nombres oficiales de Georef, para que coincidan con lo que guardan los formularios.
+  Argentina: [
+    'Buenos Aires', 'Catamarca', 'Chaco', 'Chubut', 'Ciudad Autónoma de Buenos Aires',
+    'Córdoba', 'Corrientes', 'Entre Ríos', 'Formosa', 'Jujuy', 'La Pampa', 'La Rioja',
+    'Mendoza', 'Misiones', 'Neuquén', 'Río Negro', 'Salta', 'San Juan', 'San Luis',
+    'Santa Cruz', 'Santa Fe', 'Santiago del Estero',
+    'Tierra del Fuego, Antártida e Islas del Atlántico Sur', 'Tucumán',
   ],
   Australia: [
     'Australia Meridional', 'Australia Occidental', 'Nueva Gales del Sur', 'Queensland',

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getUserContext, canPerform } from '@/lib/auth/context'
+import { fetchUbicaciones, variantesDe } from '@/lib/personas/ubicaciones'
 
 const TIPO_PERSONA_LABELS: Record<string, string> = {
   interesado: 'Interesado/a',
@@ -87,8 +88,18 @@ export async function GET(req: NextRequest) {
   if (q) query = query.or(`nombre.ilike.%${q}%,apellido.ilike.%${q}%,email.ilike.%${q}%`)
   if (estado) query = query.eq('estado', estado)
   if (estado_eclesial) query = query.eq('estado_eclesial', estado_eclesial)
-  if (provincia) query = query.ilike('provincia', provincia)
-  if (localidad) query = query.ilike('localidad', localidad)
+  // Mismo criterio que el listado: se buscan las variantes tal cual están guardadas.
+  if (provincia || localidad) {
+    const { variantesProvincia, variantesLocalidad } = await fetchUbicaciones(supabase)
+    if (provincia) {
+      const variantes = variantesDe(provincia, variantesProvincia)
+      query = variantes.length ? query.in('provincia', variantes) : query.ilike('provincia', provincia)
+    }
+    if (localidad) {
+      const variantes = variantesDe(localidad, variantesLocalidad)
+      query = variantes.length ? query.in('localidad', variantes) : query.ilike('localidad', localidad)
+    }
+  }
   if (modo === 'convivente') query = query.in('tipo_persona', ['convivente', 'no_cecista'])
   if (modo === 'otro') query = query.eq('tipo_persona', 'otro')
   if (filterIds !== null) query = query.in('id', filterIds)
