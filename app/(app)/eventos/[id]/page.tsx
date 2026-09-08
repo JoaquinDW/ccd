@@ -94,7 +94,7 @@ export default async function EventoDetailPage({
     .select(`
       id, nombre, tipo, estado, fecha_inicio, fecha_fin,
       modalidad, descripcion, notas, cupo_maximo, audiencia,
-      cuota_inscripcion, pension,
+      pension, precio,
       requiere_discernimiento_confra, requiere_discernimiento_eqt,
       coordinadores_propuestos, asesor_propuesto, asesor_voluntario, es_apv,
       ciudad, codigo_postal, diocesis, provincia_evento, pais_evento,
@@ -685,12 +685,16 @@ export default async function EventoDetailPage({
               </div>
             </div>
             <Field label="Modalidad" value={evento.modalidad} />
-            {evento.es_apv && (
-              <div>
-                <p className="text-xs text-muted-foreground">APV</p>
+            <div>
+              <p className="text-xs text-muted-foreground">Costo</p>
+              {evento.es_apv ? (
                 <p className="text-sm text-foreground">Aporte de valor voluntario</p>
-              </div>
-            )}
+              ) : (evento as Record<string, unknown>).precio != null && Number((evento as Record<string, unknown>).precio) > 0 ? (
+                <p className="text-sm text-foreground">${Number((evento as Record<string, unknown>).precio).toLocaleString('es-AR')}</p>
+              ) : (
+                <p className="text-sm text-muted-foreground italic">Sin definir</p>
+              )}
+            </div>
           </div>
 
           {/* Fechas de ejecución */}
@@ -1081,7 +1085,7 @@ export default async function EventoDetailPage({
         <PensionBecasPanel
           eventoId={id}
           precioEvento={{
-            cuota_inscripcion: Number((evento as Record<string, unknown>).cuota_inscripcion ?? 0),
+            cuota_inscripcion: Number((evento as Record<string, unknown>).precio ?? 0),
             pension: Number((evento as Record<string, unknown>).pension ?? 0),
           }}
           participantes={participantesPension.map(p => ({

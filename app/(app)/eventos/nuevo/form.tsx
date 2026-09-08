@@ -458,7 +458,7 @@ export default function NuevoEventoForm({
                 htmlFor="es_apv"
                 className="text-sm text-foreground cursor-pointer"
               >
-                Es de aporte voluntario DAV
+                Es de Aporte de Valor Voluntario (APV)
               </label>
             </div>
 

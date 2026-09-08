@@ -69,7 +69,7 @@ export default async function EventoGestionPage({
     .from('eventos')
     .select(`
       id, nombre, tipo, estado, fecha_inicio, fecha_fin, ciudad, provincia_evento,
-      cuota_inscripcion, pension, cupo_maximo,
+      precio, pension, cupo_maximo,
       organizacion_id, fraternidad_id,
       coordinador_asignado_id, centralizador_1_persona_id, centralizador_2_persona_id, centralizador_3_persona_id,
       confraternidad:organizaciones!organizacion_id(id, nombre),
@@ -224,7 +224,7 @@ export default async function EventoGestionPage({
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="rounded-lg border border-border p-4">
               <p className="text-xs text-muted-foreground">Monto de Inscripción</p>
-              <p className="text-lg font-semibold text-foreground">${formatMonto(Number(evento.cuota_inscripcion ?? 0))}</p>
+              <p className="text-lg font-semibold text-foreground">${formatMonto(Number(evento.precio ?? 0))}</p>
             </div>
             <div className="rounded-lg border border-border p-4">
               <p className="text-xs text-muted-foreground">Monto de Pensión</p>
@@ -343,7 +343,7 @@ export default async function EventoGestionPage({
         <PensionBecasPanel
           eventoId={id}
           precioEvento={{
-            cuota_inscripcion: Number(evento.cuota_inscripcion ?? 0),
+            cuota_inscripcion: Number(evento.precio ?? 0),
             pension: Number(evento.pension ?? 0),
           }}
           participantes={participantesPension}

@@ -7,7 +7,7 @@ async function loadEvento(id: string) {
   const supabase = await createClient()
   const { data } = await supabase
     .from('eventos')
-    .select('id, estado, organizacion_id, fraternidad_id, cuota_inscripcion, pension, centralizador_1_persona_id, centralizador_2_persona_id, centralizador_3_persona_id')
+    .select('id, estado, organizacion_id, fraternidad_id, precio, pension, centralizador_1_persona_id, centralizador_2_persona_id, centralizador_3_persona_id')
     .eq('id', id)
     .single()
   return { supabase, evento: data }
@@ -44,7 +44,7 @@ export async function GET(
   })
 
   return NextResponse.json({
-    evento: { cuota_inscripcion: evento.cuota_inscripcion, pension: evento.pension },
+    evento: { cuota_inscripcion: evento.precio, pension: evento.pension },
     participantes,
   })
 }
