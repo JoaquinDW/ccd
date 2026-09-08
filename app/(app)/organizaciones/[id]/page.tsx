@@ -36,7 +36,13 @@ export default async function OrganizacionDetailPage({
 }) {
   const { id } = await params
   const [supabase, ctx] = await Promise.all([createClient(), getUserContext()])
-  const canManage = ctx ? canPerform(ctx, "organization.update") : false
+  // Ficha completa (código, tipo, sede, contacto, notas). Sin este permiso la
+  // pantalla se reduce a: fraternidades que componen la confraternidad + quiénes
+  // tienen rol en ella (nombre y rol).
+  const canVerFicha = ctx ? canPerform(ctx, "organizaciones.view_ficha") : false
+  const canVerRolesDetalle = ctx
+    ? canPerform(ctx, "organizaciones.view_roles_detalle")
+    : false
   const canEdit = ctx ? canPerform(ctx, "organization.update", id) : false
 
   const [
@@ -53,7 +59,7 @@ export default async function OrganizacionDetailPage({
       .single(),
     supabase
       .from("organizaciones")
-      .select("id, nombre, tipo")
+      .select("id, nombre, tipo, estado")
       .eq("parent_id", id)
       .is("fecha_baja", null)
       .order("nombre"),
@@ -83,6 +89,19 @@ export default async function OrganizacionDetailPage({
     parent = parentData ?? null
   }
 
+  // En la vista restringida (sin ficha) no hay columna de estado, así que las
+  // organizaciones inactivas se ocultan en vez de mostrarse sin distintivo.
+  const dependientes = (orgsDependientes ?? []).filter(
+    (dep: any) => canVerFicha || dep.estado === "activa",
+  )
+  const tituloDependientes = canVerFicha
+    ? "Confraternidades o Fraternidades Relacionadas (Org. Dependientes)"
+    : dependientes.length > 0
+      ? org.tipo === "confraternidad"
+        ? "Fraternidades que la componen"
+        : "Organizaciones dependientes"
+      : "Confraternidad a la que pertenece"
+
   return (
     <div className="space-y-6 max-w-3xl">
       {/* Header */}
@@ -105,7 +124,7 @@ export default async function OrganizacionDetailPage({
       </div>
 
       {/* Main data card */}
-      {canManage && (
+      {canVerFicha && (
       <Card className="border-border bg-card">
         <CardHeader>
           <CardTitle className="text-foreground">
@@ -257,11 +276,11 @@ export default async function OrganizacionDetailPage({
       <Card className="border-border bg-card">
         <CardHeader>
           <CardTitle className="text-sm font-semibold text-foreground uppercase tracking-wide">
-            Confraternidades o Fraternidades Relacionadas (Org. Dependientes)
+            {tituloDependientes}
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {(orgsDependientes ?? []).length > 0 ? (
+          {dependientes.length > 0 ? (
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border">
@@ -271,7 +290,7 @@ export default async function OrganizacionDetailPage({
                 </tr>
               </thead>
               <tbody>
-                {(orgsDependientes ?? []).map((dep) => (
+                {dependientes.map((dep: any) => (
                   <tr
                     key={dep.id}
                     className="border-b border-border/50 last:border-0"
@@ -323,7 +342,8 @@ export default async function OrganizacionDetailPage({
       <Card className="border-border bg-card">
         <CardHeader>
           <CardTitle className="text-sm font-semibold text-foreground uppercase tracking-wide">
-            Roles de la {tipoLabel[org.tipo] ?? "Organización"}
+            Quiénes tienen un rol en esta{" "}
+            {tipoLabel[org.tipo]?.toLowerCase() ?? "organización"}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -341,7 +361,7 @@ export default async function OrganizacionDetailPage({
                   <th className="text-left py-2 px-3 font-medium text-muted-foreground">
                     Rol
                   </th>
-                  {canManage && (
+                  {canVerRolesDetalle && (
                     <>
                       <th className="text-left py-2 px-3 font-medium text-muted-foreground">
                         Evento
@@ -380,7 +400,7 @@ export default async function OrganizacionDetailPage({
                     <td className="py-2 px-3">
                       {asig.ministerio?.nombre ?? "—"}
                     </td>
-                    {canManage && (
+                    {canVerRolesDetalle && (
                       <>
                         <td className="py-2 px-3 text-muted-foreground">
                           {asig.evento?.nombre ?? "—"}

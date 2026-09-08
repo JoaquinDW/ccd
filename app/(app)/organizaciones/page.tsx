@@ -54,18 +54,22 @@ export default async function OrganizacionesPage({
 
   const canCreate = ctx ? canPerform(ctx, "organization.create") : false
   const canExport = ctx ? canPerform(ctx, "organizaciones.export") : false
-  const canManage = ctx ? canPerform(ctx, "organization.update") : false
+  // Ficha completa: código, tipo, relación, ubicación, filtros avanzados y
+  // fraternidades en el listado. Sin este permiso solo se ven los NOMBRES de las
+  // confraternidades (incluido el nodo "Fraternidades dependientes del Equipo Timón").
+  const canVerFicha = ctx ? canPerform(ctx, "organizaciones.view_ficha") : false
+  const canEditAny = ctx ? canPerform(ctx, "organization.update") : false
   // canUpdate se evalúa por org en la tabla (ver uso abajo)
   const canUpdateOrg = (orgId: string) =>
     ctx ? canPerform(ctx, "organization.update", orgId) : false
   const supabase = await createClient()
 
-  const SORTABLE_ORGS = canManage
+  const SORTABLE_ORGS = canVerFicha
     ? ["nombre", "tipo", "localidad", "estado"]
     : ["nombre"]
   const sortCol =
-    canManage && sortBy && SORTABLE_ORGS.includes(sortBy) ? sortBy : "nombre"
-  const sortAsc = canManage && sortBy ? sortDir === "asc" : true
+    canVerFicha && sortBy && SORTABLE_ORGS.includes(sortBy) ? sortBy : "nombre"
+  const sortAsc = canVerFicha && sortBy ? sortDir === "asc" : true
 
   let query = supabase
     .from("organizaciones")
@@ -76,7 +80,7 @@ export default async function OrganizacionesPage({
     .is("fecha_baja", null)
     .order(sortCol, { ascending: sortAsc })
 
-  if (canManage) {
+  if (canVerFicha) {
     if (q) query = query.ilike("nombre", `%${q}%`)
     if (tipo) query = query.eq("tipo", tipo)
     if (estado) query = query.eq("estado", estado)
@@ -85,7 +89,7 @@ export default async function OrganizacionesPage({
   } else {
     // Vista restringida: solo confraternidades (incluye el nodo agrupador
     // "Fraternidades Dependientes del Equipo Timón", que también es tipo='confraternidad')
-    query = query.eq("tipo", "confraternidad")
+    query = query.eq("tipo", "confraternidad").eq("estado", "activa")
     if (q) query = query.ilike("nombre", `%${q}%`)
   }
 
@@ -101,7 +105,7 @@ export default async function OrganizacionesPage({
   // ambigua y trae la relación inversa (hijos) en vez del padre. Se busca
   // aparte, en lote, solo para las orgs de esta página.
   const parentNames: Record<string, string> = {}
-  if (canManage) {
+  if (canVerFicha) {
     const parentIds = [
       ...new Set(
         (organizaciones ?? [])
@@ -142,7 +146,7 @@ export default async function OrganizacionesPage({
     otra: "Otra",
   }
 
-  const hasFilters = canManage
+  const hasFilters = canVerFicha
     ? !!(q || tipo || estado || provincia || localidad)
     : !!q
 
@@ -163,7 +167,7 @@ export default async function OrganizacionesPage({
           Comunidad Convivencia con Dios
         </h1>
         <p className="mt-2 text-muted-foreground">
-          {canManage
+          {canVerFicha
             ? "Administra las confraternidades, fraternidades y su jerarquía"
             : "Consultá las confraternidades y su jerarquía"}
         </p>
@@ -173,12 +177,12 @@ export default async function OrganizacionesPage({
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
             <CardTitle className="text-foreground">
-              {canManage
+              {canVerFicha
                 ? "Confraternidades y Fraternidades de Comunidad Convivencia con Dios"
                 : "Confraternidades de Comunidad Convivencia con Dios"}
             </CardTitle>
             <CardDescription>
-              {canManage
+              {canVerFicha
                 ? "Lista completa de confraternidades y fraternidades en el sistema"
                 : "Listado de confraternidades"}
             </CardDescription>
@@ -218,7 +222,7 @@ export default async function OrganizacionesPage({
               </svg>
             </div>
 
-            {canManage && (
+            {canVerFicha && (
               <>
                 <select
                   name="tipo"
@@ -280,7 +284,7 @@ export default async function OrganizacionesPage({
             <>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">
-                  {canManage
+                  {canVerFicha
                     ? total === 1
                       ? "1 confraternidad / fraternidad"
                       : `${total} confraternidades / fraternidades`
@@ -300,7 +304,7 @@ export default async function OrganizacionesPage({
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-border">
-                      {canManage && (
+                      {canVerFicha && (
                         <th className="text-left py-3 px-4 font-semibold text-foreground">
                           Código
                         </th>
@@ -311,7 +315,7 @@ export default async function OrganizacionesPage({
                         currentSort={sortBy}
                         currentDir={sortDir}
                       />
-                      {canManage && (
+                      {canVerFicha && (
                         <>
                           <SortableHeader
                             column="tipo"
@@ -331,10 +335,12 @@ export default async function OrganizacionesPage({
                           <th className="text-left py-3 px-4 font-semibold text-foreground">
                             Provincia
                           </th>
-                          <th className="text-center py-3 px-4 font-semibold text-foreground">
-                            Acciones
-                          </th>
                         </>
+                      )}
+                      {canEditAny && (
+                        <th className="text-center py-3 px-4 font-semibold text-foreground">
+                          Acciones
+                        </th>
                       )}
                     </tr>
                   </thead>
@@ -344,7 +350,7 @@ export default async function OrganizacionesPage({
                         key={org.id}
                         className="border-b border-border hover:bg-muted/50 transition-colors"
                       >
-                        {canManage && (
+                        {canVerFicha && (
                           <td className="py-3 px-4 text-muted-foreground font-mono text-xs">
                             {org.codigo ?? "—"}
                           </td>
@@ -357,7 +363,7 @@ export default async function OrganizacionesPage({
                             {org.nombre}
                           </Link>
                         </td>
-                        {canManage && (
+                        {canVerFicha && (
                           <>
                             <td className="py-3 px-4 text-muted-foreground">
                               {tipoLabel[org.tipo] ?? org.tipo}
@@ -371,20 +377,22 @@ export default async function OrganizacionesPage({
                             <td className="py-3 px-4 text-muted-foreground">
                               {org.provincia ?? "—"}
                             </td>
-                            <td className="py-3 px-4 text-center">
-                              {canUpdateOrg(org.id) && (
-                                <Link href={`/organizaciones/${org.id}/editar`}>
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    className="h-8 w-8 p-0"
-                                  >
-                                    <Edit2 className="h-4 w-4" />
-                                  </Button>
-                                </Link>
-                              )}
-                            </td>
                           </>
+                        )}
+                        {canEditAny && (
+                          <td className="py-3 px-4 text-center">
+                            {canUpdateOrg(org.id) && (
+                              <Link href={`/organizaciones/${org.id}/editar`}>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-8 w-8 p-0"
+                                >
+                                  <Edit2 className="h-4 w-4" />
+                                </Button>
+                              </Link>
+                            )}
+                          </td>
                         )}
                       </tr>
                     ))}

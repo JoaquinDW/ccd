@@ -52,7 +52,8 @@ VALUES
   ('Convivente',                                    'CONV',    'usuario',    'comunidad',      TRUE),
   ('Cecista',                                       'CEC',     'usuario',    'comunidad',      TRUE),
   -- Técnico
-  ('Administrador Sistema Sede',                    'ADMIN',   'tecnico',    'comunidad',      TRUE),
+  -- Renombrado desde 'Administrador Sistema Sede' — ver 075_rename_rol_admin_sistema_sede.sql
+  ('Coordinación Administrativa',                   'ADMIN',   'tecnico',    'comunidad',      TRUE),
   ('Secretaria',                                    'SEC',     'tecnico',    'comunidad',      TRUE),
   ('Tesoreria',                                     'TES',     'tecnico',    'comunidad',      TRUE),
   ('Finanzas',                                      'FIN',     'tecnico',    'comunidad',      TRUE),

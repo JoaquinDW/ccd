@@ -33,6 +33,8 @@ export type Permission =
   | 'organization.create' // solo admin
   | 'organization.update'
   | 'organizaciones.export' // exportar listado de organizaciones a Excel
+  | 'organizaciones.view_ficha'         // ver la ficha completa (código, tipo, ubicación, contacto, notas) y el listado completo con filtros
+  | 'organizaciones.view_roles_detalle'  // ver columnas administrativas del bloque Roles (evento, estado, fechas)
   | 'ministry.assign'
   | 'roles.assign'        // asignar roles de sistema — solo admin
   | 'roles.view'          // ver sección ministerios y roles
@@ -77,6 +79,8 @@ export const rolePermissions: Record<SystemRole, Permission[]> = {
     'organization.create',
     'organization.update',
     'organizaciones.export',
+    'organizaciones.view_ficha',
+    'organizaciones.view_roles_detalle',
     'ministry.assign',
     'roles.assign',
     'view.all',
@@ -98,6 +102,8 @@ export const rolePermissions: Record<SystemRole, Permission[]> = {
     'event.manage_participants',
     'payment.verify',
     'organization.update',
+    'organizaciones.view_ficha',
+    'organizaciones.view_roles_detalle',
     'ministry.assign',
     'roles.view',
     'view.all',
