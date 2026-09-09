@@ -18,6 +18,7 @@ import {
 import { ArrowLeft, Eye, EyeOff, Paperclip, X } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { LocationFields } from "@/components/location-fields"
+import { cn } from "@/lib/utils"
 
 interface Organizacion {
   id: string
@@ -613,7 +614,7 @@ export default function NewPersonaPage() {
                     Referente de Comunidad
                   </Label>
                 </div>
-                <div className="space-y-1">
+                <div className={cn('space-y-1', !canEditSocioActivo && 'rounded-md bg-muted p-3')}>
                   <div className="flex items-center gap-2">
                     <input
                       id="socio_asociacion"
@@ -622,15 +623,12 @@ export default function NewPersonaPage() {
                       checked={formData.socio_asociacion}
                       onChange={handleChange}
                       disabled={!canEditSocioActivo}
-                      className="h-4 w-4 rounded border-border"
+                      className="h-4 w-4 rounded border-border disabled:cursor-not-allowed disabled:opacity-60"
                     />
-                    <Label htmlFor="socio_asociacion">Socio Activo</Label>
+                    <Label htmlFor="socio_asociacion" className={cn(!canEditSocioActivo && 'text-muted-foreground')}>
+                      Socio Activo
+                    </Label>
                   </div>
-                  {!canEditSocioActivo && (
-                    <p className="text-xs text-muted-foreground">
-                      Solo lo pueden modificar Enlaces de Fraternidad, Delegados, Responsables de Confraternidad, Tesoreros y Equipo Timón.
-                    </p>
-                  )}
                 </div>
               </div>
             </div>

@@ -1129,20 +1129,13 @@ export default function SettingsPage() {
               {/* Datos institucionales — solo lectura (gestionados por la Administración de CcD) */}
               <Card className="border-border bg-card">
                 <CardHeader>
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <CardTitle className="text-foreground flex items-center gap-2">
-                        <Lock className="h-5 w-5 text-primary" />
-                        Datos institucionales
-                      </CardTitle>
-                      <CardDescription>
-                        Estos datos los administra la comunidad y se importan desde la Administración de CcD. No son editables desde acá.
-                      </CardDescription>
-                    </div>
-                    <Button type="button" variant="link" className="h-auto p-0 text-xs whitespace-nowrap" onClick={() => openCorrectionDialog('')}>
-                      ¿Algo está mal? Reportalo
-                    </Button>
-                  </div>
+                  <CardTitle className="text-foreground flex items-center gap-2">
+                    <Lock className="h-5 w-5 text-primary" />
+                    Datos institucionales
+                  </CardTitle>
+                  <CardDescription>
+                    Estos datos los administra la comunidad y se importan desde la Administración de CcD. No son editables desde acá.
+                  </CardDescription>
                 </CardHeader>
                 <CardContent className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
@@ -1182,7 +1175,7 @@ export default function SettingsPage() {
                 {/* Subsección editable — la completa el propio cecista */}
                 {(modoActual === 'servidor' || modoActual === 'familiar') && (
                   <CardContent className="grid gap-4 border-t border-border pt-6 md:grid-cols-2">
-                    <div className="md:col-span-2 space-y-1">
+                    <div className={cn('md:col-span-2 space-y-1', !canEditSocioActivo && 'rounded-md bg-muted p-3')}>
                       <div className="flex items-center gap-3">
                         <input
                           id="p-socio-activo"
@@ -1190,18 +1183,21 @@ export default function SettingsPage() {
                           checked={editForm.socio_asociacion}
                           onChange={e => toggleSocioActivo(e.target.checked)}
                           disabled={editLoading || !canEditSocioActivo}
-                          className="h-4 w-4 rounded border-border"
+                          className="h-4 w-4 rounded border-border disabled:cursor-not-allowed disabled:opacity-60"
                         />
-                        <Label htmlFor="p-socio-activo">Socio Activo de la Asociación Civil</Label>
+                        <Label htmlFor="p-socio-activo" className={cn(!canEditSocioActivo && 'text-muted-foreground')}>
+                          Socio Activo de la Asociación Civil
+                        </Label>
                       </div>
-                      {!canEditSocioActivo && (
-                        <p className="text-xs text-muted-foreground">
-                          Solo lo pueden modificar Enlaces de Fraternidad, Delegados, Responsables de Confraternidad, Tesoreros y Equipo Timón.
-                        </p>
-                      )}
                     </div>
                   </CardContent>
                 )}
+
+                <CardContent className="border-t border-border pt-4">
+                  <Button type="button" variant="link" className="h-auto p-0 text-sm" onClick={() => openCorrectionDialog('')}>
+                    ¿Algo está mal? Reportalo
+                  </Button>
+                </CardContent>
               </Card>
 
               {/* Reportar dato incorrecto — abierto desde los botones de arriba */}

@@ -12,6 +12,7 @@ import { createClient } from "@/lib/supabase/client"
 import { translateSupabaseError } from "@/lib/errors/supabase"
 import { LocationFields } from "@/components/location-fields"
 import { Combobox } from "@/components/ui/combobox"
+import { cn } from "@/lib/utils"
 
 type Persona = {
   id: string
@@ -798,7 +799,7 @@ export function EditPersonaForm({
                   />
                   <Label htmlFor="referente_comunidad">Referente de Comunidad</Label>
                 </div>
-                <div className="space-y-1">
+                <div className={cn('space-y-1', !canEditSocioActivo && 'rounded-md bg-muted p-3')}>
                   <div className="flex items-center gap-2">
                     <input
                       id="socio_asociacion"
@@ -807,15 +808,12 @@ export function EditPersonaForm({
                       checked={basicData.socio_asociacion}
                       onChange={handleBasicChange}
                       disabled={basicLoading || !canEditSocioActivo}
-                      className="h-4 w-4 rounded border-border"
+                      className="h-4 w-4 rounded border-border disabled:cursor-not-allowed disabled:opacity-60"
                     />
-                    <Label htmlFor="socio_asociacion">Socio Activo</Label>
+                    <Label htmlFor="socio_asociacion" className={cn(!canEditSocioActivo && 'text-muted-foreground')}>
+                      Socio Activo
+                    </Label>
                   </div>
-                  {!canEditSocioActivo && (
-                    <p className="text-xs text-muted-foreground">
-                      Solo lo pueden modificar Enlaces de Fraternidad, Delegados, Responsables de Confraternidad, Tesoreros y Equipo Timón.
-                    </p>
-                  )}
                 </div>
               </div>
             </div>
