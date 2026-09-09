@@ -748,8 +748,10 @@ export default async function EventoDetailPage({
             </div>
           )}
 
-          {/* Personas propuestas — visible cuando la confra ya discernió */}
-          {evento.disc_confra_estado && (evento.coordinadores_propuestos || evento.asesor_propuesto) && (
+          {/* Personas propuestas — visible durante el discernimiento; una vez publicado
+              queda la sección "Personas asignadas (Equipo Timón)" como fuente definitiva. */}
+          {evento.disc_confra_estado && (evento.coordinadores_propuestos || evento.asesor_propuesto) &&
+            !['publicado', 'en_curso', 'finalizado'].includes(evento.estado) && (
             <div className="space-y-2 border-t border-border pt-4">
               <p className="text-xs text-muted-foreground uppercase tracking-wide">Personas propuestas (Confraternidad)</p>
               <div className="grid gap-2 sm:grid-cols-2 text-sm">
