@@ -136,7 +136,16 @@ export default async function DashboardPage() {
   const canManageParticipants = canPerform(ctx, "event.manage_participants")
   const canVerifyPayments = canPerform(ctx, "payment.verify")
   const canViewPublishedEvents = canPerform(ctx, "view.eventos_publicados")
+  const canViewAllEstados = canPerform(ctx, "event.view_all_estados")
   const hasPersonaId = ctx.persona_id !== null
+
+  // Los contadores de Eventos / Próximos son GLOBALES (toda la comunidad), no
+  // scopeados a la org del usuario. Quien no tiene un rol de conducción con
+  // event.view_all_estados solo cuenta los eventos publicados; los aprobados
+  // todavía no son públicos.
+  const estadosContados = canViewAllEstados
+    ? ["aprobado", "publicado"]
+    : ["publicado"]
 
   // ── Queries paralelas ────────────────────────────────────────────────────────
 
@@ -183,29 +192,19 @@ export default async function DashboardPage() {
           .is("fecha_baja", null)
       : Promise.resolve({ count: 0, error: null }),
 
-    // 3. Count eventos activos (aprobado + publicado)
-    (() => {
-      let q = supabase
-        .from("eventos")
-        .select("id", { count: "exact", head: true })
-        .in("estado", ["aprobado", "publicado"])
-      if (!ctx.is_admin && primaryOrgId)
-        q = q.eq("organizacion_id", primaryOrgId)
-      return q
-    })(),
+    // 3. Count eventos activos — global, sin scope por organización
+    supabase
+      .from("eventos")
+      .select("id", { count: "exact", head: true })
+      .in("estado", estadosContados),
 
-    // 4. Count próximos eventos (30 días)
-    (() => {
-      let q = supabase
-        .from("eventos")
-        .select("id", { count: "exact", head: true })
-        .in("estado", ["aprobado", "publicado"])
-        .gte("fecha_inicio", today)
-        .lte("fecha_inicio", in30)
-      if (!ctx.is_admin && primaryOrgId)
-        q = q.eq("organizacion_id", primaryOrgId)
-      return q
-    })(),
+    // 4. Count próximos eventos (30 días) — global, sin scope por organización
+    supabase
+      .from("eventos")
+      .select("id", { count: "exact", head: true })
+      .in("estado", estadosContados)
+      .gte("fecha_inicio", today)
+      .lte("fecha_inicio", in30),
 
     // 5. Eventos publicados. El mismo permiso protege la página
     // /eventos/publicados y determina si este resumen existe en el dashboard.
@@ -697,7 +696,7 @@ export default async function DashboardPage() {
         )}
 
         <Link
-          href="/eventos"
+          href={canViewAllEstados ? "/eventos" : "/eventos?estado=publicado"}
           aria-label="Ver lista de eventos"
           className="group block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
         >
@@ -713,14 +712,14 @@ export default async function DashboardPage() {
                 {totalEventos}
               </div>
               <p className="text-xs text-muted-foreground mt-1">
-                Aprobados o publicados
+                {canViewAllEstados ? "Aprobados o publicados" : "Publicados"}
               </p>
             </CardContent>
           </Card>
         </Link>
 
         <Link
-          href={`/eventos?fecha_desde=${today}&fecha_hasta=${in30}`}
+          href={`/eventos?fecha_desde=${today}&fecha_hasta=${in30}${canViewAllEstados ? "" : "&estado=publicado"}`}
           aria-label="Ver eventos de los próximos 30 días"
           className="group block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
         >
