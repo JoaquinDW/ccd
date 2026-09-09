@@ -323,7 +323,7 @@ export function Sidebar({ permissions }: { permissions: SidebarPermissions }) {
         <div className="flex h-full flex-col">
           {/* Logo */}
           <div className="border-b border-border p-6">
-            <Link href="/" className="flex items-center gap-2">
+            <Link href="/dashboard" className="flex items-center gap-2">
               <Image
                 src="/logoccd.jpeg"
                 alt="Convivencia con Dios"
