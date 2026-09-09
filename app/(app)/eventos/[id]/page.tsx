@@ -460,6 +460,11 @@ export default async function EventoDetailPage({
     (canPerform(ctx, 'event.request_suspend', evento.organizacion_id ?? null) ||
       (evento.fraternidad_id ? canPerform(ctx, 'event.request_suspend', evento.fraternidad_id) : false))
 
+  // Una vez publicado, el proceso de discernimiento/aprobación ya es historia —
+  // se ocultan esos bloques y queda solo lo operativo (fechas, ubicación, equipo asignado).
+  const ESTADOS_EVENTO_TERMINADO = ['publicado', 'en_curso', 'finalizado']
+  const mostrarProcesoDiscernimiento = !ESTADOS_EVENTO_TERMINADO.includes(evento.estado)
+
   // Build discernimiento niveles for the panel
   type NivelDiscernimiento = {
     nivel: 'confra' | 'eqt'
@@ -751,7 +756,7 @@ export default async function EventoDetailPage({
           {/* Personas propuestas — visible durante el discernimiento; una vez publicado
               queda la sección "Personas asignadas (Equipo Timón)" como fuente definitiva. */}
           {evento.disc_confra_estado && (evento.coordinadores_propuestos || evento.asesor_propuesto) &&
-            !['publicado', 'en_curso', 'finalizado'].includes(evento.estado) && (
+            mostrarProcesoDiscernimiento && (
             <div className="space-y-2 border-t border-border pt-4">
               <p className="text-xs text-muted-foreground uppercase tracking-wide">Personas propuestas (Confraternidad)</p>
               <div className="grid gap-2 sm:grid-cols-2 text-sm">
@@ -865,17 +870,19 @@ export default async function EventoDetailPage({
             )
           })()}
 
-          {/* Discernimiento */}
-          <div className="grid gap-2 sm:grid-cols-2 text-sm border-t border-border pt-4">
-            <div>
-              <p className="text-xs text-muted-foreground">Disc. Confraternidad / Delegado</p>
-              <p className="text-foreground">{evento.requiere_discernimiento_confra ? 'Sí' : 'No'}</p>
+          {/* Discernimiento — proceso ya cerrado una vez publicado el evento */}
+          {mostrarProcesoDiscernimiento && (
+            <div className="grid gap-2 sm:grid-cols-2 text-sm border-t border-border pt-4">
+              <div>
+                <p className="text-xs text-muted-foreground">Disc. Confraternidad / Delegado</p>
+                <p className="text-foreground">{evento.requiere_discernimiento_confra ? 'Sí' : 'No'}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Disc. Equipo Timón</p>
+                <p className="text-foreground">{evento.requiere_discernimiento_eqt ? 'Sí' : 'No'}</p>
+              </div>
             </div>
-            <div>
-              <p className="text-xs text-muted-foreground">Disc. Equipo Timón</p>
-              <p className="text-foreground">{evento.requiere_discernimiento_eqt ? 'Sí' : 'No'}</p>
-            </div>
-          </div>
+          )}
 
           {/* Notas del evento */}
           {evento.notas && (
@@ -893,7 +900,8 @@ export default async function EventoDetailPage({
             </div>
           )}
 
-          {/* Historial */}
+          {/* Historial — proceso ya cerrado una vez publicado el evento */}
+          {mostrarProcesoDiscernimiento && (
           <div className="border-t border-border pt-4 space-y-3">
             <p className="text-xs text-muted-foreground uppercase tracking-wide">Historial</p>
 
@@ -967,6 +975,7 @@ export default async function EventoDetailPage({
               </div>
             )}
           </div>
+          )}
         </CardContent>
       </Card>
 
