@@ -71,8 +71,7 @@ export default async function PersonaDetailPage({
 
   if (
     !ctx ||
-    !canPerform(ctx, "person.create") ||
-    !canPerform(ctx, "person.update")
+    (!canPerform(ctx, "person.create") && !canPerform(ctx, "person.update"))
   ) {
     redirect("/personas")
   }

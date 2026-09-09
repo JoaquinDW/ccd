@@ -300,10 +300,10 @@ export default async function PersonasPage({
           <PersonasTable
             personas={personas}
             canUpdate={canUpdate}
-            canViewDetails={canManage}
+            canViewDetails={canCreate || canUpdate}
             canExport={canManage && canExport}
             exportSearch={exportSearch}
-            initialPersonaId={canManage ? initialPersonaId : null}
+            initialPersonaId={(canCreate || canUpdate) ? initialPersonaId : null}
             sortBy={sortBy}
             sortDir={sortDir}
             totalCount={totalCount}
