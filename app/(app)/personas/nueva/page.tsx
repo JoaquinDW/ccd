@@ -72,6 +72,9 @@ export default function NewPersonaPage() {
   const [confirmarPassword, setConfirmarPassword] = useState("")
   const [mostrarPassword, setMostrarPassword] = useState(false)
   const [incluirAsignacion, setIncluirAsignacion] = useState(false)
+  // Solo Enlaces/Delegados/Responsables/Tesoreros/Timonel pueden tildar
+  // "Socio Activo" — ver app/api/personas/me/socio-activo/route.ts
+  const [canEditSocioActivo, setCanEditSocioActivo] = useState(false)
   const [asignacion, setAsignacion] = useState({
     ministerio_id: "",
     organizacion_id: "",
@@ -147,6 +150,10 @@ export default function NewPersonaPage() {
       if (personasData) setPersonas(personasData)
     }
     load()
+    fetch('/api/personas/me/socio-activo')
+      .then(res => res.json())
+      .then(json => setCanEditSocioActivo(!!json.canEdit))
+      .catch(() => setCanEditSocioActivo(false))
   }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -606,16 +613,24 @@ export default function NewPersonaPage() {
                     Referente de Comunidad
                   </Label>
                 </div>
-                <div className="flex items-center gap-2">
-                  <input
-                    id="socio_asociacion"
-                    name="socio_asociacion"
-                    type="checkbox"
-                    checked={formData.socio_asociacion}
-                    onChange={handleChange}
-                    className="h-4 w-4 rounded border-border"
-                  />
-                  <Label htmlFor="socio_asociacion">Socio Activo</Label>
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <input
+                      id="socio_asociacion"
+                      name="socio_asociacion"
+                      type="checkbox"
+                      checked={formData.socio_asociacion}
+                      onChange={handleChange}
+                      disabled={!canEditSocioActivo}
+                      className="h-4 w-4 rounded border-border"
+                    />
+                    <Label htmlFor="socio_asociacion">Socio Activo</Label>
+                  </div>
+                  {!canEditSocioActivo && (
+                    <p className="text-xs text-muted-foreground">
+                      Solo lo pueden modificar Enlaces de Fraternidad, Delegados, Responsables de Confraternidad, Tesoreros y Equipo Timón.
+                    </p>
+                  )}
                 </div>
               </div>
             </div>

@@ -9,6 +9,7 @@ export default async function EditPersonaPage({ params }: { params: Promise<{ id
   const ctx = await getUserContext()
   if (!ctx) redirect('/auth/login')
   if (!canPerform(ctx, 'person.update')) redirect('/personas')
+  const canEditSocioActivo = canPerform(ctx, 'person.edit_socio_activo')
 
   const { id } = await params
   const supabase = await createClient()
@@ -119,6 +120,7 @@ export default async function EditPersonaPage({ params }: { params: Promise<{ id
       acompañamientoActual={(acompañamientoActual as any) ?? null}
       cecistas={cecistas}
       acompanados={(acompanados as any) ?? []}
+      canEditSocioActivo={canEditSocioActivo}
     />
   )
 }

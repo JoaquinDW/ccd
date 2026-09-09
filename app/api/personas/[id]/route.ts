@@ -62,7 +62,13 @@ export async function PATCH(
   if (body.diocesis !== undefined) updateData.diocesis = body.diocesis || null
   if (body.tipo_persona !== undefined) updateData.tipo_persona = body.tipo_persona || null
   if (body.parroquia !== undefined) updateData.parroquia = body.parroquia || null
-  if (body.socio_asociacion !== undefined) updateData.socio_asociacion = body.socio_asociacion
+  // "Socio Activo" solo lo pueden tocar ministerios de conducción/tesorería
+  // (mismo permiso que /api/personas/me/socio-activo) — se ignora en silencio
+  // si viene en el body de un editor sin ese permiso, para no romper el resto
+  // del guardado de la ficha.
+  if (body.socio_asociacion !== undefined && canPerform(ctx, 'person.edit_socio_activo')) {
+    updateData.socio_asociacion = body.socio_asociacion
+  }
   if (body.referente_comunidad !== undefined) updateData.referente_comunidad = body.referente_comunidad
   if (body.cecista_dedicado !== undefined) updateData.cecista_dedicado = body.cecista_dedicado
   if (body.email_ccd !== undefined) updateData.email_ccd = body.email_ccd || null

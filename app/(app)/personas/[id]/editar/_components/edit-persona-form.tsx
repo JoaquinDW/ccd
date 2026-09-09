@@ -114,6 +114,7 @@ interface Props {
   acompañamientoActual: AcompañamientoActual
   cecistas: PersonaOpcion[]
   acompanados: AcompanadoRow[]
+  canEditSocioActivo: boolean
 }
 
 const modoLabels: Record<string, string> = {
@@ -154,6 +155,7 @@ export function EditPersonaForm({
   acompañamientoActual,
   cecistas,
   acompanados,
+  canEditSocioActivo,
 }: Props) {
   const router = useRouter()
   const today = new Date().toISOString().split("T")[0]
@@ -764,8 +766,8 @@ export function EditPersonaForm({
           <CardTitle className="text-foreground">Relación con CcD</CardTitle>
           <CardDescription>Tipo de vínculo con la comunidad</CardDescription>
         </CardHeader>
-        <form onSubmit={handleBasicSubmit}>
-          <CardContent className="space-y-6">
+        <CardContent className="space-y-6">
+          <form onSubmit={handleBasicSubmit} className="space-y-6">
             <div className="grid gap-4 md:grid-cols-3">
               <div className="space-y-2">
                 <Label htmlFor="tipo_persona">Categoría</Label>
@@ -796,17 +798,24 @@ export function EditPersonaForm({
                   />
                   <Label htmlFor="referente_comunidad">Referente de Comunidad</Label>
                 </div>
-                <div className="flex items-center gap-2">
-                  <input
-                    id="socio_asociacion"
-                    name="socio_asociacion"
-                    type="checkbox"
-                    checked={basicData.socio_asociacion}
-                    onChange={handleBasicChange}
-                    disabled={basicLoading}
-                    className="h-4 w-4 rounded border-border"
-                  />
-                  <Label htmlFor="socio_asociacion">Socio Activo</Label>
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <input
+                      id="socio_asociacion"
+                      name="socio_asociacion"
+                      type="checkbox"
+                      checked={basicData.socio_asociacion}
+                      onChange={handleBasicChange}
+                      disabled={basicLoading || !canEditSocioActivo}
+                      className="h-4 w-4 rounded border-border"
+                    />
+                    <Label htmlFor="socio_asociacion">Socio Activo</Label>
+                  </div>
+                  {!canEditSocioActivo && (
+                    <p className="text-xs text-muted-foreground">
+                      Solo lo pueden modificar Enlaces de Fraternidad, Delegados, Responsables de Confraternidad, Tesoreros y Equipo Timón.
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
@@ -885,9 +894,10 @@ export function EditPersonaForm({
                 </Button>
               </div>
             )}
+          </form>
 
-            {/* Modo de Participación */}
-            <div className="border-t border-border pt-4 space-y-4">
+          {/* Modo de Participación — fuera del form de arriba: tiene sus propios <form> internos */}
+          <div className="border-t border-border pt-4 space-y-4">
               <div className="flex items-center gap-3 flex-wrap">
                 <span className="text-sm font-medium text-foreground">Modo de Participación:</span>
                 {modoActual ? (
@@ -1054,8 +1064,9 @@ export function EditPersonaForm({
                   </div>
                 </div>
               )}
-            </div>
+          </div>
 
+          <form onSubmit={handleBasicSubmit} className="space-y-6">
             <div className="flex items-center gap-2">
               <input
                 id="acepta_comunicaciones"
@@ -1079,8 +1090,8 @@ export function EditPersonaForm({
                 "Guardar"
               )}
             </Button>
-          </CardContent>
-        </form>
+          </form>
+        </CardContent>
       </Card>
 
       {/* Section: Acompañamiento */}

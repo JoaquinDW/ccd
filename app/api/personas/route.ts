@@ -43,7 +43,11 @@ export async function POST(request: Request) {
   if (body.diocesis) insertData.diocesis = body.diocesis
   if (body.tipo_persona) insertData.tipo_persona = body.tipo_persona
   if (body.parroquia) insertData.parroquia = body.parroquia
-  if (body.socio_asociacion !== undefined) insertData.socio_asociacion = body.socio_asociacion
+  // "Socio Activo" solo lo pueden tocar ministerios de conducción/tesorería
+  // (mismo permiso que /api/personas/me/socio-activo).
+  if (body.socio_asociacion !== undefined && canPerform(ctx, 'person.edit_socio_activo')) {
+    insertData.socio_asociacion = body.socio_asociacion
+  }
   if (body.referente_comunidad !== undefined) insertData.referente_comunidad = body.referente_comunidad
   if (body.cecista_dedicado !== undefined) insertData.cecista_dedicado = body.cecista_dedicado
   if (body.intercesor_dies_natalis) insertData.intercesor_dies_natalis = body.intercesor_dies_natalis
