@@ -73,10 +73,12 @@ const FILTROS = [
   { value: "suspendido", label: "Suspendidos" },
 ]
 
-// Estados que un cecista sin event.view_all_estados puede ver en el listado
-// — el resto (borrador, discernimiento, rechazado, suspendido, cancelado)
-// solo lo ven los ministerios de conducción con ese permiso asignado.
-const ESTADOS_VISIBLES_SIN_PERMISO = ["aprobado", "publicado", "en_curso", "finalizado"]
+// Estados que un cecista sin permisos extra puede ver en el listado: solo lo
+// que ya es público (y sus consecuencias). "aprobado" NO es público todavía
+// — se suma con event.view_aprobados — y el resto (borrador, discernimiento,
+// rechazado, suspendido, cancelado) requiere event.view_all_estados.
+const ESTADOS_VISIBLES_SIN_PERMISO = ["publicado", "en_curso", "finalizado"]
+const ESTADOS_APROBADOS = ["aprobado"]
 
 type EventoRow = {
   id: string
@@ -167,6 +169,12 @@ export default async function EventosPage({
   const canCreate = ctx && (ctx.is_admin || ctx.nivel_max >= 50)
   const canSuspend = ctx && canPerform(ctx, "event.suspend")
   const canViewAllEstados = ctx ? canPerform(ctx, "event.view_all_estados") : false
+  // Ver "aprobado" viene incluido en view_all_estados; si no, hace falta el permiso propio.
+  const canViewAprobados =
+    canViewAllEstados || (ctx ? canPerform(ctx, "event.view_aprobados") : false)
+  const estadosVisibles = canViewAprobados
+    ? [...ESTADOS_VISIBLES_SIN_PERMISO, ...ESTADOS_APROBADOS]
+    : ESTADOS_VISIBLES_SIN_PERMISO
 
   // Build main query
   let query = supabase
@@ -176,7 +184,7 @@ export default async function EventosPage({
     )
     .order("fecha_inicio", { ascending: false })
 
-  if (!canViewAllEstados) query = query.in("estado", ESTADOS_VISIBLES_SIN_PERMISO)
+  if (!canViewAllEstados) query = query.in("estado", estadosVisibles)
   if (q) query = query.ilike("nombre", `%${q}%`)
   if (estadoFiltro) query = query.eq("estado", estadoFiltro)
   if (tipoFiltro) query = query.eq("tipo", tipoFiltro)
@@ -409,7 +417,7 @@ export default async function EventosPage({
             >
               {(canViewAllEstados
                 ? FILTROS
-                : FILTROS.filter((f) => f.value === "" || ESTADOS_VISIBLES_SIN_PERMISO.includes(f.value))
+                : FILTROS.filter((f) => f.value === "" || estadosVisibles.includes(f.value))
               ).map((f) => (
                 <option key={f.value} value={f.value}>
                   {f.label}

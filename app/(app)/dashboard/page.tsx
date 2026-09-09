@@ -137,13 +137,15 @@ export default async function DashboardPage() {
   const canVerifyPayments = canPerform(ctx, "payment.verify")
   const canViewPublishedEvents = canPerform(ctx, "view.eventos_publicados")
   const canViewAllEstados = canPerform(ctx, "event.view_all_estados")
+  const canViewAprobados =
+    canViewAllEstados || canPerform(ctx, "event.view_aprobados")
   const hasPersonaId = ctx.persona_id !== null
 
   // Los contadores de Eventos / Próximos son GLOBALES (toda la comunidad), no
   // scopeados a la org del usuario. Quien no tiene un rol de conducción con
-  // event.view_all_estados solo cuenta los eventos publicados; los aprobados
-  // todavía no son públicos.
-  const estadosContados = canViewAllEstados
+  // event.view_aprobados (o event.view_all_estados, que lo incluye) solo
+  // cuenta los eventos publicados; los aprobados todavía no son públicos.
+  const estadosContados = canViewAprobados
     ? ["aprobado", "publicado"]
     : ["publicado"]
 
