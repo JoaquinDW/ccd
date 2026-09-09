@@ -87,15 +87,19 @@ type EventoRow = {
   estado: string
   fecha_inicio: string
   fecha_fin: string
+  organizacion_id?: string | null
+  fraternidad_id?: string | null
   organizacion: { nombre: string } | null
 }
 
 function EventoItem({
   evento,
   isPendiente,
+  canEdit = false,
 }: {
   evento: EventoRow
   isPendiente?: boolean
+  canEdit?: boolean
 }) {
   return (
     <div className="flex items-center justify-between rounded-lg border border-border p-4 hover:bg-muted/50 transition-colors">
@@ -135,11 +139,13 @@ function EventoItem({
                 <Eye className="h-4 w-4" />
               </Button>
             </Link>
-            <Link href={`/eventos/${evento.id}/editar`}>
-              <Button size="sm" variant="ghost" className="h-8 w-8 p-0">
-                <Edit2 className="h-4 w-4" />
-              </Button>
-            </Link>
+            {canEdit && (
+              <Link href={`/eventos/${evento.id}/editar`}>
+                <Button size="sm" variant="ghost" className="h-8 w-8 p-0">
+                  <Edit2 className="h-4 w-4" />
+                </Button>
+              </Link>
+            )}
           </>
         )}
       </div>
@@ -180,7 +186,7 @@ export default async function EventosPage({
   let query = supabase
     .from("eventos")
     .select(
-      "id, nombre, tipo, estado, fecha_inicio, fecha_fin, organizacion:organizaciones!organizacion_id(nombre)",
+      "id, nombre, tipo, estado, fecha_inicio, fecha_fin, organizacion_id, fraternidad_id, organizacion:organizaciones!organizacion_id(nombre)",
     )
     .order("fecha_inicio", { ascending: false })
 
@@ -192,6 +198,17 @@ export default async function EventosPage({
   if (fechaHasta) query = query.lte("fecha_fin", fechaHasta)
 
   const { data: eventos } = await query
+
+  // El lápiz de edición se muestra solo con event.update sobre la organización
+  // del evento (o su fraternidad) — mismo criterio que el detalle y que la
+  // guarda de /eventos/[id]/editar.
+  const puedeEditar = (ev: EventoRow) =>
+    ctx
+      ? canPerform(ctx, "event.update", ev.organizacion_id ?? null) ||
+        (ev.fraternidad_id
+          ? canPerform(ctx, "event.update", ev.fraternidad_id)
+          : false)
+      : false
 
   // Pendientes section: events pending the user's approval
   let pendientes: EventoRow[] = []
@@ -476,7 +493,11 @@ export default async function EventosPage({
           {eventos && eventos.length > 0 ? (
             <div className="space-y-3">
               {(eventos as EventoRow[]).map((evento) => (
-                <EventoItem key={evento.id} evento={evento} />
+                <EventoItem
+                  key={evento.id}
+                  evento={evento}
+                  canEdit={puedeEditar(evento)}
+                />
               ))}
             </div>
           ) : (
