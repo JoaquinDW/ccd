@@ -45,6 +45,8 @@ function fuzzyFilter(value: string, search: string, keywords?: string[]): number
 }
 
 interface ComboboxProps {
+  /** Se aplica al botón que abre el popover, para poder asociarle un <Label htmlFor>. */
+  id?: string
   value: string
   onSelect: (value: string) => void
   options: ComboboxOption[]
@@ -58,6 +60,7 @@ interface ComboboxProps {
 }
 
 export function Combobox({
+  id,
   value,
   onSelect,
   options,
@@ -93,6 +96,7 @@ export function Combobox({
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button
+          id={id}
           variant="outline"
           role="combobox"
           aria-expanded={open}

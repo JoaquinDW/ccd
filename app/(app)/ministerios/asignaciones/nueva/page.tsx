@@ -18,13 +18,11 @@ import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { createClient } from "@/lib/supabase/client"
-
-interface Persona {
-  id: string
-  nombre: string
-  apellido: string
-  email: string | null
-}
+import {
+  PersonaCombobox,
+  fetchPersonas,
+  type PersonaOption,
+} from "@/components/persona-combobox"
 
 interface Ministerio {
   id: string
@@ -63,7 +61,7 @@ export default function NuevaAsignacionPage() {
   const router = useRouter()
   const supabase = createClient()
 
-  const [personas, setPersonas] = useState<Persona[]>([])
+  const [personas, setPersonas] = useState<PersonaOption[]>([])
   const [ministerios, setMinisterios] = useState<Ministerio[]>([])
   const [organizaciones, setOrganizaciones] = useState<Org[]>([])
   const [eventos, setEventos] = useState<Evento[]>([])
@@ -87,17 +85,12 @@ export default function NuevaAsignacionPage() {
   useEffect(() => {
     const load = async () => {
       const [
-        { data: personasData, error: personasError },
+        personasData,
         { data: ministeriosData },
         { data: orgsData },
         { data: eventosData },
       ] = await Promise.all([
-        supabase
-          .from("personas")
-          .select("id, nombre, apellido, email")
-          .is("fecha_baja", null)
-          .order("apellido")
-          .order("nombre"),
+        fetchPersonas(),
         supabase
           .from("ministerios")
           .select("id, nombre, tipo, nivel_acceso")
@@ -111,9 +104,7 @@ export default function NuevaAsignacionPage() {
           .order("nombre"),
         supabase.from("eventos").select("id, nombre, tipo").order("nombre"),
       ])
-      if (personasError)
-        console.error("Error cargando personas:", personasError)
-      setPersonas(personasData ?? [])
+      setPersonas(personasData)
       setMinisterios(ministeriosData ?? [])
       setOrganizaciones(orgsData ?? [])
       setEventos(eventosData ?? [])
@@ -244,23 +235,14 @@ export default function NuevaAsignacionPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="persona_id">Persona *</Label>
-                <select
+                <PersonaCombobox
                   id="persona_id"
-                  required
                   value={form.persona_id}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, persona_id: e.target.value }))
+                  personas={personas}
+                  onChange={(personaId) =>
+                    setForm((f) => ({ ...f, persona_id: personaId }))
                   }
-                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
-                >
-                  <option value="">Selecciona una persona...</option>
-                  {personas.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.apellido}, {p.nombre}
-                      {p.email ? ` — ${p.email}` : ""}
-                    </option>
-                  ))}
-                </select>
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="ministerio_id">Rol *</Label>

@@ -11,14 +11,13 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { ArrowLeft } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { PersonaCombobox } from '@/components/persona-combobox'
 
-type PersonaOption = { id: string; nombre: string; apellido: string }
 type EventoOption = { id: string; nombre: string; fecha_inicio: string }
 
 export default function NewInscripcionPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [personas, setPersonas] = useState<PersonaOption[]>([])
   const [eventos, setEventos] = useState<EventoOption[]>([])
   const router = useRouter()
   const [formData, setFormData] = useState({
@@ -32,27 +31,27 @@ export default function NewInscripcionPage() {
 
   useEffect(() => {
     const supabase = createClient()
-    Promise.all([
-      supabase
-        .from('personas')
-        .select('id, nombre, apellido')
-        .is('fecha_baja', null)
-        .order('apellido'),
-      supabase
+    const load = async () => {
+      const { data } = await supabase
         .from('eventos')
         .select('id, nombre, fecha_inicio')
         .in('estado', ['publicado', 'aprobado'])
-        .order('fecha_inicio', { ascending: false }),
-    ]).then(([p, e]) => {
-      if (p.data) setPersonas(p.data)
-      if (e.data) setEventos(e.data)
-    })
+        .order('fecha_inicio', { ascending: false })
+      if (data) setEventos(data)
+    }
+    load()
   }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setError('')
+
+    if (!formData.persona_id) {
+      setError('Debes seleccionar una persona')
+      setLoading(false)
+      return
+    }
 
     try {
       const supabase = createClient()
@@ -110,21 +109,12 @@ export default function NewInscripcionPage() {
             {/* Persona */}
             <div className="space-y-2">
               <Label htmlFor="persona_id">Persona *</Label>
-              <select
+              <PersonaCombobox
                 id="persona_id"
-                name="persona_id"
                 value={formData.persona_id}
-                onChange={handleChange}
-                required
-                className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground text-sm"
-              >
-                <option value="">Seleccionar persona...</option>
-                {personas.map(p => (
-                  <option key={p.id} value={p.id}>
-                    {p.apellido}, {p.nombre}
-                  </option>
-                ))}
-              </select>
+                onChange={personaId => setFormData(prev => ({ ...prev, persona_id: personaId }))}
+                placeholder="Seleccionar persona..."
+              />
             </div>
 
             {/* Evento */}
