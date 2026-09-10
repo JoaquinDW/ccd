@@ -101,28 +101,43 @@ export async function GET(req: NextRequest) {
 
   const ids = personas.map(p => p.id)
 
+  // Supabase/PostgREST truncates queries whose URL grows too long, so a single
+  // .in('persona_id', ids) silently returns nothing once there are a few hundred
+  // ids. Chunk the lookups instead.
+  const CHUNK_SIZE = 200
+  const idChunks: string[][] = []
+  for (let i = 0; i < ids.length; i += CHUNK_SIZE) idChunks.push(ids.slice(i, i + CHUNK_SIZE))
+
   // Fetch current modos for all returned personas
-  const { data: modos } = await supabase
-    .from('persona_modos')
-    .select('persona_id, modo')
-    .in('persona_id', ids)
-    .is('fecha_fin', null)
+  const modos: { persona_id: string; modo: string }[] = []
+  for (const chunk of idChunks) {
+    const { data } = await supabase
+      .from('persona_modos')
+      .select('persona_id, modo')
+      .in('persona_id', chunk)
+      .is('fecha_fin', null)
+    if (data) modos.push(...data)
+  }
 
   // Fetch current confraternidad/fraternidad membership
-  const { data: organizaciones } = await supabase
-    .from('persona_organizacion')
-    .select('persona_id, tipo_relacion, organizacion:organizaciones!organizacion_id(nombre)')
-    .in('persona_id', ids)
-    .is('fecha_fin', null)
-
-  // Index by persona_id for fast lookup
-  const modoByPersona = Object.fromEntries((modos ?? []).map(m => [m.persona_id, m.modo]))
-  const organizacionByPersona = new Map<string, { confraternidad: string | null; fraternidad: string | null }>()
-  for (const row of (organizaciones ?? []) as unknown as {
+  const organizaciones: {
     persona_id: string
     tipo_relacion: string
     organizacion: { nombre: string } | null
-  }[]) {
+  }[] = []
+  for (const chunk of idChunks) {
+    const { data } = await supabase
+      .from('persona_organizacion')
+      .select('persona_id, tipo_relacion, organizacion:organizaciones!organizacion_id(nombre)')
+      .in('persona_id', chunk)
+      .is('fecha_fin', null)
+    if (data) organizaciones.push(...(data as unknown as typeof organizaciones))
+  }
+
+  // Index by persona_id for fast lookup
+  const modoByPersona = Object.fromEntries(modos.map(m => [m.persona_id, m.modo]))
+  const organizacionByPersona = new Map<string, { confraternidad: string | null; fraternidad: string | null }>()
+  for (const row of organizaciones) {
     const actual = organizacionByPersona.get(row.persona_id) ?? { confraternidad: null, fraternidad: null }
     if (row.tipo_relacion === 'confraternidad') actual.confraternidad = row.organizacion?.nombre ?? null
     if (row.tipo_relacion === 'fraternidad') actual.fraternidad = row.organizacion?.nombre ?? null
