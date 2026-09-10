@@ -3,19 +3,6 @@ import { createClient } from '@/lib/supabase/server'
 import { getUserContext, canPerform } from '@/lib/auth/context'
 import { fetchUbicaciones, variantesDe } from '@/lib/personas/ubicaciones'
 
-const TIPO_PERSONA_LABELS: Record<string, string> = {
-  interesado: 'Interesado/a',
-  inscripto: 'Inscripto/a',
-  convivente: 'Convivente',
-  no_cecista: 'Convivente',
-  cecista: 'Cecista',
-  otro: 'Otro',
-}
-
-function tipoPersonaLabel(tipo: string | null | undefined): string {
-  return tipo ? (TIPO_PERSONA_LABELS[tipo] ?? tipo) : ''
-}
-
 export async function GET(req: NextRequest) {
   const ctx = await getUserContext()
   if (!ctx) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
@@ -75,12 +62,10 @@ export async function GET(req: NextRequest) {
     .from('personas')
     .select(`
       id, apellido, nombre, email, telefono,
-      tipo_documento, documento,
       localidad, provincia, pais,
-      estado, estado_eclesial, diocesis,
-      tipo_persona, parroquia,
-      socio_asociacion, referente_comunidad, cecista_dedicado,
-      fecha_nacimiento, fecha_alta, acepta_comunicaciones
+      estado_eclesial, diocesis,
+      tipo_persona,
+      fecha_nacimiento
     `)
     .is('fecha_baja', null)
     .order('apellido', { ascending: true })
@@ -123,57 +108,45 @@ export async function GET(req: NextRequest) {
     .in('persona_id', ids)
     .is('fecha_fin', null)
 
-  // Fetch current ministry assignments with ministerio name
-  const { data: asignaciones } = await supabase
-    .from('asignaciones_ministerio')
-    .select('persona_id, ministerio_id')
+  // Fetch current confraternidad/fraternidad membership
+  const { data: organizaciones } = await supabase
+    .from('persona_organizacion')
+    .select('persona_id, tipo_relacion, organizacion:organizaciones!organizacion_id(nombre)')
     .in('persona_id', ids)
     .is('fecha_fin', null)
 
-  // Fetch ministerio names
-  const ministerioIdsNeeded = [...new Set((asignaciones ?? []).map(a => a.ministerio_id))]
-  let ministerioNombres: Record<string, string> = {}
-  if (ministerioIdsNeeded.length > 0) {
-    const { data: mins } = await supabase
-      .from('ministerios')
-      .select('id, nombre')
-      .in('id', ministerioIdsNeeded)
-    ministerioNombres = Object.fromEntries((mins ?? []).map(m => [m.id, m.nombre]))
-  }
-
   // Index by persona_id for fast lookup
   const modoByPersona = Object.fromEntries((modos ?? []).map(m => [m.persona_id, m.modo]))
-  const ministerioByPersona = Object.fromEntries(
-    (asignaciones ?? []).map(a => [a.persona_id, ministerioNombres[a.ministerio_id] ?? ''])
-  )
+  const organizacionByPersona = new Map<string, { confraternidad: string | null; fraternidad: string | null }>()
+  for (const row of (organizaciones ?? []) as unknown as {
+    persona_id: string
+    tipo_relacion: string
+    organizacion: { nombre: string } | null
+  }[]) {
+    const actual = organizacionByPersona.get(row.persona_id) ?? { confraternidad: null, fraternidad: null }
+    if (row.tipo_relacion === 'confraternidad') actual.confraternidad = row.organizacion?.nombre ?? null
+    if (row.tipo_relacion === 'fraternidad') actual.fraternidad = row.organizacion?.nombre ?? null
+    organizacionByPersona.set(row.persona_id, actual)
+  }
 
   const rows = personas.map(p => ({
     Apellido: p.apellido,
     Nombre: p.nombre,
     Email: p.email ?? '',
     Teléfono: p.telefono ?? '',
-    'Tipo documento': p.tipo_documento ?? '',
-    Documento: p.documento ?? '',
     Localidad: p.localidad ?? '',
     Provincia: p.provincia ?? '',
     País: p.pais ?? '',
-    Estado: p.estado ?? '',
+    Confraternidad: organizacionByPersona.get(p.id)?.confraternidad ?? '',
+    Fraternidad: organizacionByPersona.get(p.id)?.fraternidad ?? '',
     'Estado eclesiástico': p.estado_eclesial ?? '',
     Diócesis: p.diocesis ?? '',
     'Fecha nacimiento': p.fecha_nacimiento ?? '',
-    'Fecha alta': p.fecha_alta ?? '',
-    'Acepta comunicaciones': p.acepta_comunicaciones ? 'Sí' : 'No',
-    Tipo: tipoPersonaLabel(p.tipo_persona),
-    Parroquia: p.parroquia ?? '',
-    'Socio asociación': p.socio_asociacion ? 'Sí' : 'No',
-    'Referente comunidad': p.referente_comunidad ? 'Sí' : 'No',
-    'Cecista dedicado': p.cecista_dedicado ? 'Sí' : 'No',
     'Modo actual': p.tipo_persona === 'otro'
       ? 'otro'
       : p.tipo_persona === 'convivente' || p.tipo_persona === 'no_cecista'
         ? 'convivente'
         : modoByPersona[p.id] ?? '',
-    'Ministerio actual': ministerioByPersona[p.id] ?? '',
   }))
 
   return NextResponse.json(rows)
