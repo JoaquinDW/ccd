@@ -22,6 +22,7 @@ export async function GET(req: NextRequest) {
   const localidad = searchParams.get('localidad') ?? ''
   const modo = searchParams.get('modo') ?? ''
   const ministerio_id = searchParams.get('ministerio_id') ?? ''
+  const organizacion_id = searchParams.get('organizacion_id') ?? ''
 
   const supabase = await createClient()
 
@@ -46,56 +47,118 @@ export async function GET(req: NextRequest) {
     ministerioIds = data?.map(r => r.persona_id) ?? []
   }
 
-  let filterIds: string[] | null = null
-  if (modoIds !== null && ministerioIds !== null) {
-    filterIds = modoIds.filter(id => ministerioIds!.includes(id))
-  } else {
-    filterIds = modoIds ?? ministerioIds
+  let orgIds: string[] | null = null
+  if (organizacion_id) {
+    const { data } = await supabase
+      .from('persona_organizacion')
+      .select('persona_id')
+      .eq('organizacion_id', organizacion_id)
+      .is('fecha_fin', null)
+    orgIds = data?.map(r => r.persona_id) ?? []
   }
+
+  // Intersect every relational filter that was applied
+  const idFilters = [modoIds, ministerioIds, orgIds].filter((f): f is string[] => f !== null)
+  const filterIds = idFilters.length > 0
+    ? idFilters.reduce((acc, ids) => acc.filter(id => ids.includes(id)))
+    : null
 
   if (filterIds !== null && filterIds.length === 0) {
     return NextResponse.json([])
   }
 
-  // Main personas query (no nested joins)
-  let query = supabase
-    .from('personas')
-    .select(`
-      id, apellido, nombre, email, telefono,
-      localidad, provincia, pais,
-      estado_eclesial, diocesis,
-      tipo_persona,
-      fecha_nacimiento
-    `)
-    .is('fecha_baja', null)
-    .order('apellido', { ascending: true })
-
-  if (q) query = query.or(`nombre.ilike.%${q}%,apellido.ilike.%${q}%,email.ilike.%${q}%`)
-  if (estado) query = query.eq('estado', estado)
-  if (estado_eclesial) query = query.eq('estado_eclesial', estado_eclesial)
-  // Mismo criterio que el listado: se buscan las variantes tal cual están guardadas.
+  let variantesProvincia: Record<string, string[]> | undefined
+  let variantesLocalidad: Record<string, string[]> | undefined
   if (provincia || localidad) {
-    const { variantesProvincia, variantesLocalidad } = await fetchUbicaciones(supabase)
-    if (provincia) {
+    ;({ variantesProvincia, variantesLocalidad } = await fetchUbicaciones(supabase))
+  }
+
+  // Builds a fresh, fully-filtered query each time it's called (Supabase query
+  // builders are one-shot), so it can be re-issued per page/chunk below.
+  // `idChunk`, when given, restricts to those ids instead of the full filterIds
+  // list — needed because a single .in('id', filterIds) can itself blow past
+  // Supabase's URL length limit when a modo/ministerio/organización filter
+  // matches hundreds of personas.
+  function buildQuery(idChunk?: string[]) {
+    let q_ = supabase
+      .from('personas')
+      .select(`
+        id, apellido, nombre, email, telefono,
+        localidad, provincia, pais,
+        estado_eclesial, diocesis,
+        tipo_persona,
+        fecha_nacimiento
+      `)
+      .is('fecha_baja', null)
+
+    if (q) q_ = q_.or(`nombre.ilike.%${q}%,apellido.ilike.%${q}%,email.ilike.%${q}%`)
+    if (estado) q_ = q_.eq('estado', estado)
+    if (estado_eclesial) q_ = q_.eq('estado_eclesial', estado_eclesial)
+    // Mismo criterio que el listado: se buscan las variantes tal cual están guardadas.
+    if (provincia && variantesProvincia) {
       const variantes = variantesDe(provincia, variantesProvincia)
-      query = variantes.length ? query.in('provincia', variantes) : query.ilike('provincia', provincia)
+      q_ = variantes.length ? q_.in('provincia', variantes) : q_.ilike('provincia', provincia)
     }
-    if (localidad) {
+    if (localidad && variantesLocalidad) {
       const variantes = variantesDe(localidad, variantesLocalidad)
-      query = variantes.length ? query.in('localidad', variantes) : query.ilike('localidad', localidad)
+      q_ = variantes.length ? q_.in('localidad', variantes) : q_.ilike('localidad', localidad)
+    }
+    if (modo === 'convivente') q_ = q_.in('tipo_persona', ['convivente', 'no_cecista'])
+    if (modo === 'otro') q_ = q_.eq('tipo_persona', 'otro')
+    if (idChunk) q_ = q_.in('id', idChunk)
+
+    return q_
+  }
+
+  const ID_CHUNK_SIZE = 200
+  type PersonaRow = {
+    id: string
+    apellido: string
+    nombre: string
+    email: string | null
+    telefono: string | null
+    localidad: string | null
+    provincia: string | null
+    pais: string | null
+    estado_eclesial: string | null
+    diocesis: string | null
+    tipo_persona: string | null
+    fecha_nacimiento: string | null
+  }
+  const personas: PersonaRow[] = []
+
+  if (filterIds !== null) {
+    // Small, bounded chunks — no risk of hitting Supabase's 1000-row cap per request.
+    for (let i = 0; i < filterIds.length; i += ID_CHUNK_SIZE) {
+      const chunk = filterIds.slice(i, i + ID_CHUNK_SIZE)
+      const { data, error } = await buildQuery(chunk)
+      if (error) {
+        return NextResponse.json({ error: error.message }, { status: 500 })
+      }
+      personas.push(...((data ?? []) as PersonaRow[]))
+    }
+  } else {
+    // No relational filter: page through everything, since Supabase caps each
+    // response at 1000 rows regardless of table size.
+    const PAGE_SIZE = 1000
+    for (let page = 0; ; page++) {
+      const from = page * PAGE_SIZE
+      const to = from + PAGE_SIZE - 1
+      const { data, error } = await buildQuery().range(from, to)
+
+      if (error) {
+        return NextResponse.json({ error: error.message }, { status: 500 })
+      }
+
+      personas.push(...((data ?? []) as PersonaRow[]))
+      if (!data || data.length < PAGE_SIZE) break
     }
   }
-  if (modo === 'convivente') query = query.in('tipo_persona', ['convivente', 'no_cecista'])
-  if (modo === 'otro') query = query.eq('tipo_persona', 'otro')
-  if (filterIds !== null) query = query.in('id', filterIds)
 
-  const { data: personas, error } = await query
+  // El orden se pierde al trocear/paginar por separado, así que se ordena acá.
+  personas.sort((a, b) => a.apellido.localeCompare(b.apellido, 'es'))
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
-  }
-
-  if (!personas || personas.length === 0) {
+  if (personas.length === 0) {
     return NextResponse.json([])
   }
 
