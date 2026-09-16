@@ -9,6 +9,7 @@ import { createClient } from "@/lib/supabase/server"
 import { getUserContext, canPerform } from "@/lib/auth/context"
 import { eventoIdsComoCoordinadorOCentralizador } from "@/lib/eventos/roles"
 import { formatDateLong, formatDateAR } from "@/lib/utils"
+import { apellidoNombreConApodo } from "@/lib/personas/nombre"
 import { SeguimientoActions } from "./seguimiento-actions"
 
 const contactoClases: Record<string, string> = {
@@ -76,7 +77,7 @@ export default async function InteresadosPage({
     const { data } = await supabase
       .from("personas")
       .select("id")
-      .or(`nombre.ilike.%${q}%,apellido.ilike.%${q}%,email.ilike.%${q}%`)
+      .or(`nombre.ilike.%${q}%,apellido.ilike.%${q}%,apodo.ilike.%${q}%,email.ilike.%${q}%`)
     personaIds = data?.map((r) => r.id) ?? []
   }
   const noResults = personaIds !== null && personaIds.length === 0
@@ -103,7 +104,7 @@ export default async function InteresadosPage({
       .select(`
         id, fecha_inscripcion, notas,
         estado_contacto, medio_contacto, fecha_contacto, notas_seguimiento,
-        persona:personas!persona_id(id, nombre, apellido, email, telefono, localidad, provincia, pais),
+        persona:personas!persona_id(id, nombre, apellido, apodo, email, telefono, localidad, provincia, pais),
         evento:eventos!evento_id(id, nombre, fecha_inicio, organizacion:organizaciones!organizacion_id(nombre))
       `)
       .eq("estado_participacion", "interesado")
@@ -135,7 +136,7 @@ export default async function InteresadosPage({
           <input
             name="q"
             defaultValue={q}
-            placeholder="Buscar por nombre o email..."
+            placeholder="Buscar por nombre, apodo o email..."
             className="w-full rounded-md border border-border bg-background py-2 pl-9 pr-3 text-sm text-foreground"
           />
         </div>
@@ -181,7 +182,7 @@ export default async function InteresadosPage({
                   <div className="space-y-3">
                     <div className="flex flex-wrap items-center gap-2">
                       <h3 className="font-semibold text-foreground">
-                        {it.persona ? `${it.persona.apellido}, ${it.persona.nombre}` : "—"}
+                        {it.persona ? apellidoNombreConApodo(it.persona) : "—"}
                       </h3>
                       <span
                         className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${contactoClases[it.estado_contacto] ?? ""}`}

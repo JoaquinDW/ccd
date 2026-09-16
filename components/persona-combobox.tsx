@@ -3,11 +3,13 @@
 import * as React from "react"
 import { Combobox, type ComboboxOption } from "@/components/ui/combobox"
 import { createClient } from "@/lib/supabase/client"
+import { apellidoNombreConApodo } from "@/lib/personas/nombre"
 
 export interface PersonaOption {
   id: string
   nombre: string
   apellido: string
+  apodo: string | null
   email: string | null
 }
 
@@ -27,7 +29,7 @@ function normalizar(texto: string): string {
 }
 
 export function etiquetaPersona(p: PersonaOption): string {
-  return `${p.apellido}, ${p.nombre}${p.email ? ` — ${p.email}` : ""}`
+  return `${apellidoNombreConApodo(p)}${p.email ? ` — ${p.email}` : ""}`
 }
 
 /** Trae todas las personas activas, en páginas de 1000 (el corte de PostgREST). */
@@ -38,7 +40,7 @@ export async function fetchPersonas(): Promise<PersonaOption[]> {
     const desde = pagina * TAMANO_PAGINA
     const { data, error } = await supabase
       .from("personas")
-      .select("id, nombre, apellido, email")
+      .select("id, nombre, apellido, apodo, email")
       .is("fecha_baja", null)
       .order("apellido")
       .order("nombre")
@@ -104,7 +106,7 @@ export function PersonaCombobox({
     const tokens = normalizar(query).split(/\s+/).filter(Boolean)
     const coincidencias: { persona: PersonaOption; puntaje: number }[] = []
     for (const p of personas) {
-      const campos = [p.apellido, p.nombre, p.email ?? ""].map(normalizar)
+      const campos = [p.apellido, p.nombre, p.apodo ?? "", p.email ?? ""].map(normalizar)
       if (tokens.length > 0 && !tokens.every((t) => campos.some((c) => c.includes(t)))) continue
       // Los que empiezan con lo tipeado van primero.
       const puntaje =

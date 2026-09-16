@@ -50,6 +50,7 @@ Representa a cualquier individuo dentro del sistema.
 - fecha_baja (nullable)
 - nombre
 - apellido
+- apodo (nullable — apodo/sobrenombre, se muestra entre paréntesis junto al nombre)
 - email (unique)
 - teléfono
 - tipo_documento

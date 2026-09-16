@@ -9,6 +9,7 @@ import { UserCheck, ArrowLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { createClient } from '@/lib/supabase/client'
+import { nombreCompletoConApodo } from '@/lib/personas/nombre'
 
 interface Asignacion {
   id: string
@@ -16,7 +17,7 @@ interface Asignacion {
   fecha_fin: string | null
   organizacion: { nombre: string } | null
   ministerio: { nombre: string; tipo: string } | null
-  persona: { nombre: string; apellido: string; email: string | null } | null
+  persona: { nombre: string; apellido: string; apodo?: string | null; email: string | null } | null
 }
 
 const tipoLabel: Record<string, string> = {
@@ -47,7 +48,7 @@ export default function EditarAsignacionPage() {
           id, fecha_inicio, fecha_fin,
           organizacion:organizaciones!organizacion_id(nombre),
           ministerio:ministerios!ministerio_id(nombre, tipo),
-          persona:personas!persona_id(nombre, apellido, email)
+          persona:personas!persona_id(nombre, apellido, apodo, email)
         `)
         .eq('id', id)
         .single()
@@ -104,7 +105,7 @@ export default function EditarAsignacionPage() {
 
   const persona = asignacion.persona
   const nombreCompleto = persona
-    ? `${persona.nombre} ${persona.apellido}`
+    ? nombreCompletoConApodo(persona)
     : 'Persona sin perfil'
 
   return (

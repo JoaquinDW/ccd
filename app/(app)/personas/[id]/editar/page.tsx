@@ -58,20 +58,20 @@ export default async function EditPersonaPage({ params }: { params: Promise<{ id
       .is("fecha_fin", null),
     supabase
       .from("personas")
-      .select("id, nombre, apellido")
+      .select("id, nombre, apellido, apodo")
       .is("fecha_baja", null)
       .neq("id", id)
       .order("apellido"),
     supabase
       .from("persona_acompanamiento")
-      .select("id, fecha_inicio, acompanante_id, acompanante_libre, acompanante:personas!acompanante_id(id, nombre, apellido)")
+      .select("id, fecha_inicio, acompanante_id, acompanante_libre, acompanante:personas!acompanante_id(id, nombre, apellido, apodo)")
       .eq("persona_id", id)
       .is("fecha_fin", null)
       .maybeSingle(),
     // "Acompaño a": personas que eligieron a esta persona como su acompañante.
     supabase
       .from("persona_acompanamiento")
-      .select("id, persona:personas!persona_id(id, nombre, apellido)")
+      .select("id, persona:personas!persona_id(id, nombre, apellido, apodo)")
       .eq("acompanante_id", id)
       .is("fecha_fin", null),
   ])
@@ -80,14 +80,14 @@ export default async function EditPersonaPage({ params }: { params: Promise<{ id
 
   // Cecistas activos para el selector de acompañante (paginado: Supabase
   // corta la respuesta por defecto en 1000 filas y hay más que eso).
-  const cecistas: { id: string; nombre: string; apellido: string }[] = []
+  const cecistas: { id: string; nombre: string; apellido: string; apodo: string | null }[] = []
   {
     const pageSize = 1000
     let from = 0
     while (true) {
       const { data: page } = await supabase
         .from("personas")
-        .select("id, nombre, apellido")
+        .select("id, nombre, apellido, apodo")
         .eq("tipo_persona", "cecista")
         .is("fecha_baja", null)
         .neq("id", id)

@@ -13,13 +13,14 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { createClient } from '@/lib/supabase/client'
 import { formatDateAR } from '@/lib/utils'
+import { nombreCompletoConApodo } from '@/lib/personas/nombre'
 
 interface Asignacion {
   id: string
   fecha_inicio: string | null
   organizacion: { nombre: string } | null
   ministerio: { nombre: string; tipo: string } | null
-  persona: { nombre: string; apellido: string; email: string | null } | null
+  persona: { nombre: string; apellido: string; apodo?: string | null; email: string | null } | null
 }
 
 const tipoLabel: Record<string, string> = {
@@ -50,7 +51,7 @@ export default function RevocarAsignacionPage() {
           id, fecha_inicio,
           organizacion:organizaciones!organizacion_id(nombre),
           ministerio:ministerios!ministerio_id(nombre, tipo),
-          persona:personas!persona_id(nombre, apellido, email)
+          persona:personas!persona_id(nombre, apellido, apodo, email)
         `)
         .eq('id', id)
         .single()
@@ -99,7 +100,7 @@ export default function RevocarAsignacionPage() {
 
   const persona = asignacion.persona
   const nombreCompleto = persona
-    ? `${persona.nombre} ${persona.apellido}`
+    ? nombreCompletoConApodo(persona)
     : 'Persona sin perfil'
 
   return (

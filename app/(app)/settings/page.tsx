@@ -19,6 +19,7 @@ import { LocationFields, PAISES } from '@/components/location-fields'
 import { AvatarUpload } from '@/components/avatar-upload'
 import { Combobox } from '@/components/ui/combobox'
 import { MultiCombobox } from '@/components/ui/multi-combobox'
+import { apellidoNombreConApodo, nombreCompletoConApodo } from '@/lib/personas/nombre'
 
 type FontSize = 'small' | 'medium' | 'large'
 
@@ -163,13 +164,14 @@ type CasaComunitaria = { id: string; nombre: string; codigo: string | null; tipo
 type TipoEvento = { id: string; nombre: string }
 type AreaServicio = { id: string; nombre: string }
 type AcompanamientoActual = { id: string; acompanante_id: string | null; acompanante_libre: string | null }
-type AcompanadoRow = { id: string; persona: { nombre: string; apellido: string } | null }
+type AcompanadoRow = { id: string; persona: { nombre: string; apellido: string; apodo?: string | null } | null }
 type SaveStatus = 'idle' | 'saving' | 'saved' | 'error'
 
 type Persona = {
   id: string
   nombre: string
   apellido: string
+  apodo: string | null
   email: string | null
   email_ccd: string | null
   telefono: string | null
@@ -209,6 +211,7 @@ type Persona = {
 type EditForm = {
   nombre: string
   apellido: string
+  apodo: string
   email: string
   email_ccd: string
   telefono: string
@@ -240,7 +243,7 @@ type EditForm = {
   modo_participacion_ingreso: string
 }
 
-type PersonaOpcion = { id: string; nombre: string; apellido: string }
+type PersonaOpcion = { id: string; nombre: string; apellido: string; apodo?: string | null }
 
 function SaveIndicator({ status }: { status: SaveStatus }) {
   if (status === 'idle') return null
@@ -294,7 +297,7 @@ export default function SettingsPage() {
   const [loadingPersona, setLoadingPersona] = useState(true)
   const [todasPersonas, setTodasPersonas] = useState<PersonaOpcion[]>([])
   const [editForm, setEditForm] = useState<EditForm>({
-    nombre: '', apellido: '', email: '', email_ccd: '', telefono: '',
+    nombre: '', apellido: '', apodo: '', email: '', email_ccd: '', telefono: '',
     fecha_nacimiento: '', tipo_documento: '', documento: '', pais_documento: '',
     direccion: '', direccion_nro: '', codigo_postal: '',
     localidad: '', provincia: '', pais: 'Argentina', nacionalidad: '', diocesis: '',
@@ -442,7 +445,7 @@ export default function SettingsPage() {
 
       const { data } = await supabase
         .from('personas')
-        .select('id, nombre, apellido, email, email_ccd, telefono, fecha_nacimiento, tipo_documento, documento, pais_documento, direccion, direccion_nro, codigo_postal, localidad, provincia, pais, nacionalidad, diocesis, estado_eclesial, estado_eclesial_rango, institucion_religiosa, parroquia, estado_vida, nivel_estudios, titulo_estudios, ocupacion, anio_ingreso, anio_ultimo_cambio_modo, codigo_interno, notas, tipo_persona, foto_url, casa_comunitaria_id, estado, nombre_usuario, socio_asociacion, modo_participacion_ingreso')
+        .select('id, nombre, apellido, apodo, email, email_ccd, telefono, fecha_nacimiento, tipo_documento, documento, pais_documento, direccion, direccion_nro, codigo_postal, localidad, provincia, pais, nacionalidad, diocesis, estado_eclesial, estado_eclesial_rango, institucion_religiosa, parroquia, estado_vida, nivel_estudios, titulo_estudios, ocupacion, anio_ingreso, anio_ultimo_cambio_modo, codigo_interno, notas, tipo_persona, foto_url, casa_comunitaria_id, estado, nombre_usuario, socio_asociacion, modo_participacion_ingreso')
         .eq('auth_user_id', user.id)
         .single()
 
@@ -451,6 +454,7 @@ export default function SettingsPage() {
         setEditForm({
           nombre: data.nombre ?? '',
           apellido: data.apellido ?? '',
+          apodo: data.apodo ?? '',
           email: data.email ?? '',
           email_ccd: data.email_ccd ?? '',
           telefono: data.telefono ?? '',
@@ -502,7 +506,7 @@ export default function SettingsPage() {
         // acompañante (misma tabla, mirada del otro lado — no es editable).
         const { data: acompanadosData } = await supabase
           .from('persona_acompanamiento')
-          .select('id, persona:personas!persona_id(nombre, apellido)')
+          .select('id, persona:personas!persona_id(nombre, apellido, apodo)')
           .eq('acompanante_id', data.id)
           .is('fecha_fin', null)
         setAcompanados((acompanadosData as unknown as AcompanadoRow[]) ?? [])
@@ -614,7 +618,7 @@ export default function SettingsPage() {
       while (true) {
         const { data: page } = await supabase
           .from('personas')
-          .select('id, nombre, apellido')
+          .select('id, nombre, apellido, apodo')
           .is('fecha_baja', null)
           .eq('estado', 'activo')
           .eq('tipo_persona', 'cecista')
@@ -681,6 +685,7 @@ export default function SettingsPage() {
         .update({
           // nombre, apellido y codigo_interno son solo lectura en la autogestión
           // (los gestiona la Administración de CcD) — no se incluyen en el update.
+          apodo: editForm.apodo || null,
           email: editForm.email || null,
           telefono: editForm.telefono || null,
           fecha_nacimiento: editForm.fecha_nacimiento || null,
@@ -1109,7 +1114,7 @@ export default function SettingsPage() {
                     onUploaded={(url) => setPersona(prev => prev ? { ...prev, foto_url: url } : prev)}
                   />
                   <div>
-                    <p className="font-semibold text-foreground text-lg leading-tight">{persona.nombre} {persona.apellido}</p>
+                    <p className="font-semibold text-foreground text-lg leading-tight">{nombreCompletoConApodo(persona)}</p>
                     <div className="flex flex-wrap gap-2 mt-1">
                       {persona.tipo_persona && (
                         <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-primary/10 text-primary">
@@ -1294,6 +1299,14 @@ export default function SettingsPage() {
                         ¿Están mal? Reportalo
                       </Button>
                     </p>
+
+                    {/* Apodo / Sobrenombre */}
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label htmlFor="p-apodo">Apodo / Sobrenombre</Label>
+                        <Input id="p-apodo" value={editForm.apodo} onChange={e => field('apodo', e.target.value)} disabled={editLoading} />
+                      </div>
+                    </div>
 
                     {/* Teléfono / Fecha nacimiento */}
                     <div className="grid gap-4 md:grid-cols-2">
@@ -1619,10 +1632,10 @@ export default function SettingsPage() {
                         onSelect={handleAcompananteChange}
                         options={[
                           { label: 'Sin acompañante', value: '' },
-                          ...todasPersonas.map(p => ({ label: `${p.apellido}, ${p.nombre}`, value: p.id })),
+                          ...todasPersonas.map(p => ({ label: apellidoNombreConApodo(p), value: p.id })),
                         ]}
                         placeholder="Seleccionar acompañante..."
-                        searchPlaceholder="Buscar por nombre o apellido..."
+                        searchPlaceholder="Buscar por nombre, apellido o apodo..."
                         emptyText="No se encontró la persona."
                       />
                     )}
@@ -1637,7 +1650,7 @@ export default function SettingsPage() {
                           key={a.id}
                           className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-muted text-foreground"
                         >
-                          {a.persona?.apellido}, {a.persona?.nombre}
+                          {a.persona ? apellidoNombreConApodo(a.persona) : ""}
                         </span>
                       ))}
                     </div>

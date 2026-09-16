@@ -15,11 +15,13 @@ import {
 import PersonaDetailModal from "./persona-detail-modal"
 import ExportButton from "./export-button"
 import SortableHeader from "@/components/ui/sortable-header"
+import { apellidoNombreConApodo } from "@/lib/personas/nombre"
 
 type Persona = {
   id: string
   nombre: string
   apellido: string
+  apodo?: string | null
   email: string | null
   telefono: string | null
   localidad?: string | null
@@ -268,11 +270,11 @@ export default function PersonasTable({
                             href={`/personas/${persona.id}`}
                             className="text-foreground hover:text-primary hover:underline"
                           >
-                            {persona.apellido}, {persona.nombre}
+                            {apellidoNombreConApodo(persona)}
                           </Link>
                         ) : (
                           <span className="text-foreground">
-                            {persona.apellido}, {persona.nombre}
+                            {apellidoNombreConApodo(persona)}
                           </span>
                         )}
                         {canViewDetails && hoverActive === persona.id && (
@@ -377,7 +379,7 @@ export default function PersonasTable({
             <DialogHeader>
               <div className="flex items-center gap-3">
                 <DialogTitle>
-                  {hoveredPersona.apellido}, {hoveredPersona.nombre}
+                  {apellidoNombreConApodo(hoveredPersona)}
                 </DialogTitle>
                 <DialogDescription asChild>
                   <span
@@ -411,7 +413,7 @@ export default function PersonasTable({
                 <div className="flex items-start justify-between gap-4 pr-8">
                   <div className="flex flex-col gap-1.5">
                     <DialogTitle>
-                      {selected.apellido}, {selected.nombre}
+                      {apellidoNombreConApodo(selected)}
                     </DialogTitle>
                     <DialogDescription asChild>
                       <div className="flex items-center gap-2">

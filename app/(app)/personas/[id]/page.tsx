@@ -10,6 +10,7 @@ import { getUserContext, canPerform } from "@/lib/auth/context"
 import { formatDateAR } from "@/lib/utils"
 import { PersonaAvatar } from "./_components/persona-avatar"
 import { VotosEditor } from "./_components/votos-editor"
+import { apellidoNombreConApodo } from "@/lib/personas/nombre"
 
 function formatDate(date: string | null) {
   return formatDateAR(date)
@@ -88,7 +89,7 @@ export default async function PersonaDetailPage({
     supabase
       .from("personas")
       .select(
-        "id, nombre, apellido, email, email_ccd, telefono, tipo_documento, documento, fecha_nacimiento, direccion, direccion_nro, localidad, codigo_postal, provincia, pais, notas, estado, created_at, acepta_comunicaciones, estado_eclesial, estado_vida, diocesis, tipo_persona, parroquia, socio_asociacion, referente_comunidad, cecista_dedicado, intercesor_dies_natalis, nombre_usuario, nivel_estudios, anio_ingreso, acompanante_id, fecha_ingreso_comunidad, foto_url",
+        "id, nombre, apellido, apodo, email, email_ccd, telefono, tipo_documento, documento, fecha_nacimiento, direccion, direccion_nro, localidad, codigo_postal, provincia, pais, notas, estado, created_at, acepta_comunicaciones, estado_eclesial, estado_vida, diocesis, tipo_persona, parroquia, socio_asociacion, referente_comunidad, cecista_dedicado, intercesor_dies_natalis, nombre_usuario, nivel_estudios, anio_ingreso, acompanante_id, fecha_ingreso_comunidad, foto_url",
       )
       .eq("id", id)
       .single(),
@@ -111,12 +112,12 @@ export default async function PersonaDetailPage({
       .is("fecha_fin", null),
     supabase
       .from("persona_acompanamiento")
-      .select("id, fecha_inicio, fecha_fin, notas, acompanante_libre, acompanante:personas!acompanante_id(id, nombre, apellido)")
+      .select("id, fecha_inicio, fecha_fin, notas, acompanante_libre, acompanante:personas!acompanante_id(id, nombre, apellido, apodo)")
       .eq("persona_id", id)
       .order("fecha_inicio", { ascending: false }),
     supabase
       .from("persona_acompanamiento")
-      .select("persona_id, persona:personas!persona_id(id, nombre, apellido)")
+      .select("persona_id, persona:personas!persona_id(id, nombre, apellido, apodo)")
       .eq("acompanante_id", id)
       .is("fecha_fin", null),
     supabase
@@ -157,7 +158,7 @@ export default async function PersonaDetailPage({
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-foreground">
-            {persona.apellido}, {persona.nombre}
+            {apellidoNombreConApodo(persona)}
           </h1>
           <div className="mt-1 flex items-center gap-2">
             <span
@@ -192,6 +193,7 @@ export default async function PersonaDetailPage({
             <Field label="Fecha de nacimiento" value={formatDate(persona.fecha_nacimiento)} />
             <Field label="Mail Personal" value={persona.email} />
             <Field label="Mail CcD" value={persona.email_ccd} />
+            <Field label="Apodo / Sobrenombre" value={persona.apodo} />
             <Field label="Nombre de usuario" value={persona.nombre_usuario} />
             <Field
               label="Documento"
@@ -250,7 +252,7 @@ export default async function PersonaDetailPage({
                     <>
                       {(active as any).acompanante ? (
                         <Link href={`/personas/${(active as any).acompanante.id}`} className="text-primary hover:underline">
-                          {(active as any).acompanante.apellido}, {(active as any).acompanante.nombre}
+                          {apellidoNombreConApodo((active as any).acompanante)}
                         </Link>
                       ) : (
                         <span>{(active as any).acompanante_libre ?? "—"}</span>
@@ -271,7 +273,7 @@ export default async function PersonaDetailPage({
               <dd className="text-foreground text-sm flex flex-col gap-0.5 mt-0.5">
                 {(acompanaA as any[]).map((r) => (
                   <Link key={r.persona_id} href={`/personas/${r.persona_id}`} className="text-primary hover:underline">
-                    {r.persona ? `${r.persona.apellido}, ${r.persona.nombre}` : "—"}
+                    {r.persona ? apellidoNombreConApodo(r.persona) : "—"}
                   </Link>
                 ))}
               </dd>
@@ -301,7 +303,7 @@ export default async function PersonaDetailPage({
                       <td className="py-2 pr-4">
                         {r.acompanante ? (
                           <Link href={`/personas/${r.acompanante.id}`} className="text-primary hover:underline">
-                            {r.acompanante.apellido}, {r.acompanante.nombre}
+                            {apellidoNombreConApodo(r.acompanante)}
                           </Link>
                         ) : (
                           r.acompanante_libre ?? "—"

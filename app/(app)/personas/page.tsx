@@ -109,6 +109,7 @@ export default async function PersonasPage({
     id: string
     nombre: string
     apellido: string
+    apodo: string | null
     email: string | null
     telefono: string | null
     localidad?: string | null
@@ -134,13 +135,13 @@ export default async function PersonasPage({
 
     let query = supabase
       .from('personas')
-      .select('id, nombre, apellido, email, telefono, localidad, estado, estado_eclesial, tipo_persona', { count: 'exact' })
+      .select('id, nombre, apellido, apodo, email, telefono, localidad, estado, estado_eclesial, tipo_persona', { count: 'exact' })
       .is('fecha_baja', null)
       .order(sortCol, { ascending: sortAsc })
       .range(from, to)
 
     if (q) {
-      query = query.or(`nombre.ilike.%${q}%,apellido.ilike.%${q}%,email.ilike.%${q}%`)
+      query = query.or(`nombre.ilike.%${q}%,apellido.ilike.%${q}%,apodo.ilike.%${q}%,email.ilike.%${q}%`)
     }
     if (canManage && estado) query = query.eq('estado', estado)
     if (canManage && estado_eclesial) query = query.eq('estado_eclesial', estado_eclesial)
@@ -213,6 +214,7 @@ export default async function PersonasPage({
         id: persona.id,
         nombre: persona.nombre,
         apellido: persona.apellido,
+        apodo: persona.apodo,
         email: persona.email,
         telefono: persona.telefono,
         ...(canManage

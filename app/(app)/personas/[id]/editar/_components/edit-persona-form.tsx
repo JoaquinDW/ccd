@@ -13,11 +13,13 @@ import { translateSupabaseError } from "@/lib/errors/supabase"
 import { LocationFields } from "@/components/location-fields"
 import { Combobox } from "@/components/ui/combobox"
 import { cn } from "@/lib/utils"
+import { apellidoNombreConApodo } from "@/lib/personas/nombre"
 
 type Persona = {
   id: string
   nombre: string
   apellido: string
+  apodo: string | null
   email: string | null
   email_ccd: string | null
   telefono: string | null
@@ -78,7 +80,7 @@ type HistorialAsignacion = {
 
 type Ministerio = { id: string; nombre: string; tipo: string; nivel: string }
 type Organizacion = { id: string; nombre: string; tipo: string }
-type PersonaOpcion = { id: string; nombre: string; apellido: string }
+type PersonaOpcion = { id: string; nombre: string; apellido: string; apodo?: string | null }
 
 type AcompañamientoActual = {
   id: string
@@ -86,10 +88,10 @@ type AcompañamientoActual = {
   /** Null cuando el acompañante se cargó como texto libre (ver acompanante_libre). */
   acompanante_id: string | null
   acompanante_libre?: string | null
-  acompanante: { id: string; nombre: string; apellido: string } | null
+  acompanante: { id: string; nombre: string; apellido: string; apodo?: string | null } | null
 } | null
 
-type AcompanadoRow = { id: string; persona: { nombre: string; apellido: string } | null }
+type AcompanadoRow = { id: string; persona: { nombre: string; apellido: string; apodo?: string | null } | null }
 
 const NIVELES_ESTUDIOS = [
   { value: "primario", label: "Primario" },
@@ -165,6 +167,7 @@ export function EditPersonaForm({
   const [basicData, setBasicData] = useState({
     nombre: persona.nombre ?? "",
     apellido: persona.apellido ?? "",
+    apodo: persona.apodo ?? "",
     email: persona.email ?? "",
     email_ccd: persona.email_ccd ?? "",
     telefono: persona.telefono ?? "",
@@ -522,7 +525,7 @@ export function EditPersonaForm({
 
       <div>
         <h1 className="text-2xl font-bold text-foreground md:text-3xl">
-          {persona.apellido}, {persona.nombre}
+          {apellidoNombreConApodo(persona)}
         </h1>
         <p className="mt-1 text-muted-foreground">Editar información de la persona</p>
       </div>
@@ -550,6 +553,13 @@ export function EditPersonaForm({
               <div className="space-y-2">
                 <Label htmlFor="apellido">Apellido *</Label>
                 <Input id="apellido" name="apellido" value={basicData.apellido} onChange={handleBasicChange} required disabled={basicLoading} />
+              </div>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="apodo">Apodo / Sobrenombre</Label>
+                <Input id="apodo" name="apodo" value={basicData.apodo} onChange={handleBasicChange} disabled={basicLoading} />
               </div>
             </div>
 
@@ -1107,7 +1117,7 @@ export function EditPersonaForm({
               <>
                 <span className="inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-sm font-medium text-primary">
                   {currentAcomp.acompanante
-                    ? `${currentAcomp.acompanante.apellido}, ${currentAcomp.acompanante.nombre}`
+                    ? apellidoNombreConApodo(currentAcomp.acompanante)
                     : currentAcomp.acompanante_libre || "Sin datos"}
                 </span>
                 <span className="text-xs text-muted-foreground">
@@ -1129,7 +1139,7 @@ export function EditPersonaForm({
                     key={a.id}
                     className="inline-flex items-center rounded-full bg-muted px-3 py-1 text-sm font-medium text-foreground"
                   >
-                    {a.persona?.apellido}, {a.persona?.nombre}
+                    {a.persona ? apellidoNombreConApodo(a.persona) : ""}
                   </span>
                 ))}
               </div>
@@ -1153,9 +1163,9 @@ export function EditPersonaForm({
                 <Combobox
                   value={nuevoAcompanante}
                   onSelect={setNuevoAcompanante}
-                  options={cecistas.map(p => ({ label: `${p.apellido}, ${p.nombre}`, value: p.id }))}
+                  options={cecistas.map(p => ({ label: apellidoNombreConApodo(p), value: p.id }))}
                   placeholder="Seleccionar cecista..."
-                  searchPlaceholder="Buscar por nombre o apellido..."
+                  searchPlaceholder="Buscar por nombre, apellido o apodo..."
                   emptyText="No se encontró la persona."
                   disabled={acompLoading}
                 />

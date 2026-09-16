@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/card"
 import { createClient } from "@/lib/supabase/server"
 import { getUserContext, canPerform } from "@/lib/auth/context"
+import { nombreCompletoConApodo } from "@/lib/personas/nombre"
 import DataPagination from "@/components/data-pagination"
 
 const PAGE_SIZE = 25
@@ -46,7 +47,7 @@ export default async function AsignacionesPage({
     const { data } = await supabase
       .from("personas")
       .select("id")
-      .or(`nombre.ilike.%${q}%,apellido.ilike.%${q}%,email.ilike.%${q}%`)
+      .or(`nombre.ilike.%${q}%,apellido.ilike.%${q}%,apodo.ilike.%${q}%,email.ilike.%${q}%`)
     personaIds = data?.map((p) => p.id) ?? []
   }
 
@@ -68,7 +69,7 @@ export default async function AsignacionesPage({
       id,
       fecha_inicio,
       persona_id,
-      persona:personas!persona_id(nombre, apellido, email),
+      persona:personas!persona_id(nombre, apellido, apodo, email),
       organizacion:organizaciones!organizacion_id(nombre),
       ministerio:ministerios!ministerio_id(nombre, tipo, nivel_acceso)
     `,
@@ -203,7 +204,7 @@ export default async function AsignacionesPage({
                   {asignaciones.map((a: any) => {
                     const persona = a.persona
                     const nombreCompleto = persona
-                      ? `${persona.nombre} ${persona.apellido}`
+                      ? nombreCompletoConApodo(persona)
                       : "Persona no encontrada"
                     return (
                       <tr

@@ -48,6 +48,7 @@ export async function PATCH(
     apellido: body.apellido,
     acepta_comunicaciones: body.acepta_comunicaciones ?? true,
   }
+  if (body.apodo !== undefined) updateData.apodo = body.apodo || null
   if (body.email !== undefined) updateData.email = body.email || null
   if (body.telefono !== undefined) updateData.telefono = body.telefono || null
   if (body.tipo_documento !== undefined) updateData.tipo_documento = body.tipo_documento || null

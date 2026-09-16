@@ -202,7 +202,7 @@ export default function PersonasFilters({ ministerios, organizaciones, ubicacion
         <input
           name="q"
           defaultValue={defaults.q}
-          placeholder="Buscar por nombre, apellido o email..."
+          placeholder="Buscar por nombre, apellido, apodo o email..."
           className="w-full rounded-md border border-border bg-background px-3 py-2 pl-8 text-sm text-foreground placeholder:text-muted-foreground"
         />
         <svg

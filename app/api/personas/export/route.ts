@@ -83,7 +83,7 @@ export async function GET(req: NextRequest) {
     let q_ = supabase
       .from('personas')
       .select(`
-        id, apellido, nombre, email, telefono,
+        id, apellido, nombre, apodo, email, telefono,
         localidad, provincia, pais,
         estado_eclesial, diocesis,
         tipo_persona,
@@ -91,7 +91,7 @@ export async function GET(req: NextRequest) {
       `)
       .is('fecha_baja', null)
 
-    if (q) q_ = q_.or(`nombre.ilike.%${q}%,apellido.ilike.%${q}%,email.ilike.%${q}%`)
+    if (q) q_ = q_.or(`nombre.ilike.%${q}%,apellido.ilike.%${q}%,apodo.ilike.%${q}%,email.ilike.%${q}%`)
     if (estado) q_ = q_.eq('estado', estado)
     if (estado_eclesial) q_ = q_.eq('estado_eclesial', estado_eclesial)
     // Mismo criterio que el listado: se buscan las variantes tal cual están guardadas.
@@ -115,6 +115,7 @@ export async function GET(req: NextRequest) {
     id: string
     apellido: string
     nombre: string
+    apodo: string | null
     email: string | null
     telefono: string | null
     localidad: string | null
@@ -210,6 +211,7 @@ export async function GET(req: NextRequest) {
   const rows = personas.map(p => ({
     Apellido: p.apellido,
     Nombre: p.nombre,
+    Apodo: p.apodo ?? '',
     Email: p.email ?? '',
     Teléfono: p.telefono ?? '',
     Localidad: p.localidad ?? '',
