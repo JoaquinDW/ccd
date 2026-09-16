@@ -288,15 +288,10 @@ export default function NuevoEventoForm({
             {/* Fecha solicitud + Solicitado por */}
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1">
-                <Label htmlFor="fecha_solicitud">Fecha Solicitud</Label>
-                <input
-                  id="fecha_solicitud"
-                  type="date"
-                  name="fecha_solicitud"
-                  value={formData.fecha_solicitud}
-                  onChange={handleChange}
-                  className={fieldClass}
-                />
+                <Label>Fecha Solicitud</Label>
+                <div className={readonlyClass}>
+                  {formatDateAR(formData.fecha_solicitud)}
+                </div>
               </div>
               <div className="space-y-1">
                 <Label>Solicitado por</Label>

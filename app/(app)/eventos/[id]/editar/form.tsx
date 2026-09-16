@@ -177,7 +177,6 @@ export default function EditarEventoForm({
       const updateData: Record<string, unknown> = {
         nombre: formData.nombre,
         tipo: formData.tipo,
-        fecha_solicitud: formData.fecha_solicitud || null,
         fecha_inicio: formData.fecha_inicio,
         fecha_fin: formData.fecha_fin,
         audiencia: formData.audiencia,
@@ -367,16 +366,14 @@ export default function EditarEventoForm({
               )}
             </div>
 
-            {/* Fecha solicitud */}
+            {/* Fecha solicitud — automática, no editable */}
             <div className="space-y-2">
-              <Label htmlFor="fecha_solicitud">Fecha de Solicitud</Label>
-              <Input
-                id="fecha_solicitud"
-                name="fecha_solicitud"
-                type="date"
-                value={formData.fecha_solicitud}
-                onChange={handleChange}
-              />
+              <Label>Fecha de Solicitud</Label>
+              <div className="w-full rounded-md border border-border bg-muted/50 px-3 py-2 text-sm text-muted-foreground">
+                {formData.fecha_solicitud
+                  ? new Date(formData.fecha_solicitud + "T00:00:00").toLocaleDateString("es-AR")
+                  : "—"}
+              </div>
             </div>
 
             {/* Fechas */}

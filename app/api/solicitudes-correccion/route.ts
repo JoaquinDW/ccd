@@ -36,10 +36,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 400 })
   }
 
-  // Best-effort: si no hay EMAIL_ADMIN_CONTACTO configurada, sendEmail
-  // devuelve skipped: 'no_recipients' sin romper el flujo.
+  // Best-effort: sendEmail nunca lanza si falla el envío.
   await sendEmail({
-    to: process.env.EMAIL_ADMIN_CONTACTO ?? '',
+    to: 'secretaria@convivenciacondios.org',
     subject: 'Nueva solicitud de corrección de datos',
     blocks: [
       block.heading('Nueva solicitud de corrección de datos'),
