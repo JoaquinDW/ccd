@@ -18,6 +18,7 @@ export type UserRole = {
 }
 
 export type UserMinistry = {
+  id: string
   nombre: string
   nivel_acceso: number
   organizacion_id: string | null
@@ -40,6 +41,8 @@ export type UserContext = {
   ministerio_nombre: string | null
   /** Ministerios/roles activos, disponibles para mostrar todas las asignaciones del usuario. */
   ministerios: UserMinistry[]
+  /** IDs de ministerio (asignaciones_ministerio activas) — usado para permisos por categoría (ej. tipo_evento_roles_solicitantes). */
+  ministerio_ids: string[]
 }
 
 /**
@@ -124,6 +127,7 @@ export async function getUserContext(): Promise<UserContext | null> {
       .from('asignaciones_ministerio')
       .select(`
         organizacion_id,
+        ministerio_id,
         ministerio:ministerios!ministerio_id(
           nombre,
           nivel_acceso,
@@ -140,6 +144,7 @@ export async function getUserContext(): Promise<UserContext | null> {
       const nivelAcceso = min.nivel_acceso ?? 0
       if (min.nombre) {
         ministerios.push({
+          id: a.ministerio_id as string,
           nombre: min.nombre,
           nivel_acceso: nivelAcceso,
           organizacion_id: a.organizacion_id ?? null,
@@ -194,5 +199,6 @@ export async function getUserContext(): Promise<UserContext | null> {
     db_permissions,
     ministerio_nombre: ministeriosOrdenados[0]?.nombre ?? null,
     ministerios: ministeriosOrdenados,
+    ministerio_ids: [...new Set(ministeriosOrdenados.map(m => m.id))],
   }
 }

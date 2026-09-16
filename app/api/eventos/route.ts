@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getUserContext, canPerform } from '@/lib/auth/context'
 import { translateSupabaseError } from '@/lib/errors/supabase'
+import { puedeSolicitarTipoEvento } from '@/lib/auth/tipos-eventos-permitidos'
 
 export async function POST(request: Request) {
   const ctx = await getUserContext()
@@ -21,12 +22,19 @@ export async function POST(request: Request) {
     )
   }
 
+  const supabase = await createClient()
+
+  if (body.tipo_evento_id && !(await puedeSolicitarTipoEvento(supabase, ctx, body.tipo_evento_id))) {
+    return NextResponse.json(
+      { error: 'Tu ministerio no está habilitado para solicitar este tipo de evento' },
+      { status: 403 }
+    )
+  }
+
   // Admins can set any state; regular users always submit as 'solicitud'
   const estado = ctx.is_admin && body.estado ? body.estado : 'solicitud'
 
   const today = new Date().toISOString().split('T')[0]
-
-  const supabase = await createClient()
 
   const insertData: Record<string, unknown> = {
     nombre: body.nombre,

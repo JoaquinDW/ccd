@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getUserContext, canPerform } from '@/lib/auth/context'
+import { getTiposEventoPermitidos } from '@/lib/auth/tipos-eventos-permitidos'
 import NuevoEventoForm from './form'
 
 export default async function NuevoEventoPage() {
@@ -25,11 +26,19 @@ export default async function NuevoEventoPage() {
     .order('nombre')
 
   // Load tipos de eventos activos solamente
-  const { data: tiposEventos } = await supabase
+  const { data: tiposEventosData } = await supabase
     .from('tipos_eventos')
     .select('id, nombre, categoria, requiere_discernimiento_confra, requiere_discernimiento_eqt, requisitos, activo')
     .eq('activo', true)
     .order('nombre')
+
+  // Filtrar por los que el usuario puede solicitar según tipo_evento_roles_solicitantes
+  const tiposEventoPermitidos = await getTiposEventoPermitidos(
+    supabase,
+    ctx,
+    (tiposEventosData ?? []).map(t => t.id)
+  )
+  const tiposEventos = (tiposEventosData ?? []).filter(t => tiposEventoPermitidos.has(t.id))
 
   // Load personas cecistas con modo servidor o familiar (para coordinadores)
   const { data: personasModos } = await supabase
