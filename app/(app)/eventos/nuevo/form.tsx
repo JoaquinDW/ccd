@@ -302,38 +302,29 @@ export default function NuevoEventoForm({
             {/* 1. Confraternidad */}
             <div className="space-y-1">
               <Label htmlFor="confraternidad_id">Confraternidad</Label>
-              <select
+              <Combobox
                 id="confraternidad_id"
                 value={confraternidadId}
-                onChange={(e) => handleConfraternidadChange(e.target.value)}
-                className={fieldClass}
-              >
-                <option value="">— Seleccionar confraternidad —</option>
-                {confraternidades.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.nombre}
-                  </option>
-                ))}
-              </select>
+                onSelect={handleConfraternidadChange}
+                options={confraternidades.map((c) => ({ label: c.nombre, value: c.id }))}
+                placeholder="— Seleccionar confraternidad —"
+                searchPlaceholder="Buscar confraternidad..."
+                emptyText="No se encontraron confraternidades."
+              />
             </div>
 
             {/* 2. Fraternidad filtrada por Confraternidad */}
             <div className="space-y-1">
               <Label htmlFor="fraternidad_id">Fraternidad *</Label>
-              <select
+              <Combobox
                 id="fraternidad_id"
                 value={fraternidadId}
-                onChange={(e) => handleFraternidadChange(e.target.value)}
-                required
-                className={fieldClass}
-              >
-                <option value="">— Seleccionar fraternidad —</option>
-                {fraternidadesFiltradas.map((f) => (
-                  <option key={f.id} value={f.id}>
-                    {f.nombre}
-                  </option>
-                ))}
-              </select>
+                onSelect={handleFraternidadChange}
+                options={fraternidadesFiltradas.map((f) => ({ label: f.nombre, value: f.id }))}
+                placeholder="— Seleccionar fraternidad —"
+                searchPlaceholder="Buscar fraternidad..."
+                emptyText="No se encontraron fraternidades."
+              />
             </div>
 
             {/* 3. Tipo de evento (categoría) */}

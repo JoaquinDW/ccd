@@ -18,6 +18,7 @@ import {
 import { ArrowLeft } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { DiocesisCombobox } from "@/components/diocesis-field"
+import { Combobox } from "@/components/ui/combobox"
 
 type OrgOption = { id: string; nombre: string; tipo: string }
 
@@ -176,20 +177,15 @@ export default function NewOrganizacionPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="parent_id">Confraternidad / Fraternidad Padre</Label>
-                <select
+                <Combobox
                   id="parent_id"
-                  name="parent_id"
                   value={formData.parent_id}
-                  onChange={handleChange}
-                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground text-sm"
-                >
-                  <option value="">Sin padre</option>
-                  {orgsParent.map((org) => (
-                    <option key={org.id} value={org.id}>
-                      {org.nombre} ({org.tipo})
-                    </option>
-                  ))}
-                </select>
+                  onSelect={(val) => setFormData((prev) => ({ ...prev, parent_id: val }))}
+                  options={orgsParent.map((org) => ({ label: `${org.nombre} (${org.tipo})`, value: org.id }))}
+                  placeholder="Sin padre"
+                  searchPlaceholder="Buscar organización..."
+                  emptyText="No se encontraron organizaciones."
+                />
               </div>
             </div>
 

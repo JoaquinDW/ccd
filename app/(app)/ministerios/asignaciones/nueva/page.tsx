@@ -23,6 +23,7 @@ import {
   fetchPersonas,
   type PersonaOption,
 } from "@/components/persona-combobox"
+import { Combobox } from "@/components/ui/combobox"
 
 interface Ministerio {
   id: string
@@ -246,23 +247,20 @@ export default function NuevaAsignacionPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="ministerio_id">Rol *</Label>
-                <select
+                <Combobox
                   id="ministerio_id"
-                  required
                   value={form.ministerio_id}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, ministerio_id: e.target.value }))
+                  onSelect={(val) =>
+                    setForm((f) => ({ ...f, ministerio_id: val }))
                   }
-                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
-                >
-                  <option value="">Selecciona un rol...</option>
-                  {ministerios.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.nombre} — {tipoLabel[m.tipo] ?? m.tipo}
-                      {m.nivel_acceso > 0 ? ` (nivel ${m.nivel_acceso})` : ""}
-                    </option>
-                  ))}
-                </select>
+                  options={ministerios.map((m) => ({
+                    label: `${m.nombre} — ${tipoLabel[m.tipo] ?? m.tipo}${m.nivel_acceso > 0 ? ` (nivel ${m.nivel_acceso})` : ""}`,
+                    value: m.id,
+                  }))}
+                  placeholder="Selecciona un rol..."
+                  searchPlaceholder="Buscar rol..."
+                  emptyText="No se encontraron roles."
+                />
               </div>
             </div>
 
@@ -270,42 +268,37 @@ export default function NuevaAsignacionPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="organizacion_id">Organización (opcional)</Label>
-                <select
+                <Combobox
                   id="organizacion_id"
                   value={form.organizacion_id}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, organizacion_id: e.target.value }))
+                  onSelect={(val) =>
+                    setForm((f) => ({ ...f, organizacion_id: val }))
                   }
-                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
-                >
-                  <option value="">Global (sin restricción)</option>
-                  {organizaciones.map((o) => (
-                    <option key={o.id} value={o.id}>
-                      {o.nombre}
-                    </option>
-                  ))}
-                </select>
+                  options={organizaciones.map((o) => ({ label: o.nombre, value: o.id }))}
+                  placeholder="Global (sin restricción)"
+                  searchPlaceholder="Buscar organización..."
+                  emptyText="No se encontraron organizaciones."
+                />
                 <p className="text-xs text-muted-foreground">
                   Vacío = acceso global
                 </p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="evento_id">Evento (opcional)</Label>
-                <select
+                <Combobox
                   id="evento_id"
                   value={form.evento_id}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, evento_id: e.target.value }))
+                  onSelect={(val) =>
+                    setForm((f) => ({ ...f, evento_id: val }))
                   }
-                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
-                >
-                  <option value="">Sin evento específico</option>
-                  {eventos.map((ev) => (
-                    <option key={ev.id} value={ev.id}>
-                      {ev.nombre} ({tipoEventoLabel[ev.tipo] ?? ev.tipo})
-                    </option>
-                  ))}
-                </select>
+                  options={eventos.map((ev) => ({
+                    label: `${ev.nombre} (${tipoEventoLabel[ev.tipo] ?? ev.tipo})`,
+                    value: ev.id,
+                  }))}
+                  placeholder="Sin evento específico"
+                  searchPlaceholder="Buscar evento..."
+                  emptyText="No se encontraron eventos."
+                />
               </div>
             </div>
 

@@ -71,6 +71,17 @@ export default function PersonasFilters({ ministerios, organizaciones, ubicacion
   const formRef = useRef<HTMLFormElement>(null)
   const [provincia, setProvincia] = useState(defaults.provincia)
   const [localidad, setLocalidad] = useState(defaults.localidad)
+  const [organizacionId, setOrganizacionId] = useState(defaults.organizacion_id)
+  const [ministerioId, setMinisterioId] = useState(defaults.ministerio_id)
+
+  const organizacionOptions = useMemo<ComboboxOption[]>(
+    () => organizaciones.map((o) => ({ label: `${o.nombre} (${tipoLabel[o.tipo] ?? o.tipo})`, value: o.id })),
+    [organizaciones]
+  )
+  const ministerioOptions = useMemo<ComboboxOption[]>(
+    () => ministerios.map((m) => ({ label: m.nombre, value: m.id })),
+    [ministerios]
+  )
 
   // Países presentes entre las personas: definen qué catálogos de provincias se ofrecen.
   // Sin dato de país se asume Argentina, que es el caso por defecto de la comunidad.
@@ -190,10 +201,17 @@ export default function PersonasFilters({ ministerios, organizaciones, ubicacion
     setProvincia("")
     setLocalidad("")
     setLocalidadQuery("")
+    setOrganizacionId("")
+    setMinisterioId("")
     router.push("/personas")
   }
 
-  const hasActiveFilters = Object.values(defaults).some((v) => v !== "") || provincia !== "" || localidad !== ""
+  const hasActiveFilters =
+    Object.values(defaults).some((v) => v !== "") ||
+    provincia !== "" ||
+    localidad !== "" ||
+    organizacionId !== "" ||
+    ministerioId !== ""
 
   return (
     <form ref={formRef} method="GET" className="space-y-3">
@@ -284,25 +302,33 @@ export default function PersonasFilters({ ministerios, organizaciones, ubicacion
         </div>
 
         {organizaciones.length > 0 && (
-          <select name="organizacion_id" defaultValue={defaults.organizacion_id} className={selectClass}>
-            <option value="">Confraternidad / Fraternidad</option>
-            {organizaciones.map((o) => (
-              <option key={o.id} value={o.id}>
-                {o.nombre} ({tipoLabel[o.tipo] ?? o.tipo})
-              </option>
-            ))}
-          </select>
+          <div>
+            <input type="hidden" name="organizacion_id" value={organizacionId} />
+            <Combobox
+              value={organizacionId}
+              onSelect={setOrganizacionId}
+              options={organizacionOptions}
+              placeholder="Confraternidad / Fraternidad"
+              searchPlaceholder="Buscar organización..."
+              emptyText="Sin resultados."
+              className={comboboxClass}
+            />
+          </div>
         )}
 
         {canManage && ministerios.length > 0 && (
-          <select name="ministerio_id" defaultValue={defaults.ministerio_id} className={selectClass}>
-            <option value="">Rol asignado</option>
-            {ministerios.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.nombre}
-              </option>
-            ))}
-          </select>
+          <div>
+            <input type="hidden" name="ministerio_id" value={ministerioId} />
+            <Combobox
+              value={ministerioId}
+              onSelect={setMinisterioId}
+              options={ministerioOptions}
+              placeholder="Rol asignado"
+              searchPlaceholder="Buscar rol..."
+              emptyText="Sin resultados."
+              className={comboboxClass}
+            />
+          </div>
         )}
       </div>
 

@@ -12,6 +12,7 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { ArrowLeft } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { Combobox } from '@/components/ui/combobox'
 
 type ParticipanteOption = {
   id: string
@@ -172,22 +173,18 @@ export default function NewPagoPage() {
             {/* Participante */}
             <div className="space-y-2">
               <Label htmlFor="evento_participante_id">Participante *</Label>
-              <select
+              <Combobox
                 id="evento_participante_id"
-                name="evento_participante_id"
                 value={formData.evento_participante_id}
-                onChange={handleChange}
-                required
-                className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground text-sm"
-              >
-                <option value="">Seleccionar inscripción...</option>
-                {participantes.map(p => (
-                  <option key={p.id} value={p.id}>
-                    {p.persona ? `${p.persona.apellido}, ${p.persona.nombre}` : '?'} —{' '}
-                    {p.evento ? `${p.evento.nombre} (${p.evento.fecha_inicio})` : '?'}
-                  </option>
-                ))}
-              </select>
+                onSelect={val => setFormData(prev => ({ ...prev, evento_participante_id: val }))}
+                options={participantes.map(p => ({
+                  label: `${p.persona ? `${p.persona.apellido}, ${p.persona.nombre}` : '?'} — ${p.evento ? `${p.evento.nombre} (${p.evento.fecha_inicio})` : '?'}`,
+                  value: p.id,
+                }))}
+                placeholder="Seleccionar inscripción..."
+                searchPlaceholder="Buscar por persona o evento..."
+                emptyText="No se encontraron inscripciones."
+              />
             </div>
 
             {/* Monto y Método */}

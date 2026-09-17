@@ -16,6 +16,7 @@ import {
 import { ArrowLeft, Plus, Trash2 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { LocationFields } from "@/components/location-fields"
+import { Combobox } from "@/components/ui/combobox"
 import FlyerUploadPanel from "../_components/flyer-upload-panel"
 
 type OrgOption = { id: string; nombre: string; tipo: string }
@@ -505,39 +506,29 @@ export default function EditarEventoForm({
             {/* Organización */}
             <div className="space-y-2">
               <Label htmlFor="organizacion_id">Organización</Label>
-              <select
+              <Combobox
                 id="organizacion_id"
-                name="organizacion_id"
                 value={formData.organizacion_id}
-                onChange={handleChange}
-                className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground text-sm"
-              >
-                <option value="">Sin organización</option>
-                {organizaciones.map((org) => (
-                  <option key={org.id} value={org.id}>
-                    {org.nombre} ({org.tipo})
-                  </option>
-                ))}
-              </select>
+                onSelect={(val) => setFormData((prev) => ({ ...prev, organizacion_id: val }))}
+                options={organizaciones.map((org) => ({ label: `${org.nombre} (${org.tipo})`, value: org.id }))}
+                placeholder="Sin organización"
+                searchPlaceholder="Buscar organización..."
+                emptyText="No se encontraron organizaciones."
+              />
             </div>
 
             {/* Casa de Retiro */}
             <div className="space-y-2">
               <Label htmlFor="casa_retiro_id">Casa de Retiro</Label>
-              <select
+              <Combobox
                 id="casa_retiro_id"
-                name="casa_retiro_id"
                 value={formData.casa_retiro_id}
-                onChange={handleChange}
-                className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground text-sm"
-              >
-                <option value="">Sin casa de retiro</option>
-                {casasRetiro.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.nombre}
-                  </option>
-                ))}
-              </select>
+                onSelect={(val) => setFormData((prev) => ({ ...prev, casa_retiro_id: val }))}
+                options={casasRetiro.map((c) => ({ label: c.nombre, value: c.id }))}
+                placeholder="Sin casa de retiro"
+                searchPlaceholder="Buscar casa de retiro..."
+                emptyText="No se encontraron casas de retiro."
+              />
             </div>
 
             {/* Cupo y Precios */}

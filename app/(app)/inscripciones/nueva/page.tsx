@@ -12,6 +12,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { ArrowLeft } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { PersonaCombobox } from '@/components/persona-combobox'
+import { Combobox } from '@/components/ui/combobox'
 
 type EventoOption = { id: string; nombre: string; fecha_inicio: string }
 
@@ -120,21 +121,15 @@ export default function NewInscripcionPage() {
             {/* Evento */}
             <div className="space-y-2">
               <Label htmlFor="evento_id">Evento *</Label>
-              <select
+              <Combobox
                 id="evento_id"
-                name="evento_id"
                 value={formData.evento_id}
-                onChange={handleChange}
-                required
-                className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground text-sm"
-              >
-                <option value="">Seleccionar evento...</option>
-                {eventos.map(ev => (
-                  <option key={ev.id} value={ev.id}>
-                    {ev.nombre} ({ev.fecha_inicio})
-                  </option>
-                ))}
-              </select>
+                onSelect={val => setFormData(prev => ({ ...prev, evento_id: val }))}
+                options={eventos.map(ev => ({ label: `${ev.nombre} (${ev.fecha_inicio})`, value: ev.id }))}
+                placeholder="Seleccionar evento..."
+                searchPlaceholder="Buscar evento..."
+                emptyText="No se encontraron eventos."
+              />
             </div>
 
             {/* Rol y Estado */}

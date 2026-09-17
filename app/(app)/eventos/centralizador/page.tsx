@@ -21,6 +21,7 @@ import { Button } from "@/components/ui/button"
 import { createClient } from "@/lib/supabase/server"
 import { getUserContext } from "@/lib/auth/context"
 import { formatDateAR } from "@/lib/utils"
+import { CentralizadorComboboxFilters } from "./_components/centralizador-combobox-filters"
 
 const estadoEventoClases: Record<string, string> = {
   borrador: "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300",
@@ -259,39 +260,21 @@ export default async function CentralizadorPage({
             method="GET"
             className="flex flex-wrap items-end gap-3 rounded-lg border border-border bg-card p-4"
           >
-            <div className="flex flex-col gap-1">
-              <label className="text-xs text-muted-foreground">Confraternidad</label>
-              <select name="organizacion_id" defaultValue={organizacion_id ?? ""} className={selectClass}>
-                <option value="">Todas</option>
-                {confraList.map((c) => (
-                  <option key={c.id} value={c.id}>{c.nombre}</option>
-                ))}
-              </select>
-            </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-xs text-muted-foreground">Fraternidad</label>
-              <select name="fraternidad_id" defaultValue={fraternidad_id ?? ""} className={selectClass}>
-                <option value="">Todas</option>
-                {fratList.map((f) => (
-                  <option key={f.id} value={f.id}>{f.nombre}</option>
-                ))}
-              </select>
-            </div>
+            <CentralizadorComboboxFilters
+              confraList={confraList}
+              fratList={fratList}
+              ciudadList={ciudadList}
+              defaultOrganizacionId={organizacion_id ?? ""}
+              defaultFraternidadId={fraternidad_id ?? ""}
+              defaultCiudad={ciudad ?? ""}
+              className={selectClass}
+            />
             <div className="flex flex-col gap-1">
               <label className="text-xs text-muted-foreground">Provincia</label>
               <select name="provincia" defaultValue={provincia ?? ""} className={selectClass}>
                 <option value="">Todas</option>
                 {provinciaList.map((p) => (
                   <option key={p} value={p}>{p}</option>
-                ))}
-              </select>
-            </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-xs text-muted-foreground">Ciudad</label>
-              <select name="ciudad" defaultValue={ciudad ?? ""} className={selectClass}>
-                <option value="">Todas</option>
-                {ciudadList.map((c) => (
-                  <option key={c} value={c}>{c}</option>
                 ))}
               </select>
             </div>

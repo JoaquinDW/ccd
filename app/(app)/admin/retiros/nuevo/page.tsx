@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { createClient } from "@/lib/supabase/client"
+import { Combobox } from "@/components/ui/combobox"
 
 type OrgOption = { id: string; nombre: string; tipo: string }
 
@@ -194,36 +195,30 @@ export default function NewRetiroAdminPage() {
 
             <div className="space-y-2">
               <Label htmlFor="organizacion_id">Organización</Label>
-              <select
+              <Combobox
                 id="organizacion_id"
-                name="organizacion_id"
                 value={formData.organizacion_id}
-                onChange={handleChange}
+                onSelect={val => setFormData(prev => ({ ...prev, organizacion_id: val }))}
                 disabled={isLoading}
-                className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground text-sm"
-              >
-                <option value="">Sin organización</option>
-                {organizaciones.map(o => (
-                  <option key={o.id} value={o.id}>{o.nombre} ({o.tipo})</option>
-                ))}
-              </select>
+                options={organizaciones.map(o => ({ label: `${o.nombre} (${o.tipo})`, value: o.id }))}
+                placeholder="Sin organización"
+                searchPlaceholder="Buscar organización..."
+                emptyText="No se encontraron organizaciones."
+              />
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="casa_retiro_id">Casa de Retiro</Label>
-              <select
+              <Combobox
                 id="casa_retiro_id"
-                name="casa_retiro_id"
                 value={formData.casa_retiro_id}
-                onChange={handleChange}
+                onSelect={val => setFormData(prev => ({ ...prev, casa_retiro_id: val }))}
                 disabled={isLoading}
-                className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground text-sm"
-              >
-                <option value="">Sin casa de retiro</option>
-                {casasRetiro.map(c => (
-                  <option key={c.id} value={c.id}>{c.nombre}</option>
-                ))}
-              </select>
+                options={casasRetiro.map(c => ({ label: c.nombre, value: c.id }))}
+                placeholder="Sin casa de retiro"
+                searchPlaceholder="Buscar casa de retiro..."
+                emptyText="No se encontraron casas de retiro."
+              />
             </div>
 
             <div className="grid gap-4 sm:grid-cols-3">

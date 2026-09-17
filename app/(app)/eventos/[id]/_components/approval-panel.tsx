@@ -1,9 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
+import { Combobox, type ComboboxOption } from '@/components/ui/combobox'
 import { formatDateAR } from '@/lib/utils'
 
 type ResultadoDiscernimiento =
@@ -147,6 +148,15 @@ function NivelDiscernimiento({
   // Find selected persona for link display
   const selectedCoordinador = personas.find(p => p.id === currentVal('coordinador_asignado_id'))
   const selectedAsesor = personas.find(p => p.id === currentVal('asesor_asignado_id'))
+
+  const personaOptions = useMemo<ComboboxOption[]>(
+    () => personas.map(p => ({ label: `${p.apellido}, ${p.nombre}`, value: p.id })),
+    [personas]
+  )
+  const casaRetiroOptions = useMemo<ComboboxOption[]>(
+    () => casasRetiro.map(cr => ({ label: cr.ciudad ? `${cr.nombre} — ${cr.ciudad}` : cr.nombre, value: cr.id })),
+    [casasRetiro]
+  )
 
   const handleComunicar = async () => {
     if (!resultado) {
@@ -452,18 +462,15 @@ function NivelDiscernimiento({
                 <div className="space-y-1">
                   <p className="text-xs text-muted-foreground uppercase tracking-wide">Coordinador asignado</p>
                   <div className="flex gap-2 items-center">
-                    <select
-                      className="flex-1 rounded border border-border bg-background px-3 py-1.5 text-sm text-foreground"
+                    <Combobox
+                      className="flex-1"
                       value={currentVal('coordinador_asignado_id')}
-                      onChange={e => setCampo('coordinador_asignado_id', e.target.value)}
-                    >
-                      <option value="">— Sin asignar —</option>
-                      {personas.map(p => (
-                        <option key={p.id} value={p.id}>
-                          {p.apellido}, {p.nombre}
-                        </option>
-                      ))}
-                    </select>
+                      onSelect={val => setCampo('coordinador_asignado_id', val)}
+                      options={personaOptions}
+                      placeholder="— Sin asignar —"
+                      searchPlaceholder="Buscar persona..."
+                      emptyText="No se encontraron personas."
+                    />
                     {selectedCoordinador && (
                       <Link
                         href={`/personas/${selectedCoordinador.id}`}
@@ -481,18 +488,15 @@ function NivelDiscernimiento({
                 <div className="space-y-1">
                   <p className="text-xs text-muted-foreground uppercase tracking-wide">Asesor asignado</p>
                   <div className="flex gap-2 items-center">
-                    <select
-                      className="flex-1 rounded border border-border bg-background px-3 py-1.5 text-sm text-foreground"
+                    <Combobox
+                      className="flex-1"
                       value={currentVal('asesor_asignado_id')}
-                      onChange={e => setCampo('asesor_asignado_id', e.target.value)}
-                    >
-                      <option value="">— Sin asignar —</option>
-                      {personas.map(p => (
-                        <option key={p.id} value={p.id}>
-                          {p.apellido}, {p.nombre}
-                        </option>
-                      ))}
-                    </select>
+                      onSelect={val => setCampo('asesor_asignado_id', val)}
+                      options={personaOptions}
+                      placeholder="— Sin asignar —"
+                      searchPlaceholder="Buscar persona..."
+                      emptyText="No se encontraron personas."
+                    />
                     {selectedAsesor && (
                       <Link
                         href={`/personas/${selectedAsesor.id}`}
@@ -511,18 +515,14 @@ function NivelDiscernimiento({
             {/* Casa de Retiro */}
             <div>
               <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Casa de Retiros</p>
-              <select
-                className="w-full rounded border border-border bg-background px-3 py-1.5 text-sm text-foreground"
+              <Combobox
                 value={currentVal('casa_retiro_id')}
-                onChange={e => setCampo('casa_retiro_id', e.target.value)}
-              >
-                <option value="">— Sin asignar —</option>
-                {casasRetiro.map(cr => (
-                  <option key={cr.id} value={cr.id}>
-                    {cr.nombre}{cr.ciudad ? ` — ${cr.ciudad}` : ''}
-                  </option>
-                ))}
-              </select>
+                onSelect={val => setCampo('casa_retiro_id', val)}
+                options={casaRetiroOptions}
+                placeholder="— Sin asignar —"
+                searchPlaceholder="Buscar casa de retiro..."
+                emptyText="No se encontraron casas de retiro."
+              />
             </div>
 
             {/* Ubicación */}

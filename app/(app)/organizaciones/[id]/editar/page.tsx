@@ -14,6 +14,7 @@ import { ArrowLeft } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import MercadoPagoPanel from "./_components/mercadopago-panel"
 import { DiocesisCombobox } from "@/components/diocesis-field"
+import { Combobox } from "@/components/ui/combobox"
 
 type OrgOption = { id: string; nombre: string; tipo: string }
 type OrgDependiente = { id: string; nombre: string; tipo: string }
@@ -278,20 +279,15 @@ export default function EditarOrganizacionPage() {
             {/* Org. Padre */}
             <div className="space-y-1.5">
               <Label htmlFor="parent_id">Confraternidad / Fraternidad Padre</Label>
-              <select
+              <Combobox
                 id="parent_id"
-                name="parent_id"
                 value={formData.parent_id}
-                onChange={handleChange}
-                className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground text-sm"
-              >
-                <option value="">Seleccionar...</option>
-                {orgsParent.map((org) => (
-                  <option key={org.id} value={org.id}>
-                    {org.nombre} ({tipoLabel[org.tipo] ?? org.tipo})
-                  </option>
-                ))}
-              </select>
+                onSelect={(val) => setFormData((prev) => ({ ...prev, parent_id: val }))}
+                options={orgsParent.map((org) => ({ label: `${org.nombre} (${tipoLabel[org.tipo] ?? org.tipo})`, value: org.id }))}
+                placeholder="Seleccionar..."
+                searchPlaceholder="Buscar organización..."
+                emptyText="No se encontraron organizaciones."
+              />
             </div>
 
             {/* Estado + Mail */}

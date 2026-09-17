@@ -11,6 +11,7 @@ import { eventoIdsComoCoordinadorOCentralizador } from "@/lib/eventos/roles"
 import { formatDateLong, formatDateAR } from "@/lib/utils"
 import { apellidoNombreConApodo } from "@/lib/personas/nombre"
 import { SeguimientoActions } from "./seguimiento-actions"
+import { EventoFilter } from "./_components/evento-filter"
 
 const contactoClases: Record<string, string> = {
   no_contactado: "bg-gray-100 text-gray-700",
@@ -140,18 +141,7 @@ export default async function InteresadosPage({
             className="w-full rounded-md border border-border bg-background py-2 pl-9 pr-3 text-sm text-foreground"
           />
         </div>
-        <select
-          name="evento_id"
-          defaultValue={evento_id ?? ""}
-          className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
-        >
-          <option value="">Todos los eventos</option>
-          {eventoOptions.map((e) => (
-            <option key={e.id} value={e.id}>
-              {e.nombre}
-            </option>
-          ))}
-        </select>
+        <EventoFilter eventos={eventoOptions} defaultValue={evento_id ?? ""} />
         <select
           name="estado_contacto"
           defaultValue={estado_contacto ?? ""}

@@ -1,8 +1,12 @@
+"use client"
+
+import { useState } from "react"
 import Link from "next/link"
 import { CalendarDays, MapPin, Users, Building2, Home } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Combobox, type ComboboxOption } from "@/components/ui/combobox"
 
 const TIPO_LABELS: Record<string, string> = {
   convivencia: "Convivencia",
@@ -96,6 +100,16 @@ export function PanelPublicacionEventos({
 }: Props) {
   const hasFilters = Object.values(filters).some(Boolean)
 
+  const [confraternidad, setConfraternidad] = useState(filters.confraternidad ?? "")
+  const [fraternidad, setFraternidad] = useState(filters.fraternidad ?? "")
+  const [casaRetiro, setCasaRetiro] = useState(filters.casa_retiro ?? "")
+  const [ciudad, setCiudad] = useState(filters.ciudad ?? "")
+
+  const confraternidadOptions: ComboboxOption[] = confraternidades.map((c) => ({ label: c.nombre, value: c.id }))
+  const fraternidadOptions: ComboboxOption[] = fraternidades.map((f) => ({ label: f.nombre, value: f.id }))
+  const casaOptions: ComboboxOption[] = casas.map((c) => ({ label: c.nombre, value: c.id }))
+  const ciudadOptions: ComboboxOption[] = ciudades.map((c) => ({ label: c, value: c }))
+
   return (
     <div className="space-y-6">
       {/* Filtros */}
@@ -106,38 +120,44 @@ export function PanelPublicacionEventos({
       >
         <div className="flex flex-col gap-1">
           <label className="text-xs font-medium text-muted-foreground">Confraternidad</label>
-          <select name="confraternidad" defaultValue={filters.confraternidad ?? ""} className={inputClass}>
-            <option value="">Todas</option>
-            {confraternidades.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.nombre}
-              </option>
-            ))}
-          </select>
+          <input type="hidden" name="confraternidad" value={confraternidad} />
+          <Combobox
+            value={confraternidad}
+            onSelect={setConfraternidad}
+            options={confraternidadOptions}
+            placeholder="Todas"
+            searchPlaceholder="Buscar confraternidad..."
+            emptyText="No se encontraron confraternidades."
+            className={inputClass}
+          />
         </div>
 
         <div className="flex flex-col gap-1">
           <label className="text-xs font-medium text-muted-foreground">Fraternidad</label>
-          <select name="fraternidad" defaultValue={filters.fraternidad ?? ""} className={inputClass}>
-            <option value="">Todas</option>
-            {fraternidades.map((f) => (
-              <option key={f.id} value={f.id}>
-                {f.nombre}
-              </option>
-            ))}
-          </select>
+          <input type="hidden" name="fraternidad" value={fraternidad} />
+          <Combobox
+            value={fraternidad}
+            onSelect={setFraternidad}
+            options={fraternidadOptions}
+            placeholder="Todas"
+            searchPlaceholder="Buscar fraternidad..."
+            emptyText="No se encontraron fraternidades."
+            className={inputClass}
+          />
         </div>
 
         <div className="flex flex-col gap-1">
           <label className="text-xs font-medium text-muted-foreground">Casa de retiros</label>
-          <select name="casa_retiro" defaultValue={filters.casa_retiro ?? ""} className={inputClass}>
-            <option value="">Todas</option>
-            {casas.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.nombre}
-              </option>
-            ))}
-          </select>
+          <input type="hidden" name="casa_retiro" value={casaRetiro} />
+          <Combobox
+            value={casaRetiro}
+            onSelect={setCasaRetiro}
+            options={casaOptions}
+            placeholder="Todas"
+            searchPlaceholder="Buscar casa de retiros..."
+            emptyText="No se encontraron casas de retiro."
+            className={inputClass}
+          />
         </div>
 
         <div className="flex flex-col gap-1">
@@ -163,14 +183,16 @@ export function PanelPublicacionEventos({
 
         <div className="flex flex-col gap-1">
           <label className="text-xs font-medium text-muted-foreground">Ciudad</label>
-          <select name="ciudad" defaultValue={filters.ciudad ?? ""} className={inputClass}>
-            <option value="">Todas</option>
-            {ciudades.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
+          <input type="hidden" name="ciudad" value={ciudad} />
+          <Combobox
+            value={ciudad}
+            onSelect={setCiudad}
+            options={ciudadOptions}
+            placeholder="Todas"
+            searchPlaceholder="Buscar ciudad..."
+            emptyText="No se encontraron ciudades."
+            className={inputClass}
+          />
         </div>
 
         <div className="flex flex-col gap-1">

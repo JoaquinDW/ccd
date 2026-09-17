@@ -2,7 +2,7 @@
 
 export const dynamic = 'force-dynamic'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
@@ -12,6 +12,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { ArrowLeft } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { DiocesisCombobox } from "@/components/diocesis-field"
+import { Combobox, type ComboboxOption } from '@/components/ui/combobox'
 
 type OrgOption = { id: string; nombre: string; tipo: string }
 type PersonaOption = { id: string; nombre: string; apellido: string }
@@ -157,6 +158,11 @@ export default function EditarCasaRetiroPage() {
     setFormData(prev => ({ ...prev, [name]: value }))
   }
 
+  const personaOptions = useMemo<ComboboxOption[]>(
+    () => personas.map(p => ({ label: `${p.apellido}, ${p.nombre}`, value: p.id })),
+    [personas]
+  )
+
   const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, checked } = e.target
     setFormData(prev => ({ ...prev, [name]: checked }))
@@ -287,20 +293,15 @@ export default function EditarCasaRetiroPage() {
               </h3>
               <div className="space-y-2">
                 <Label htmlFor="contacto_persona_id">Persona de contacto</Label>
-                <select
+                <Combobox
                   id="contacto_persona_id"
-                  name="contacto_persona_id"
                   value={formData.contacto_persona_id}
-                  onChange={handleChange}
-                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground text-sm"
-                >
-                  <option value="">Sin persona de contacto</option>
-                  {personas.map(p => (
-                    <option key={p.id} value={p.id}>
-                      {p.apellido}, {p.nombre}
-                    </option>
-                  ))}
-                </select>
+                  onSelect={val => setFormData(prev => ({ ...prev, contacto_persona_id: val }))}
+                  options={personaOptions}
+                  placeholder="Sin persona de contacto"
+                  searchPlaceholder="Buscar persona..."
+                  emptyText="No se encontraron personas."
+                />
               </div>
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">

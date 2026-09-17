@@ -868,33 +868,29 @@ export function EditPersonaForm({
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
                     <Label htmlFor="confraternidad_id">Confraternidad</Label>
-                    <select
+                    <Combobox
                       id="confraternidad_id"
                       value={selectedConfraternidad}
-                      onChange={e => setSelectedConfraternidad(e.target.value)}
+                      onSelect={setSelectedConfraternidad}
                       disabled={orgLoading}
-                      className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground text-sm"
-                    >
-                      <option value="">Sin confraternidad</option>
-                      {organizaciones.filter(o => o.tipo === "confraternidad").map(o => (
-                        <option key={o.id} value={o.id}>{o.nombre}</option>
-                      ))}
-                    </select>
+                      options={organizaciones.filter(o => o.tipo === "confraternidad").map(o => ({ label: o.nombre, value: o.id }))}
+                      placeholder="Sin confraternidad"
+                      searchPlaceholder="Buscar confraternidad..."
+                      emptyText="No se encontraron confraternidades."
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="fraternidad_id">Fraternidad</Label>
-                    <select
+                    <Combobox
                       id="fraternidad_id"
                       value={selectedFraternidad}
-                      onChange={e => setSelectedFraternidad(e.target.value)}
+                      onSelect={setSelectedFraternidad}
                       disabled={orgLoading}
-                      className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground text-sm"
-                    >
-                      <option value="">Sin fraternidad</option>
-                      {organizaciones.filter(o => o.tipo === "fraternidad").map(o => (
-                        <option key={o.id} value={o.id}>{o.nombre}</option>
-                      ))}
-                    </select>
+                      options={organizaciones.filter(o => o.tipo === "fraternidad").map(o => ({ label: o.nombre, value: o.id }))}
+                      placeholder="Sin fraternidad"
+                      searchPlaceholder="Buscar fraternidad..."
+                      emptyText="No se encontraron fraternidades."
+                    />
                   </div>
                 </div>
                 <Button type="button" variant="outline" size="sm" disabled={orgLoading} onClick={handleOrgSubmit}>
@@ -1259,37 +1255,29 @@ export function EditPersonaForm({
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="ministerio_id">Ministerio *</Label>
-                <select
+                <Combobox
                   id="ministerio_id"
                   value={newAsig.ministerio_id}
-                  onChange={e => setNewAsig(prev => ({ ...prev, ministerio_id: e.target.value }))}
+                  onSelect={val => setNewAsig(prev => ({ ...prev, ministerio_id: val }))}
                   disabled={asigLoading}
-                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground text-sm"
-                >
-                  <option value="">Seleccionar ministerio...</option>
-                  {ministerios.map(m => (
-                    <option key={m.id} value={m.id}>
-                      {m.nombre} — {tipoMinisterioLabel[m.tipo] ?? m.tipo}
-                    </option>
-                  ))}
-                </select>
+                  options={ministerios.map(m => ({ label: `${m.nombre} — ${tipoMinisterioLabel[m.tipo] ?? m.tipo}`, value: m.id }))}
+                  placeholder="Seleccionar ministerio..."
+                  searchPlaceholder="Buscar ministerio..."
+                  emptyText="No se encontraron ministerios."
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="organizacion_id">Organización</Label>
-                <select
+                <Combobox
                   id="organizacion_id"
                   value={newAsig.organizacion_id}
-                  onChange={e => setNewAsig(prev => ({ ...prev, organizacion_id: e.target.value }))}
+                  onSelect={val => setNewAsig(prev => ({ ...prev, organizacion_id: val }))}
                   disabled={asigLoading}
-                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground text-sm"
-                >
-                  <option value="">Sin organización</option>
-                  {organizaciones.map(o => (
-                    <option key={o.id} value={o.id}>
-                      {o.nombre} ({o.tipo})
-                    </option>
-                  ))}
-                </select>
+                  options={organizaciones.map(o => ({ label: `${o.nombre} (${o.tipo})`, value: o.id }))}
+                  placeholder="Sin organización"
+                  searchPlaceholder="Buscar organización..."
+                  emptyText="No se encontraron organizaciones."
+                />
               </div>
             </div>
             <div className="space-y-2 sm:w-48">

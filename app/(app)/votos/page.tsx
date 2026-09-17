@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { createClient } from "@/lib/supabase/server"
 import { getUserContext, canPerform } from "@/lib/auth/context"
+import { OrganizacionFilter } from "./_components/organizacion-filter"
 
 const votoLabel: Record<string, string> = {
   tender_union_dios: "Tender a la unión con Dios",
@@ -146,21 +147,7 @@ export default async function VotosListadoPage({
                 className="h-9 w-56 rounded-md border border-border bg-background px-3 text-sm"
               />
             </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-xs font-medium text-muted-foreground">Organización</label>
-              <select
-                name="organizacion_id"
-                defaultValue={organizacion_id}
-                className="h-9 w-64 rounded-md border border-border bg-background px-3 text-sm"
-              >
-                <option value="">Todas</option>
-                {(orgs ?? []).map(o => (
-                  <option key={o.id} value={o.id}>
-                    {o.tipo === "confraternidad" ? "Confra" : "Frat"} · {o.nombre}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <OrganizacionFilter orgs={orgs ?? []} defaultValue={organizacion_id} />
             <Button type="submit" size="sm">
               Filtrar
             </Button>

@@ -2,7 +2,7 @@
 
 export const dynamic = "force-dynamic"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
@@ -18,6 +18,7 @@ import {
 import { ArrowLeft, Eye, EyeOff, Paperclip, X } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { LocationFields } from "@/components/location-fields"
+import { Combobox, type ComboboxOption } from "@/components/ui/combobox"
 import { cn } from "@/lib/utils"
 
 interface Organizacion {
@@ -292,6 +293,37 @@ export default function NewPersonaPage() {
     }))
   }
 
+  const personaOptions = useMemo<ComboboxOption[]>(
+    () => personas.map((p) => ({ label: `${p.apellido}, ${p.nombre}`, value: p.id })),
+    [personas],
+  )
+  const confraternidadOptions = useMemo<ComboboxOption[]>(
+    () =>
+      organizaciones
+        .filter((o) => o.tipo === "confraternidad")
+        .map((o) => ({ label: o.nombre, value: o.id })),
+    [organizaciones],
+  )
+  const fraternidadOptions = useMemo<ComboboxOption[]>(
+    () =>
+      organizaciones
+        .filter((o) => o.tipo === "fraternidad")
+        .map((o) => ({ label: o.nombre, value: o.id })),
+    [organizaciones],
+  )
+  const organizacionOptions = useMemo<ComboboxOption[]>(
+    () => organizaciones.map((o) => ({ label: o.nombre, value: o.id })),
+    [organizaciones],
+  )
+  const ministerioOptions = useMemo<ComboboxOption[]>(
+    () => ministerios.map((m) => ({ label: `${m.nombre} — ${m.tipo}`, value: m.id })),
+    [ministerios],
+  )
+  const eventoOptions = useMemo<ComboboxOption[]>(
+    () => eventos.map((ev) => ({ label: `${ev.nombre} (${ev.tipo})`, value: ev.id })),
+    [eventos],
+  )
+
   return (
     <div className="space-y-6">
       <Link
@@ -557,20 +589,17 @@ export default function NewPersonaPage() {
 
             <div className="space-y-2">
               <Label htmlFor="acompanante_id">Acompañante</Label>
-              <select
+              <Combobox
                 id="acompanante_id"
-                name="acompanante_id"
                 value={formData.acompanante_id}
-                onChange={handleChange}
-                className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground text-sm"
-              >
-                <option value="">Sin acompañante</option>
-                {personas.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.apellido}, {p.nombre}
-                  </option>
-                ))}
-              </select>
+                onSelect={(val) =>
+                  setFormData((prev) => ({ ...prev, acompanante_id: val }))
+                }
+                options={personaOptions}
+                placeholder="Sin acompañante"
+                searchPlaceholder="Buscar persona..."
+                emptyText="No se encontraron personas."
+              />
             </div>
           </CardContent>
         </Card>
@@ -650,41 +679,31 @@ export default function NewPersonaPage() {
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
                     <Label htmlFor="confraternidad_id">Confraternidad</Label>
-                    <select
+                    <Combobox
                       id="confraternidad_id"
-                      name="confraternidad_id"
                       value={formData.confraternidad_id}
-                      onChange={handleChange}
-                      className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground text-sm"
-                    >
-                      <option value="">Sin confraternidad</option>
-                      {organizaciones
-                        .filter((o) => o.tipo === "confraternidad")
-                        .map((o) => (
-                          <option key={o.id} value={o.id}>
-                            {o.nombre}
-                          </option>
-                        ))}
-                    </select>
+                      onSelect={(val) =>
+                        setFormData((prev) => ({ ...prev, confraternidad_id: val }))
+                      }
+                      options={confraternidadOptions}
+                      placeholder="Sin confraternidad"
+                      searchPlaceholder="Buscar confraternidad..."
+                      emptyText="No se encontraron confraternidades."
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="fraternidad_id">Fraternidad</Label>
-                    <select
+                    <Combobox
                       id="fraternidad_id"
-                      name="fraternidad_id"
                       value={formData.fraternidad_id}
-                      onChange={handleChange}
-                      className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground text-sm"
-                    >
-                      <option value="">Sin fraternidad</option>
-                      {organizaciones
-                        .filter((o) => o.tipo === "fraternidad")
-                        .map((o) => (
-                          <option key={o.id} value={o.id}>
-                            {o.nombre}
-                          </option>
-                        ))}
-                    </select>
+                      onSelect={(val) =>
+                        setFormData((prev) => ({ ...prev, fraternidad_id: val }))
+                      }
+                      options={fraternidadOptions}
+                      placeholder="Sin fraternidad"
+                      searchPlaceholder="Buscar fraternidad..."
+                      emptyText="No se encontraron fraternidades."
+                    />
                   </div>
                 </div>
               </>
@@ -909,47 +928,39 @@ export default function NewPersonaPage() {
                       <div className="grid gap-4 md:grid-cols-2">
                         <div className="space-y-2">
                           <Label htmlFor="asig_ministerio_id">Rol *</Label>
-                          <select
+                          <Combobox
                             id="asig_ministerio_id"
                             value={asignacion.ministerio_id}
-                            onChange={(e) =>
+                            onSelect={(val) =>
                               setAsignacion((a) => ({
                                 ...a,
-                                ministerio_id: e.target.value,
+                                ministerio_id: val,
                               }))
                             }
-                            className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground text-sm"
-                          >
-                            <option value="">Seleccionar rol...</option>
-                            {ministerios.map((m) => (
-                              <option key={m.id} value={m.id}>
-                                {m.nombre} — {m.tipo}
-                              </option>
-                            ))}
-                          </select>
+                            options={ministerioOptions}
+                            placeholder="Seleccionar rol..."
+                            searchPlaceholder="Buscar rol..."
+                            emptyText="No se encontraron roles."
+                          />
                         </div>
                         <div className="space-y-2">
                           <Label htmlFor="asig_organizacion_id">
                             Organización
                           </Label>
-                          <select
+                          <Combobox
                             id="asig_organizacion_id"
                             value={asignacion.organizacion_id}
-                            onChange={(e) =>
+                            onSelect={(val) =>
                               setAsignacion((a) => ({
                                 ...a,
-                                organizacion_id: e.target.value,
+                                organizacion_id: val,
                               }))
                             }
-                            className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground text-sm"
-                          >
-                            <option value="">Global (sin restricción)</option>
-                            {organizaciones.map((o) => (
-                              <option key={o.id} value={o.id}>
-                                {o.nombre}
-                              </option>
-                            ))}
-                          </select>
+                            options={organizacionOptions}
+                            placeholder="Global (sin restricción)"
+                            searchPlaceholder="Buscar organización..."
+                            emptyText="No se encontraron organizaciones."
+                          />
                         </div>
                       </div>
 
@@ -957,24 +968,20 @@ export default function NewPersonaPage() {
                         <Label htmlFor="asig_evento_id">
                           Evento (opcional)
                         </Label>
-                        <select
+                        <Combobox
                           id="asig_evento_id"
                           value={asignacion.evento_id}
-                          onChange={(e) =>
+                          onSelect={(val) =>
                             setAsignacion((a) => ({
                               ...a,
-                              evento_id: e.target.value,
+                              evento_id: val,
                             }))
                           }
-                          className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground text-sm"
-                        >
-                          <option value="">Sin evento específico</option>
-                          {eventos.map((ev) => (
-                            <option key={ev.id} value={ev.id}>
-                              {ev.nombre} ({ev.tipo})
-                            </option>
-                          ))}
-                        </select>
+                          options={eventoOptions}
+                          placeholder="Sin evento específico"
+                          searchPlaceholder="Buscar evento..."
+                          emptyText="No se encontraron eventos."
+                        />
                       </div>
 
                       <div className="space-y-2">
