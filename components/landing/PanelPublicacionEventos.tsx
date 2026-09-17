@@ -103,11 +103,13 @@ export function PanelPublicacionEventos({
   const [confraternidad, setConfraternidad] = useState(filters.confraternidad ?? "")
   const [fraternidad, setFraternidad] = useState(filters.fraternidad ?? "")
   const [casaRetiro, setCasaRetiro] = useState(filters.casa_retiro ?? "")
+  const [provincia, setProvincia] = useState(filters.provincia ?? "")
   const [ciudad, setCiudad] = useState(filters.ciudad ?? "")
 
   const confraternidadOptions: ComboboxOption[] = confraternidades.map((c) => ({ label: c.nombre, value: c.id }))
   const fraternidadOptions: ComboboxOption[] = fraternidades.map((f) => ({ label: f.nombre, value: f.id }))
   const casaOptions: ComboboxOption[] = casas.map((c) => ({ label: c.nombre, value: c.id }))
+  const provinciaOptions: ComboboxOption[] = provincias.map((p) => ({ label: p, value: p }))
   const ciudadOptions: ComboboxOption[] = ciudades.map((c) => ({ label: c, value: c }))
 
   return (
@@ -171,14 +173,16 @@ export function PanelPublicacionEventos({
 
         <div className="flex flex-col gap-1">
           <label className="text-xs font-medium text-muted-foreground">Provincia</label>
-          <select name="provincia" defaultValue={filters.provincia ?? ""} className={inputClass}>
-            <option value="">Todas</option>
-            {provincias.map((p) => (
-              <option key={p} value={p}>
-                {p}
-              </option>
-            ))}
-          </select>
+          <input type="hidden" name="provincia" value={provincia} />
+          <Combobox
+            value={provincia}
+            onSelect={setProvincia}
+            options={provinciaOptions}
+            placeholder="Todas"
+            searchPlaceholder="Buscar provincia..."
+            emptyText="No se encontraron provincias."
+            className={inputClass}
+          />
         </div>
 
         <div className="flex flex-col gap-1">

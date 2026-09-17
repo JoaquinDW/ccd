@@ -193,18 +193,14 @@ export default function DatosNoticiasPannel({ eventoId, inicial, casasRetiro, pe
       {/* Casa de Retiro */}
       <div className="space-y-1.5">
         <p className="text-xs text-muted-foreground uppercase tracking-wide">Casa de Retiros</p>
-        <select
-          className="w-full rounded border border-border bg-background px-3 py-1.5 text-sm text-foreground"
+        <Combobox
           value={casaRetiroId}
-          onChange={e => { setCasaRetiroId(e.target.value); setSavedOk(false) }}
-        >
-          <option value="">— Sin asignar —</option>
-          {casasRetiro.map(cr => (
-            <option key={cr.id} value={cr.id}>
-              {cr.nombre}{cr.ciudad ? ` — ${cr.ciudad}` : ''}
-            </option>
-          ))}
-        </select>
+          onSelect={val => { setCasaRetiroId(val); setSavedOk(false) }}
+          options={casasRetiro.map(cr => ({ label: cr.ciudad ? `${cr.nombre} — ${cr.ciudad}` : cr.nombre, value: cr.id }))}
+          placeholder="— Sin asignar —"
+          searchPlaceholder="Buscar casa de retiro..."
+          emptyText="No se encontraron casas de retiro."
+        />
         <Link
           href={`/casas-retiro/nueva?returnTo=/eventos/${eventoId}`}
           className="text-xs text-primary hover:underline"

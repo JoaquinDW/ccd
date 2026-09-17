@@ -157,18 +157,14 @@ export default function AprobacionFinalPanel({ eventoId, inicial, casasRetiro, p
       {/* Casa de Retiro */}
       <div className="space-y-1.5">
         <p className="text-xs text-muted-foreground uppercase tracking-wide">Casa de Retiros</p>
-        <select
-          className={inputClass}
+        <Combobox
           value={casaRetiroId}
-          onChange={e => setCasaRetiroId(e.target.value)}
-        >
-          <option value="">— Sin asignar —</option>
-          {casasRetiro.map(cr => (
-            <option key={cr.id} value={cr.id}>
-              {cr.nombre}{cr.ciudad ? ` — ${cr.ciudad}` : ''}
-            </option>
-          ))}
-        </select>
+          onSelect={setCasaRetiroId}
+          options={casasRetiro.map(cr => ({ label: cr.ciudad ? `${cr.nombre} — ${cr.ciudad}` : cr.nombre, value: cr.id }))}
+          placeholder="— Sin asignar —"
+          searchPlaceholder="Buscar casa de retiro..."
+          emptyText="No se encontraron casas de retiro."
+        />
       </div>
 
       {/* Coordinador */}

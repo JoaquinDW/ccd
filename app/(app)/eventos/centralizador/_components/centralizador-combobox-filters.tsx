@@ -8,9 +8,11 @@ type OrgOption = { id: string; nombre: string }
 interface Props {
   confraList: OrgOption[]
   fratList: OrgOption[]
+  provinciaList: string[]
   ciudadList: string[]
   defaultOrganizacionId: string
   defaultFraternidadId: string
+  defaultProvincia: string
   defaultCiudad: string
   className: string
 }
@@ -18,18 +20,22 @@ interface Props {
 export function CentralizadorComboboxFilters({
   confraList,
   fratList,
+  provinciaList,
   ciudadList,
   defaultOrganizacionId,
   defaultFraternidadId,
+  defaultProvincia,
   defaultCiudad,
   className,
 }: Props) {
   const [organizacionId, setOrganizacionId] = useState(defaultOrganizacionId)
   const [fraternidadId, setFraternidadId] = useState(defaultFraternidadId)
+  const [provincia, setProvincia] = useState(defaultProvincia)
   const [ciudad, setCiudad] = useState(defaultCiudad)
 
   const confraOptions: ComboboxOption[] = confraList.map((c) => ({ label: c.nombre, value: c.id }))
   const fratOptions: ComboboxOption[] = fratList.map((f) => ({ label: f.nombre, value: f.id }))
+  const provinciaOptions: ComboboxOption[] = provinciaList.map((p) => ({ label: p, value: p }))
   const ciudadOptions: ComboboxOption[] = ciudadList.map((c) => ({ label: c, value: c }))
 
   return (
@@ -57,6 +63,19 @@ export function CentralizadorComboboxFilters({
           placeholder="Todas"
           searchPlaceholder="Buscar fraternidad..."
           emptyText="No se encontraron fraternidades."
+          className={className}
+        />
+      </div>
+      <div className="flex flex-col gap-1">
+        <label className="text-xs text-muted-foreground">Provincia</label>
+        <input type="hidden" name="provincia" value={provincia} />
+        <Combobox
+          value={provincia}
+          onSelect={setProvincia}
+          options={provinciaOptions}
+          placeholder="Todas"
+          searchPlaceholder="Buscar provincia..."
+          emptyText="No se encontraron provincias."
           className={className}
         />
       </div>

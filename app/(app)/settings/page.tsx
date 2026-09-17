@@ -1666,19 +1666,15 @@ export default function SettingsPage() {
                         <Home className="h-4 w-4 text-primary" />
                         Casa Comunitaria
                       </Label>
-                      <select
+                      <Combobox
                         id="p-casa"
                         value={casaId}
-                        onChange={e => persistCasa(e.target.value)}
-                        className={selectClass}
-                      >
-                        <option value="">Sin casa comunitaria</option>
-                        {casas.map(c => (
-                          <option key={c.id} value={c.id}>
-                            {c.nombre}
-                          </option>
-                        ))}
-                      </select>
+                        onSelect={persistCasa}
+                        options={casas.map(c => ({ label: c.nombre, value: c.id }))}
+                        placeholder="Sin casa comunitaria"
+                        searchPlaceholder="Buscar casa comunitaria..."
+                        emptyText="No se encontraron casas comunitarias."
+                      />
                       {casas.length === 0 && (
                         <p className="text-xs text-muted-foreground">
                           Todavía no hay casas comunitarias cargadas. Pedile a un administrador que las dé de alta.

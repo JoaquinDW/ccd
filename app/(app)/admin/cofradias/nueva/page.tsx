@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { createClient } from "@/lib/supabase/client"
+import { Combobox } from "@/components/ui/combobox"
 
 type OrgOption = { id: string; nombre: string }
 
@@ -113,19 +114,16 @@ export default function NewConfraterityPage() {
 
             <div className="space-y-2">
               <Label htmlFor="parent_id">Comunidad Padre</Label>
-              <select
+              <Combobox
                 id="parent_id"
-                name="parent_id"
                 value={formData.parent_id}
-                onChange={handleChange}
+                onSelect={val => setFormData(prev => ({ ...prev, parent_id: val }))}
                 disabled={isLoading}
-                className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground text-sm"
-              >
-                <option value="">Sin comunidad padre</option>
-                {comunidades.map(c => (
-                  <option key={c.id} value={c.id}>{c.nombre}</option>
-                ))}
-              </select>
+                options={comunidades.map(c => ({ label: c.nombre, value: c.id }))}
+                placeholder="Sin comunidad padre"
+                searchPlaceholder="Buscar comunidad..."
+                emptyText="No se encontraron comunidades."
+              />
             </div>
 
             <div className="space-y-2">

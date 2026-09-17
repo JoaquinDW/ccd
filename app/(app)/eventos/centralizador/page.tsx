@@ -263,21 +263,14 @@ export default async function CentralizadorPage({
             <CentralizadorComboboxFilters
               confraList={confraList}
               fratList={fratList}
+              provinciaList={provinciaList}
               ciudadList={ciudadList}
               defaultOrganizacionId={organizacion_id ?? ""}
               defaultFraternidadId={fraternidad_id ?? ""}
+              defaultProvincia={provincia ?? ""}
               defaultCiudad={ciudad ?? ""}
               className={selectClass}
             />
-            <div className="flex flex-col gap-1">
-              <label className="text-xs text-muted-foreground">Provincia</label>
-              <select name="provincia" defaultValue={provincia ?? ""} className={selectClass}>
-                <option value="">Todas</option>
-                {provinciaList.map((p) => (
-                  <option key={p} value={p}>{p}</option>
-                ))}
-              </select>
-            </div>
             <div className="flex flex-col gap-1">
               <label className="text-xs text-muted-foreground">Estado del evento</label>
               <select name="estado" defaultValue={estado ?? ""} className={selectClass}>
