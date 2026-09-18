@@ -180,26 +180,26 @@ export default async function EventoDetailPage({
     }
   }
 
-  // Coordinadores con el ministerio "Coordinador" actualmente asignado (para el
-  // desplegable de "Coordinador/es" en discernimiento). asignaciones_ministerio
-  // con fecha_fin IS NULL = vigente.
-  const { data: ministerioCoordinador } = await supabase
-    .from('ministerios')
-    .select('id')
-    .eq('nombre', 'Coordinador')
-    .maybeSingle()
+  // Personas con un ministerio institucional dado actualmente asignado (para los
+  // desplegables de "Coordinador/es" y "Asesor/es" en discernimiento).
+  // asignaciones_ministerio con fecha_fin IS NULL = vigente.
+  async function personasConMinisterioActivo(nombreMinisterio: string): Promise<{ id: string; nombre: string; apellido: string }[]> {
+    const { data: ministerio } = await supabase
+      .from('ministerios')
+      .select('id')
+      .eq('nombre', nombreMinisterio)
+      .maybeSingle()
+    if (!ministerio) return []
 
-  let coordinadoresRolDisponibles: { id: string; nombre: string; apellido: string }[] = []
-  if (ministerioCoordinador) {
-    const { data: asignacionesCoordinador } = await supabase
+    const { data: asignaciones } = await supabase
       .from('asignaciones_ministerio')
       .select('persona:personas!persona_id(id, nombre, apellido)')
-      .eq('ministerio_id', ministerioCoordinador.id)
+      .eq('ministerio_id', ministerio.id)
       .eq('estado', 'activo')
       .is('fecha_fin', null)
 
     const seen = new Set<string>()
-    coordinadoresRolDisponibles = ((asignacionesCoordinador ?? []) as unknown as { persona: { id: string; nombre: string; apellido: string } | null }[])
+    return ((asignaciones ?? []) as unknown as { persona: { id: string; nombre: string; apellido: string } | null }[])
       .map(a => a.persona)
       .filter((p): p is { id: string; nombre: string; apellido: string } => {
         if (!p || seen.has(p.id)) return false
@@ -208,6 +208,11 @@ export default async function EventoDetailPage({
       })
       .sort((a, b) => a.apellido.localeCompare(b.apellido) || a.nombre.localeCompare(b.nombre))
   }
+
+  const [coordinadoresRolDisponibles, asesoresRolDisponibles] = await Promise.all([
+    personasConMinisterioActivo('Coordinador'),
+    personasConMinisterioActivo('Asesor'),
+  ])
 
   // Servidores y familiares activos (para el buscador que aparece al elegir "Otro").
   const { data: modosServidorFamiliar } = await supabase
@@ -1080,6 +1085,7 @@ export default async function EventoDetailPage({
               casasRetiro={(casasRetiro ?? []) as { id: string; nombre: string; ciudad?: string | null; provincia?: string | null }[]}
               personas={(personasCecistas ?? []) as { id: string; nombre: string; apellido: string }[]}
               coordinadoresRol={coordinadoresRolDisponibles}
+              asesoresRol={asesoresRolDisponibles}
               serviciosBusqueda={personasServidoresFamiliares}
             />
           </div>

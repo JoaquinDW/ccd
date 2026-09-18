@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Combobox, type ComboboxOption } from '@/components/ui/combobox'
-import { CoordinadorSelector } from './coordinador-selector'
+import { PersonaRolSelector } from './persona-rol-selector'
 import { formatDateAR } from '@/lib/utils'
 
 type ResultadoDiscernimiento =
@@ -55,6 +55,7 @@ type Props = {
   casasRetiro: CasaRetiro[]
   personas: Persona[]
   coordinadoresRol: Persona[]
+  asesoresRol: Persona[]
   serviciosBusqueda: Persona[]
 }
 
@@ -80,6 +81,7 @@ function NivelDiscernimiento({
   casasRetiro,
   personas,
   coordinadoresRol,
+  asesoresRol,
   serviciosBusqueda,
 }: DiscernimientoNivel & {
   eventoId: string
@@ -88,6 +90,7 @@ function NivelDiscernimiento({
   casasRetiro: CasaRetiro[]
   personas: Persona[]
   coordinadoresRol: Persona[]
+  asesoresRol: Persona[]
   serviciosBusqueda: Persona[]
 }) {
   const router = useRouter()
@@ -156,10 +159,6 @@ function NivelDiscernimiento({
   const selectedCoordinador = personas.find(p => p.id === currentVal('coordinador_asignado_id'))
   const selectedAsesor = personas.find(p => p.id === currentVal('asesor_asignado_id'))
 
-  const personaOptions = useMemo<ComboboxOption[]>(
-    () => personas.map(p => ({ label: `${p.apellido}, ${p.nombre}`, value: p.id })),
-    [personas]
-  )
   const casaRetiroOptions = useMemo<ComboboxOption[]>(
     () => casasRetiro.map(cr => ({ label: cr.ciudad ? `${cr.nombre} — ${cr.ciudad}` : cr.nombre, value: cr.id })),
     [casasRetiro]
@@ -385,7 +384,7 @@ function NivelDiscernimiento({
               <p className="text-xs text-muted-foreground uppercase tracking-wide">Coordinadores propuestos</p>
               {coordinadoresArr.map((val, i) => (
                 <div key={i} className="flex gap-2 items-start">
-                  <CoordinadorSelector
+                  <PersonaRolSelector
                     className="flex-1"
                     mode="nombre"
                     value={val}
@@ -394,8 +393,8 @@ function NivelDiscernimiento({
                       arr[i] = newVal
                       updateCoordinadores(arr)
                     }}
-                    coordinadoresRol={coordinadoresRol}
-                    serviciosBusqueda={serviciosBusqueda}
+                    opcionesRol={coordinadoresRol}
+                    otro={{ tipo: 'buscador', opciones: serviciosBusqueda }}
                   />
                   {coordinadoresArr.length > 1 && (
                     <button
@@ -421,22 +420,24 @@ function NivelDiscernimiento({
             <div className="space-y-2">
               <p className="text-xs text-muted-foreground uppercase tracking-wide">Asesor/es propuestos</p>
               {asesoresArr.map((val, i) => (
-                <div key={i} className="flex gap-2">
-                  <input
-                    className={inputClass}
+                <div key={i} className="flex gap-2 items-start">
+                  <PersonaRolSelector
+                    className="flex-1"
+                    mode="nombre"
                     value={val}
-                    placeholder="Nombre y apellido"
-                    onChange={e => {
+                    onChange={newVal => {
                       const arr = [...asesoresArr]
-                      arr[i] = e.target.value
+                      arr[i] = newVal
                       updateAsesores(arr)
                     }}
+                    opcionesRol={asesoresRol}
+                    otro={{ tipo: 'texto', placeholder: 'Nombre y apellido' }}
                   />
                   {asesoresArr.length > 1 && (
                     <button
                       type="button"
                       onClick={() => updateAsesores(asesoresArr.filter((_, j) => j !== i))}
-                      className="shrink-0 text-muted-foreground hover:text-destructive text-lg leading-none px-1"
+                      className="shrink-0 text-muted-foreground hover:text-destructive text-lg leading-none px-1 pt-1.5"
                     >
                       ×
                     </button>
@@ -471,14 +472,13 @@ function NivelDiscernimiento({
                 <div className="space-y-1">
                   <p className="text-xs text-muted-foreground uppercase tracking-wide">Coordinador asignado</p>
                   <div className="flex gap-2 items-start">
-                    <CoordinadorSelector
+                    <PersonaRolSelector
                       className="flex-1"
                       mode="id"
                       value={currentVal('coordinador_asignado_id')}
                       onChange={val => setCampo('coordinador_asignado_id', val)}
-                      coordinadoresRol={coordinadoresRol}
-                      serviciosBusqueda={serviciosBusqueda}
-                      personasFallback={personas}
+                      opcionesRol={coordinadoresRol}
+                      otro={{ tipo: 'buscador', opciones: serviciosBusqueda, personasFallback: personas }}
                     />
                     {selectedCoordinador && (
                       <Link
@@ -496,21 +496,20 @@ function NivelDiscernimiento({
                 {/* Asesor asignado */}
                 <div className="space-y-1">
                   <p className="text-xs text-muted-foreground uppercase tracking-wide">Asesor asignado</p>
-                  <div className="flex gap-2 items-center">
-                    <Combobox
+                  <div className="flex gap-2 items-start">
+                    <PersonaRolSelector
                       className="flex-1"
+                      mode="id"
                       value={currentVal('asesor_asignado_id')}
-                      onSelect={val => setCampo('asesor_asignado_id', val)}
-                      options={personaOptions}
-                      placeholder="— Sin asignar —"
-                      searchPlaceholder="Buscar persona..."
-                      emptyText="No se encontraron personas."
+                      onChange={val => setCampo('asesor_asignado_id', val)}
+                      opcionesRol={asesoresRol}
+                      otro={{ tipo: 'buscador', opciones: serviciosBusqueda, personasFallback: personas }}
                     />
                     {selectedAsesor && (
                       <Link
                         href={`/personas/${selectedAsesor.id}`}
                         target="_blank"
-                        className="shrink-0 text-primary hover:underline text-xs"
+                        className="shrink-0 text-primary hover:underline text-xs pt-2"
                         title="Ver perfil"
                       >
                         →
@@ -635,7 +634,7 @@ function NivelDiscernimiento({
   )
 }
 
-export default function DiscernimientoPanel({ eventoId, niveles, evento, fechasEjecucion, casasRetiro, personas, coordinadoresRol, serviciosBusqueda }: Props) {
+export default function DiscernimientoPanel({ eventoId, niveles, evento, fechasEjecucion, casasRetiro, personas, coordinadoresRol, asesoresRol, serviciosBusqueda }: Props) {
   return (
     <div className="rounded-lg border border-border bg-card p-6 space-y-6">
       <h3 className="text-sm font-bold uppercase tracking-widest text-foreground border-b border-border pb-3">
@@ -651,6 +650,7 @@ export default function DiscernimientoPanel({ eventoId, niveles, evento, fechasE
             casasRetiro={casasRetiro}
             personas={personas}
             coordinadoresRol={coordinadoresRol}
+            asesoresRol={asesoresRol}
             serviciosBusqueda={serviciosBusqueda}
             {...n}
           />
