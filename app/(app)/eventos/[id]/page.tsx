@@ -159,12 +159,26 @@ export default async function EventoDetailPage({
     .select('id, nombre, ciudad, provincia')
     .order('nombre')
 
-  const { data: personasCecistas } = await supabase
-    .from('personas')
-    .select('id, nombre, apellido, email, telefono')
-    .eq('estado', 'activo')
-    .order('apellido')
-    .order('nombre')
+  // Paginado: Supabase corta la respuesta por defecto en 1000 filas y hay más
+  // personas activas que eso (el combo se cortaba en la letra L).
+  const personasCecistas: { id: string; nombre: string; apellido: string; email: string | null; telefono: string | null }[] = []
+  {
+    const pageSize = 1000
+    let from = 0
+    while (true) {
+      const { data: page } = await supabase
+        .from('personas')
+        .select('id, nombre, apellido, email, telefono')
+        .eq('estado', 'activo')
+        .order('apellido')
+        .order('nombre')
+        .range(from, from + pageSize - 1)
+      if (!page || page.length === 0) break
+      personasCecistas.push(...page)
+      if (page.length < pageSize) break
+      from += pageSize
+    }
+  }
 
   // ─── Datos del Cierre (solo si el evento está finalizado/cerrado y el usuario puede verlo) ───
   const cierreEvento = {
@@ -266,14 +280,22 @@ export default async function EventoDetailPage({
   // activas, usada por otros paneles para elegir coordinador/asesor/centralizador).
   let cecistasSoloList: { id: string; nombre: string; apellido: string }[] = []
   if (showCierre) {
-    const { data: cecistasData } = await supabase
-      .from('personas')
-      .select('id, nombre, apellido')
-      .eq('estado', 'activo')
-      .eq('tipo_persona', 'cecista')
-      .order('apellido')
-      .order('nombre')
-    cecistasSoloList = cecistasData ?? []
+    const pageSize = 1000
+    let from = 0
+    while (true) {
+      const { data: page } = await supabase
+        .from('personas')
+        .select('id, nombre, apellido')
+        .eq('estado', 'activo')
+        .eq('tipo_persona', 'cecista')
+        .order('apellido')
+        .order('nombre')
+        .range(from, from + pageSize - 1)
+      if (!page || page.length === 0) break
+      cecistasSoloList.push(...page)
+      if (page.length < pageSize) break
+      from += pageSize
+    }
   }
 
   const campoLabel: Record<string, string> = {

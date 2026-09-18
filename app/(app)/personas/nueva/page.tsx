@@ -19,6 +19,7 @@ import { ArrowLeft, Eye, EyeOff, Paperclip, X } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { LocationFields } from "@/components/location-fields"
 import { Combobox, type ComboboxOption } from "@/components/ui/combobox"
+import { PersonaCombobox } from "@/components/persona-combobox"
 import { cn } from "@/lib/utils"
 
 interface Organizacion {
@@ -37,12 +38,6 @@ interface Evento {
   id: string
   nombre: string
   tipo: string
-}
-
-interface PersonaOpcion {
-  id: string
-  nombre: string
-  apellido: string
 }
 
 const NIVELES_ESTUDIOS = [
@@ -68,7 +63,6 @@ export default function NewPersonaPage() {
   const [organizaciones, setOrganizaciones] = useState<Organizacion[]>([])
   const [ministerios, setMinisterios] = useState<Ministerio[]>([])
   const [eventos, setEventos] = useState<Evento[]>([])
-  const [personas, setPersonas] = useState<PersonaOpcion[]>([])
   const [crearAcceso, setCrearAcceso] = useState(false)
   const [passwordInicial, setPasswordInicial] = useState("")
   const [confirmarPassword, setConfirmarPassword] = useState("")
@@ -127,7 +121,6 @@ export default function NewPersonaPage() {
         { data: orgsData },
         { data: ministeriosData },
         { data: eventosData },
-        { data: personasData },
       ] = await Promise.all([
         supabase
           .from("organizaciones")
@@ -140,16 +133,10 @@ export default function NewPersonaPage() {
           .eq("activo", true)
           .order("nombre"),
         supabase.from("eventos").select("id, nombre, tipo").order("nombre"),
-        supabase
-          .from("personas")
-          .select("id, nombre, apellido")
-          .is("fecha_baja", null)
-          .order("apellido"),
       ])
       if (orgsData) setOrganizaciones(orgsData)
       if (ministeriosData) setMinisterios(ministeriosData)
       if (eventosData) setEventos(eventosData)
-      if (personasData) setPersonas(personasData)
     }
     load()
     fetch('/api/personas/me/socio-activo')
@@ -293,10 +280,6 @@ export default function NewPersonaPage() {
     }))
   }
 
-  const personaOptions = useMemo<ComboboxOption[]>(
-    () => personas.map((p) => ({ label: `${p.apellido}, ${p.nombre}`, value: p.id })),
-    [personas],
-  )
   const confraternidadOptions = useMemo<ComboboxOption[]>(
     () =>
       organizaciones
@@ -589,16 +572,13 @@ export default function NewPersonaPage() {
 
             <div className="space-y-2">
               <Label htmlFor="acompanante_id">Acompañante</Label>
-              <Combobox
+              <PersonaCombobox
                 id="acompanante_id"
                 value={formData.acompanante_id}
-                onSelect={(val) =>
+                onChange={(val) =>
                   setFormData((prev) => ({ ...prev, acompanante_id: val }))
                 }
-                options={personaOptions}
                 placeholder="Sin acompañante"
-                searchPlaceholder="Buscar persona..."
-                emptyText="No se encontraron personas."
               />
             </div>
           </CardContent>

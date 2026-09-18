@@ -2,7 +2,7 @@
 
 export const dynamic = 'force-dynamic'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
@@ -12,10 +12,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { ArrowLeft } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { DiocesisCombobox } from "@/components/diocesis-field"
-import { Combobox, type ComboboxOption } from '@/components/ui/combobox'
+import { PersonaCombobox } from '@/components/persona-combobox'
 
 type OrgOption = { id: string; nombre: string; tipo: string }
-type PersonaOption = { id: string; nombre: string; apellido: string }
 
 const AMENITY_LABELS: Record<string, string> = {
   estacionamiento: 'Estacionamiento',
@@ -35,7 +34,6 @@ export default function NuevaCasaRetiroPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [orgs, setOrgs] = useState<OrgOption[]>([])
-  const [personas, setPersonas] = useState<PersonaOption[]>([])
 
   const [formData, setFormData] = useState({
     nombre: '',
@@ -73,13 +71,14 @@ export default function NuevaCasaRetiroPage() {
 
   useEffect(() => {
     const supabase = createClient()
-    Promise.all([
-      supabase.from('organizaciones').select('id, nombre, tipo').is('fecha_baja', null).order('nombre'),
-      supabase.from('personas').select('id, nombre, apellido').is('fecha_baja', null).order('apellido'),
-    ]).then(([{ data: orgData }, { data: personaData }]) => {
-      if (orgData) setOrgs(orgData)
-      if (personaData) setPersonas(personaData)
-    })
+    supabase
+      .from('organizaciones')
+      .select('id, nombre, tipo')
+      .is('fecha_baja', null)
+      .order('nombre')
+      .then(({ data: orgData }: { data: OrgOption[] | null }) => {
+        if (orgData) setOrgs(orgData)
+      })
   }, [])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -91,11 +90,6 @@ export default function NuevaCasaRetiroPage() {
     const { name, checked } = e.target
     setFormData(prev => ({ ...prev, [name]: checked }))
   }
-
-  const personaOptions = useMemo<ComboboxOption[]>(
-    () => personas.map(p => ({ label: `${p.apellido}, ${p.nombre}`, value: p.id })),
-    [personas]
-  )
 
   const toggleOrg = (orgId: string) => {
     setFormData(prev => ({
@@ -202,14 +196,11 @@ export default function NuevaCasaRetiroPage() {
               </h3>
               <div className="space-y-2">
                 <Label htmlFor="contacto_persona_id">Persona de contacto</Label>
-                <Combobox
+                <PersonaCombobox
                   id="contacto_persona_id"
                   value={formData.contacto_persona_id}
-                  onSelect={val => setFormData(prev => ({ ...prev, contacto_persona_id: val }))}
-                  options={personaOptions}
+                  onChange={val => setFormData(prev => ({ ...prev, contacto_persona_id: val }))}
                   placeholder="Sin persona de contacto"
-                  searchPlaceholder="Buscar persona..."
-                  emptyText="No se encontraron personas."
                 />
               </div>
               <div className="grid gap-4 md:grid-cols-2">
