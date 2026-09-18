@@ -339,18 +339,26 @@ export default function EditarEventoForm({
                     className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground text-sm"
                   >
                     <option value="borrador">Borrador</option>
-                    <option value="solicitado">Solicitado</option>
+                    <option value="solicitud">Pend. Disc. Confra/Delegado</option>
                     <option value="discernimiento_confra">
-                      Discernimiento Confra
+                      Pend. Disc. Equipo Timón
                     </option>
-                    <option value="discernimiento_timon">
-                      Discernimiento Timón
+                    <option value="discernimiento_eqt">
+                      Disc. Equipo Timón
+                    </option>
+                    <option value="pendiente_datos_noticias">
+                      Pendiente Datos Noticias
                     </option>
                     <option value="aprobado">Aprobado</option>
+                    <option value="pendiente_aprobacion_final">
+                      Pend. Aprobación Final EqT
+                    </option>
                     <option value="publicado">Publicado</option>
                     <option value="en_curso">En Curso</option>
+                    <option value="suspendido">Suspendido</option>
                     <option value="rechazado">Rechazado</option>
                     <option value="finalizado">Finalizado</option>
+                    <option value="cerrado">Cerrado</option>
                     <option value="cancelado">Cancelado</option>
                   </select>
                 </div>
