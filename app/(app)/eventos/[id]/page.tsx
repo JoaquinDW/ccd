@@ -180,6 +180,56 @@ export default async function EventoDetailPage({
     }
   }
 
+  // Coordinadores con el ministerio "Coordinador" actualmente asignado (para el
+  // desplegable de "Coordinador/es" en discernimiento). asignaciones_ministerio
+  // con fecha_fin IS NULL = vigente.
+  const { data: ministerioCoordinador } = await supabase
+    .from('ministerios')
+    .select('id')
+    .eq('nombre', 'Coordinador')
+    .maybeSingle()
+
+  let coordinadoresRolDisponibles: { id: string; nombre: string; apellido: string }[] = []
+  if (ministerioCoordinador) {
+    const { data: asignacionesCoordinador } = await supabase
+      .from('asignaciones_ministerio')
+      .select('persona:personas!persona_id(id, nombre, apellido)')
+      .eq('ministerio_id', ministerioCoordinador.id)
+      .eq('estado', 'activo')
+      .is('fecha_fin', null)
+
+    const seen = new Set<string>()
+    coordinadoresRolDisponibles = ((asignacionesCoordinador ?? []) as unknown as { persona: { id: string; nombre: string; apellido: string } | null }[])
+      .map(a => a.persona)
+      .filter((p): p is { id: string; nombre: string; apellido: string } => {
+        if (!p || seen.has(p.id)) return false
+        seen.add(p.id)
+        return true
+      })
+      .sort((a, b) => a.apellido.localeCompare(b.apellido) || a.nombre.localeCompare(b.nombre))
+  }
+
+  // Servidores y familiares activos (para el buscador que aparece al elegir "Otro").
+  const { data: modosServidorFamiliar } = await supabase
+    .from('persona_modos')
+    .select('persona_id')
+    .in('modo', ['servidor', 'familiar'])
+    .is('fecha_fin', null)
+
+  const idsServidorFamiliar = (modosServidorFamiliar ?? []).map(r => r.persona_id)
+
+  let personasServidoresFamiliares: { id: string; nombre: string; apellido: string }[] = []
+  if (idsServidorFamiliar.length > 0) {
+    const { data: sfData } = await supabase
+      .from('personas')
+      .select('id, nombre, apellido')
+      .in('id', idsServidorFamiliar)
+      .eq('estado', 'activo')
+      .order('apellido')
+      .order('nombre')
+    personasServidoresFamiliares = sfData ?? []
+  }
+
   // ─── Datos del Cierre (solo si el evento está finalizado/cerrado y el usuario puede verlo) ───
   const cierreEvento = {
     estado: evento.estado,
@@ -1029,6 +1079,8 @@ export default async function EventoDetailPage({
               fechasEjecucion={(fechasEjecucion ?? []) as { id: string; fecha_inicio: string; fecha_fin: string }[]}
               casasRetiro={(casasRetiro ?? []) as { id: string; nombre: string; ciudad?: string | null; provincia?: string | null }[]}
               personas={(personasCecistas ?? []) as { id: string; nombre: string; apellido: string }[]}
+              coordinadoresRol={coordinadoresRolDisponibles}
+              serviciosBusqueda={personasServidoresFamiliares}
             />
           </div>
         </div>
