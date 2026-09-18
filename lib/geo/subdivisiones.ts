@@ -27,7 +27,7 @@ export const SUBDIVISIONES: Record<string, string[]> = {
     'Tirol', 'Viena', 'Vorarlberg',
   ],
   Bélgica: [
-    'Amberes', 'Bruselas-Capital', 'Brabante Flamenco', 'Brabante Valón', 'Flandes Occidental',
+    'Amberes', 'Brabante Flamenco', 'Brabante Valón', 'Bruselas-Capital', 'Flandes Occidental',
     'Flandes Oriental', 'Hainaut', 'Lieja', 'Limburgo', 'Luxemburgo', 'Namur',
   ],
   Bolivia: [
@@ -98,11 +98,11 @@ export const SUBDIVISIONES: Record<string, string[]> = {
     'Vermont', 'Virginia', 'Virginia Occidental', 'Washington', 'Wisconsin', 'Wyoming',
   ],
   Francia: [
-    'Alsacia-Champaña-Ardenas-Lorena', 'Aquitania-Lemosín-Poitou-Charentes', 'Auvernia-Ródano-Alpes',
-    'Borgoña-Franco Condado', 'Bretaña', 'Centro-Valle de Loira', 'Córcega', 'Guadalupe',
-    'Guayana Francesa', 'Isla de Francia', 'Languedoc-Rosellón-Mediodía-Pirineos', 'Martinica',
-    'Mayotte', 'Normandía', 'Nueva Aquitania', 'Países del Loira', 'Provenza-Alpes-Costa Azul',
-    'Reunión', 'Alta Francia', 'Occitania',
+    'Alsacia-Champaña-Ardenas-Lorena', 'Alta Francia', 'Aquitania-Lemosín-Poitou-Charentes',
+    'Auvernia-Ródano-Alpes', 'Borgoña-Franco Condado', 'Bretaña', 'Centro-Valle de Loira',
+    'Córcega', 'Guadalupe', 'Guayana Francesa', 'Isla de Francia',
+    'Languedoc-Rosellón-Mediodía-Pirineos', 'Martinica', 'Mayotte', 'Normandía',
+    'Nueva Aquitania', 'Occitania', 'Países del Loira', 'Provenza-Alpes-Costa Azul', 'Reunión',
   ],
   Guatemala: [
     'Alta Verapaz', 'Baja Verapaz', 'Chimaltenango', 'Chiquimula', 'El Progreso',
@@ -122,9 +122,9 @@ export const SUBDIVISIONES: Record<string, string[]> = {
     'Wexford', 'Wicklow',
   ],
   Italia: [
-    'Abruzos', 'Basilicata', 'Calabria', 'Campania', 'Cerdeña', 'Emilia-Romaña',
-    'Friuli-Venecia Julia', 'Lacio', 'Liguria', 'Lombardía', 'Las Marcas', 'Molise',
-    'Piamonte', 'Apulia', 'Sicilia', 'Toscana', 'Trentino-Alto Adigio', 'Umbría',
+    'Abruzos', 'Apulia', 'Basilicata', 'Calabria', 'Campania', 'Cerdeña', 'Emilia-Romaña',
+    'Friuli-Venecia Julia', 'Lacio', 'Las Marcas', 'Liguria', 'Lombardía', 'Molise',
+    'Piamonte', 'Sicilia', 'Toscana', 'Trentino-Alto Adigio', 'Umbría',
     'Valle de Aosta', 'Véneto',
   ],
   México: [
@@ -157,7 +157,7 @@ export const SUBDIVISIONES: Record<string, string[]> = {
   ],
   Portugal: [
     'Aveiro', 'Azores', 'Beja', 'Braga', 'Braganza', 'Castelo Branco', 'Coímbra', 'Évora',
-    'Faro', 'Guarda', 'Leiría', 'Lisboa', 'Madeira', 'Portalegre', 'Oporto', 'Santarém',
+    'Faro', 'Guarda', 'Leiría', 'Lisboa', 'Madeira', 'Oporto', 'Portalegre', 'Santarém',
     'Setúbal', 'Viana do Castelo', 'Vila Real', 'Viseu',
   ],
   'Reino Unido': ['Escocia', 'Gales', 'Inglaterra', 'Irlanda del Norte'],
@@ -172,8 +172,8 @@ export const SUBDIVISIONES: Record<string, string[]> = {
   Suiza: [
     'Appenzell Exterior', 'Appenzell Interior', 'Argovia', 'Basilea-Ciudad', 'Basilea-Campiña',
     'Berna', 'Friburgo', 'Ginebra', 'Glaris', 'Grisones', 'Jura', 'Lucerna', 'Neuchâtel',
-    'Nidwalden', 'Obwalden', 'San Galo', 'Schaffhausen', 'Schwyz', 'Soleura', 'Turgovia',
-    'Tesino', 'Uri', 'Valais', 'Vaud', 'Zug', 'Zúrich',
+    'Nidwalden', 'Obwalden', 'San Galo', 'Schaffhausen', 'Schwyz', 'Soleura', 'Tesino',
+    'Turgovia', 'Uri', 'Valais', 'Vaud', 'Zug', 'Zúrich',
   ],
   Uruguay: [
     'Artigas', 'Canelones', 'Cerro Largo', 'Colonia', 'Durazno', 'Flores', 'Florida',

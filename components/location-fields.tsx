@@ -98,10 +98,12 @@ export function LocationFields({
     fetch(`${GEOREF_BASE}/provincias?${params}`)
       .then((r) => r.json())
       .then((data) => {
-        const opts: ComboboxOption[] = (data.provincias ?? []).map((p: GeorefProvincia) => ({
-          label: p.nombre,
-          value: p.nombre,
-        }))
+        const opts: ComboboxOption[] = (data.provincias ?? [])
+          .map((p: GeorefProvincia) => ({
+            label: p.nombre,
+            value: p.nombre,
+          }))
+          .sort((a: ComboboxOption, b: ComboboxOption) => a.label.localeCompare(b.label, "es"))
         setProvincias(opts)
       })
       .catch(() => setProvincias([]))
@@ -120,10 +122,12 @@ export function LocationFields({
     fetch(`${GEOREF_BASE}/localidades?${params}`)
       .then((r) => r.json())
       .then((data) => {
-        const opts: ComboboxOption[] = (data.localidades ?? []).map((l: GeorefLocalidad) => ({
-          label: l.nombre,
-          value: l.nombre,
-        }))
+        const opts: ComboboxOption[] = (data.localidades ?? [])
+          .map((l: GeorefLocalidad) => ({
+            label: l.nombre,
+            value: l.nombre,
+          }))
+          .sort((a: ComboboxOption, b: ComboboxOption) => a.label.localeCompare(b.label, "es"))
         setLocalidades(opts)
       })
       .catch(() => setLocalidades([]))

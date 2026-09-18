@@ -21,13 +21,13 @@ export const SUBTIPOS_INGRESO = [
  * TODO: confirmar el listado definitivo con el equipo.
  */
 export const CATEGORIAS_EGRESO = [
-  'Comida',
   'Alojamiento / Casa',
-  'Materiales / Manuales',
-  'Librería',
-  'Transporte',
+  'Comida',
   'Enfermería',
+  'Librería',
   'Limpieza',
+  'Materiales / Manuales',
+  'Transporte',
   'Varios',
 ] as const
 
