@@ -215,25 +215,28 @@ export default async function EventoDetailPage({
   ])
 
   // Servidores y familiares activos (para el buscador que aparece al elegir "Otro").
+  // Join embebido en vez de un .in('id', [...]) sobre personas: con ~900 ids activos
+  // ese .in() arma una URL de más de 30.000 caracteres que Supabase rechaza con
+  // "Bad Request", y al no chequear el error la lista quedaba silenciosamente vacía.
   const { data: modosServidorFamiliar } = await supabase
     .from('persona_modos')
-    .select('persona_id')
+    .select('persona_id, personas(id, nombre, apellido, fecha_baja)')
     .in('modo', ['servidor', 'familiar'])
     .is('fecha_fin', null)
+    .is('personas.fecha_baja', null)
 
-  const idsServidorFamiliar = (modosServidorFamiliar ?? []).map(r => r.persona_id)
-
-  let personasServidoresFamiliares: { id: string; nombre: string; apellido: string }[] = []
-  if (idsServidorFamiliar.length > 0) {
-    const { data: sfData } = await supabase
-      .from('personas')
-      .select('id, nombre, apellido')
-      .in('id', idsServidorFamiliar)
-      .eq('estado', 'activo')
-      .order('apellido')
-      .order('nombre')
-    personasServidoresFamiliares = sfData ?? []
-  }
+  type PersonaEmbebida = { id: string; nombre: string; apellido: string; fecha_baja: string | null }
+  const seenSF = new Set<string>()
+  const personasServidoresFamiliares: { id: string; nombre: string; apellido: string }[] =
+    ((modosServidorFamiliar ?? []) as unknown as { personas: PersonaEmbebida | null }[])
+      .map(pm => pm.personas)
+      .filter((p): p is PersonaEmbebida => {
+        if (!p || seenSF.has(p.id)) return false
+        seenSF.add(p.id)
+        return true
+      })
+      .map(p => ({ id: p.id, nombre: p.nombre, apellido: p.apellido }))
+      .sort((a, b) => a.apellido.localeCompare(b.apellido) || a.nombre.localeCompare(b.nombre))
 
   // ─── Datos del Cierre (solo si el evento está finalizado/cerrado y el usuario puede verlo) ───
   const cierreEvento = {
