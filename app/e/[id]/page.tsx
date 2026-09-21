@@ -28,6 +28,10 @@ const MODALIDAD_LABELS: Record<string, string> = {
 // inscripciones cerradas — en vez de devolver 404.
 const ESTADOS_VISIBLES_PUBLICO = ['publicado', 'en_curso', 'finalizado', 'cerrado', 'suspendido']
 
+// external_reference llega por la URL: si no tiene forma de UUID, la consulta
+// contra una columna uuid falla. Se valida antes de usarlo.
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 const ESTADO_CERRADO_INFO: Record<string, { titulo: string; mensaje: string }> = {
   en_curso: {
     titulo: 'Convivencia en curso',
@@ -102,10 +106,12 @@ export default async function PublicEventDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>
-  searchParams: Promise<{ pago?: string }>
+  // external_reference lo agrega Mercado Pago al volver: es el id de nuestro
+  // pago, y es lo único que nos permite saber quién pagó en esta pantalla.
+  searchParams: Promise<{ pago?: string; external_reference?: string; payment_id?: string }>
 }) {
   const { id } = await params
-  const { pago } = await searchParams
+  const { pago, external_reference: externalReference, payment_id: paymentId } = await searchParams
   const pagoBanner = pago ? PAGO_BANNER[pago] : undefined
   // Página pública: el control de acceso es el filtro estado='publicado' de
   // abajo, no RLS. Usamos el cliente de servicio porque organizaciones no
@@ -151,6 +157,41 @@ export default async function PublicEventDetailPage({
 
   const inscripcionesAbiertas = evento.estado === 'publicado'
 
+  // Quién pagó, para poder saludarlo por su nombre y mostrarle con qué email
+  // quedó registrado. Si el external_reference no viene o no resuelve, la
+  // pantalla se muestra igual, solo que impersonal.
+  let pagador: { nombre: string; apellido: string; email: string | null } | null = null
+  if (pagoBanner) {
+    const SELECT_PAGADOR =
+      'participante:evento_participantes!evento_participante_id(persona:personas!persona_id(nombre, apellido, email))'
+    type PagoRow = {
+      participante: { persona: { nombre: string; apellido: string; email: string | null } | null } | null
+    }
+
+    // Mercado Pago devuelve varios parámetros al volver. Probamos primero por
+    // nuestro id de pago y, si no vino, por el id de pago de MP.
+    let pagoRow: PagoRow | null = null
+    if (externalReference && UUID_RE.test(externalReference)) {
+      const { data } = await supabase
+        .from('pagos')
+        .select(SELECT_PAGADOR)
+        .eq('id', externalReference)
+        .maybeSingle()
+      pagoRow = data as unknown as PagoRow | null
+    }
+    if (!pagoRow && paymentId && /^\d+$/.test(paymentId)) {
+      const { data } = await supabase
+        .from('pagos')
+        .select(SELECT_PAGADOR)
+        .eq('mp_payment_id', Number(paymentId))
+        .maybeSingle()
+      pagoRow = data as unknown as PagoRow | null
+    }
+
+    const persona = pagoRow?.participante?.persona
+    if (persona) pagador = persona
+  }
+
   if (pagoBanner) {
     const Icon = pagoBanner.icon
     return (
@@ -179,10 +220,33 @@ export default async function PublicEventDetailPage({
             </div>
             <div className="space-y-2">
               <h1 className={`text-2xl font-bold ${pagoBanner.tituloClassName}`}>{pagoBanner.titulo}</h1>
+              {/* En un pago fallido no corresponde decir que lo registramos */}
+              {pagador && pago !== 'failure' && (
+                <p className="text-sm text-foreground">
+                  Hola <strong>{pagador.nombre}</strong>, registramos tu pago para{' '}
+                  <strong>{evento.nombre}</strong>.
+                </p>
+              )}
               <p className="text-sm text-muted-foreground">{pagoBanner.mensaje}</p>
             </div>
             <div className="rounded-xl border border-border p-4 text-left space-y-3 text-sm">
               <p className="font-semibold text-foreground">{evento.nombre}</p>
+              {pagador && (
+                <div className="flex items-start justify-between gap-3 border-t border-border pt-2">
+                  <span className="text-muted-foreground shrink-0">A nombre de</span>
+                  <span className="font-medium text-foreground text-right">
+                    {pagador.nombre} {pagador.apellido}
+                  </span>
+                </div>
+              )}
+              {pagador?.email && (
+                <div className="flex items-start justify-between gap-3">
+                  <span className="text-muted-foreground shrink-0">Email</span>
+                  <span className="font-medium text-foreground text-right break-all">
+                    {pagador.email}
+                  </span>
+                </div>
+              )}
               <div className="flex items-center justify-between border-t border-border pt-2">
                 <span className="text-muted-foreground">Estado</span>
                 <span className={`font-medium ${pagoBanner.tituloClassName}`}>{pagoBanner.estadoLabel}</span>
