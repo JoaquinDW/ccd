@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 import { MercadoPagoConfig, Preference } from 'mercadopago'
-import { resolverCuentaEvento } from '@/lib/mercadopago/org-account'
+import { resolverCuentaCobroCentral } from '@/lib/mercadopago/org-account'
 import { getPublicOrigin } from '@/lib/http'
 
 export async function POST(request: Request) {
@@ -25,7 +25,7 @@ export async function POST(request: Request) {
 
   const { data: participante } = await supabaseAdmin
     .from('evento_participantes')
-    .select('id, evento:eventos!evento_id(id, nombre, precio, organizacion_id, fraternidad_id)')
+    .select('id, evento:eventos!evento_id(id, nombre, precio)')
     .eq('id', eventoParticipanteId)
     .single()
 
@@ -37,8 +37,6 @@ export async function POST(request: Request) {
     id: string
     nombre: string
     precio: number | null
-    organizacion_id: string | null
-    fraternidad_id: string | null
   } | null
   const monto = Number(evento?.precio ?? 0)
 
@@ -46,10 +44,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Este evento no requiere pago de inscripción.' }, { status: 400 })
   }
 
-  const cuenta = await resolverCuentaEvento(evento.organizacion_id, evento.fraternidad_id)
+  // Todas las inscripciones se cobran en la cuenta central, sin importar qué
+  // confraternidad/fraternidad organice el evento.
+  const cuenta = await resolverCuentaCobroCentral()
   if (!cuenta) {
     return NextResponse.json(
-      { error: 'Este evento no tiene Mercado Pago configurado. Contactate con los organizadores.' },
+      { error: 'El pago online no está disponible en este momento. Contactate con los organizadores.' },
       { status: 409 }
     )
   }

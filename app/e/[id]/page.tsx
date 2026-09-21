@@ -5,7 +5,7 @@ import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { ArrowLeft, CalendarDays, MapPin, Users, Phone, Mail, Building2, BookOpen, Wallet, CheckCircle2, Clock, XCircle, X } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { InteresModalWrapper } from '@/components/landing/InteresModalWrapper'
-import { hayCuentaConectada } from '@/lib/mercadopago/org-account'
+import { hayCuentaCobroCentral } from '@/lib/mercadopago/org-account'
 
 // El precio y la disponibilidad de Mercado Pago pueden cambiar en cualquier
 // momento (una organización conecta su cuenta) — no cachear esta página.
@@ -287,7 +287,7 @@ export default async function PublicEventDetailPage({
   const flyerC = ev.flyer_cuadrado_url as string | null
   const montoInscripcion = ev.precio != null ? Number(ev.precio) : null
 
-  const mpDisponible = await hayCuentaConectada(org?.id ?? null, fraternidad?.id ?? null)
+  const mpDisponible = await hayCuentaCobroCentral()
 
   // Datos de transferencia: preferir los de la fraternidad si tiene alias; si no, los de la confraternidad.
   const orgPago = fraternidad?.pago_alias ? fraternidad : org

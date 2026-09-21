@@ -71,30 +71,10 @@ export async function obtenerAccessTokenVigente(organizacionId: string): Promise
 }
 
 /**
- * Chequeo liviano de disponibilidad (sin refrescar tokens) para decidir si un
- * evento puede ofrecer pago online. Se usa en la landing pública, que se
- * renderiza en cada visita — no conviene disparar un refresh de token ahí.
- */
-export async function hayCuentaConectada(
-  organizacionId: string | null,
-  fraternidadId: string | null
-): Promise<boolean> {
-  const ids = [fraternidadId, organizacionId].filter((v): v is string => !!v)
-  if (ids.length === 0) return false
-
-  const supabase = supabaseAdmin()
-  const { data } = await supabase
-    .from('organizacion_mercadopago')
-    .select('organizacion_id')
-    .in('organizacion_id', ids)
-    .limit(1)
-
-  return (data?.length ?? 0) > 0
-}
-
-/**
- * Resuelve qué organización cobra el pago de un evento: se prefiere la cuenta
- * de la Fraternidad; si no está conectada, se usa la de la Confraternidad.
+ * Resuelve qué organización cobra la PENSIÓN de un evento: se prefiere la
+ * cuenta de la Fraternidad; si no está conectada, se usa la de la
+ * Confraternidad. Las inscripciones NO usan esto: se cobran siempre en la
+ * cuenta central (ver `resolverCuentaCobroCentral`).
  */
 export async function resolverCuentaEvento(
   organizacionId: string | null,
@@ -118,4 +98,76 @@ export async function resolverCuentaEvento(
   if (!accessToken) return null
 
   return { organizacionId: elegido, accessToken }
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Cobro centralizado de inscripciones
+//
+// Todas las inscripciones se cobran en la cuenta de Mercado Pago de la
+// organización de tipo `comunidad` con código EQT, sin importar qué
+// confraternidad/fraternidad organice el evento. (La pensión sigue
+// resolviéndose por organización — ver `resolverCuentaEvento`.)
+// ────────────────────────────────────────────────────────────────────────────
+
+const CODIGO_ORG_COBRO = 'EQT'
+
+let orgCobroIdCache: string | null = null
+
+/**
+ * Id de la organización que centraliza el cobro de inscripciones. Se cachea en
+ * memoria del proceso: el código es fijo y la fila no cambia de id.
+ */
+export async function obtenerOrgCobroId(): Promise<string | null> {
+  if (orgCobroIdCache) return orgCobroIdCache
+
+  const supabase = supabaseAdmin()
+  const { data } = await supabase
+    .from('organizaciones')
+    .select('id')
+    .eq('tipo', 'comunidad')
+    .ilike('codigo', CODIGO_ORG_COBRO)
+    .maybeSingle<{ id: string }>()
+
+  if (!data) {
+    console.error(
+      `[mercadopago] No existe la organización de cobro (tipo=comunidad, codigo=${CODIGO_ORG_COBRO}).`
+    )
+    return null
+  }
+
+  orgCobroIdCache = data.id
+  return data.id
+}
+
+/**
+ * Chequeo liviano (sin refrescar tokens) de que la cuenta de cobro central
+ * está conectada. Se usa en la landing pública, que se renderiza en cada visita.
+ */
+export async function hayCuentaCobroCentral(): Promise<boolean> {
+  const orgId = await obtenerOrgCobroId()
+  if (!orgId) return false
+
+  const supabase = supabaseAdmin()
+  const { data } = await supabase
+    .from('organizacion_mercadopago')
+    .select('organizacion_id')
+    .eq('organizacion_id', orgId)
+    .maybeSingle()
+
+  return !!data
+}
+
+/**
+ * Cuenta que cobra todas las inscripciones, con un access_token vigente.
+ */
+export async function resolverCuentaCobroCentral(): Promise<
+  { organizacionId: string; accessToken: string } | null
+> {
+  const orgId = await obtenerOrgCobroId()
+  if (!orgId) return null
+
+  const accessToken = await obtenerAccessTokenVigente(orgId)
+  if (!accessToken) return null
+
+  return { organizacionId: orgId, accessToken }
 }

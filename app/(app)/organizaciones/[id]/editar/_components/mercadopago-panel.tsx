@@ -38,8 +38,8 @@ export default function MercadoPagoPanel({ organizacionId }: { organizacionId: s
       </CardHeader>
       <CardContent className="space-y-4">
         <p className="text-xs text-muted-foreground">
-          Conectá la cuenta de Mercado Pago de esta confraternidad/fraternidad para cobrar automáticamente
-          la inscripción de sus eventos.
+          Las inscripciones de todos los eventos se cobran en la cuenta de Mercado Pago del Equipo Timón.
+          La cuenta de esta organización se usa solo para los pagos de pensión de sus eventos.
         </p>
 
         {!estado ? (
