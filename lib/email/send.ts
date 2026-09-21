@@ -7,6 +7,11 @@ export type EmailAttachment = {
   /** Contenido del archivo. Buffer/base64 para adjuntos generados (ej. PDFs de jspdf). */
   content: Buffer | string
   contentType?: string
+  /**
+   * Si se setea, el adjunto se manda inline y el HTML puede referenciarlo con
+   * `cid:<contentId>` (ej. el QR de inscripción dentro del cuerpo del correo).
+   */
+  contentId?: string
 }
 
 export type SendEmailOptions = {

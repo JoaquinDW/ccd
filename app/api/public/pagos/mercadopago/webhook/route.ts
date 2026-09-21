@@ -1,8 +1,66 @@
-import { createClient } from '@supabase/supabase-js'
+import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 import { createHmac, timingSafeEqual } from 'crypto'
 import { MercadoPagoConfig, Payment } from 'mercadopago'
 import { obtenerAccessTokenVigente } from '@/lib/mercadopago/org-account'
+import { getPublicOrigin } from '@/lib/http'
+import { sendTemplateEmail, templates } from '@/lib/email'
+import { QR_INSCRIPCION_CID, adjuntoQrInscripcion } from '@/lib/inscripciones/qr'
+
+/* eslint-disable-next-line @typescript-eslint/no-explicit-any */
+type SupabaseAdmin = SupabaseClient<any>
+
+/**
+ * Avisa al que pagó que la inscripción quedó confirmada y le manda el QR de
+ * ingreso (el mismo que lee el check-in de asistencia) para que lo presente al
+ * llegar. Nunca corta el webhook: si algo falla, se loguea y listo, porque el
+ * pago ya quedó registrado en la base.
+ */
+async function enviarConfirmacionConQr(
+  supabaseAdmin: SupabaseAdmin,
+  pago: { id: string; evento_participante_id: string | null; monto: number | null; fecha_pago: string | null },
+  origin: string
+) {
+  if (!pago.evento_participante_id) return
+
+  try {
+    const { data: participante } = await supabaseAdmin
+      .from('evento_participantes')
+      .select('id, persona:personas!persona_id(nombre, email), evento:eventos!evento_id(id, nombre)')
+      .eq('id', pago.evento_participante_id)
+      .maybeSingle()
+
+    const persona = (participante?.persona ?? null) as { nombre: string; email: string | null } | null
+    const evento = (participante?.evento ?? null) as { id: string; nombre: string } | null
+
+    if (!participante || !persona?.email) return
+
+    const resultado = await sendTemplateEmail(
+      templates.pagoConfirmado,
+      {
+        nombre: persona.nombre,
+        evento: evento?.nombre ?? 'tu evento',
+        monto: Number(pago.monto ?? 0),
+        medioPago: 'Mercado Pago',
+        fechaPago: pago.fecha_pago,
+        qrCid: QR_INSCRIPCION_CID,
+        ...(evento ? { detalleUrl: `${origin}/e/${evento.id}` } : {}),
+      },
+      {
+        to: persona.email,
+        attachments: [await adjuntoQrInscripcion(participante.id as string)],
+        // El webhook puede repetirse: Resend descarta el duplicado.
+        idempotencyKey: `pago-confirmado-${pago.id}`,
+      }
+    )
+
+    if (!resultado.ok) {
+      console.error('[mp-webhook] no se pudo enviar la confirmación con QR:', resultado.error)
+    }
+  } catch (err) {
+    console.error('[mp-webhook] error al preparar la confirmación con QR:', err)
+  }
+}
 
 function isValidSignature(request: Request, dataId: string): boolean {
   const secret = process.env.MP_WEBHOOK_SECRET
@@ -69,7 +127,7 @@ export async function POST(request: Request) {
 
   const { data: pago } = await supabaseAdmin
     .from('pagos')
-    .select('id, mp_payment_id, mp_organizacion_id, evento_participante_id, concepto')
+    .select('id, mp_payment_id, mp_organizacion_id, evento_participante_id, concepto, monto, fecha_pago')
     .eq('id', pagoId)
     .maybeSingle()
 
@@ -111,6 +169,8 @@ export async function POST(request: Request) {
       .update({ estado_participacion: 'inscripto' })
       .eq('id', pago.evento_participante_id)
       .eq('estado_participacion', 'interesado')
+
+    await enviarConfirmacionConQr(supabaseAdmin, pago, getPublicOrigin(request))
   }
 
   return NextResponse.json({ ok: true })

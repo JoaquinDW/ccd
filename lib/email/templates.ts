@@ -1,7 +1,7 @@
 import { formatMonto } from '@/lib/eventos/cierre'
 import { formatDateAR } from '@/lib/utils'
 
-import { block, type EmailBlock } from './render'
+import { block, escapeHtml, type EmailBlock } from './render'
 import { defineTemplate } from './template'
 
 /**
@@ -182,6 +182,35 @@ export type PagoProps = {
   fechaPago?: string | null
   motivo?: string
   detalleUrl?: string
+  /**
+   * Content-ID del QR de inscripción adjunto al correo (ver `lib/inscripciones/qr.ts`).
+   * Si viene, el pago confirmado muestra el QR de ingreso en el cuerpo.
+   */
+  qrCid?: string
+}
+
+/**
+ * QR de ingreso embebido: el adjunto viaja inline con `contentId`, así los
+ * clientes que muestran imágenes lo dibujan acá y los que no, igual lo reciben
+ * como archivo (por eso el texto alternativo y la nota).
+ */
+function bloquesQrIngreso(cid: string): EmailBlock[] {
+  return [
+    block.divider(),
+    block.heading('Tu QR de ingreso'),
+    block.paragraph('Presentá este código al llegar al evento para registrar tu asistencia.'),
+    block.raw(
+      `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:0 0 16px;">
+        <tr><td align="center">
+          <img src="cid:${escapeHtml(cid)}" alt="QR de inscripción" width="220" height="220" style="display:block;width:220px;height:220px;border:1px solid #e4e4e7;border-radius:10px;background:#ffffff;padding:10px;" />
+        </td></tr>
+      </table>`,
+      'Tu QR de ingreso va adjunto a este correo como imagen (qr-inscripcion.png).'
+    ),
+    block.note(
+      'Si tu correo no muestra la imagen, el mismo QR va adjunto como archivo (qr-inscripcion.png). También podés verlo y descargarlo desde la plataforma, en Inscripciones.'
+    ),
+  ]
 }
 
 export const pagoConfirmado = defineTemplate<PagoProps>({
@@ -198,6 +227,7 @@ export const pagoConfirmado = defineTemplate<PagoProps>({
         ...(p.fechaPago ? [{ label: 'Fecha', value: formatDateAR(p.fechaPago) }] : []),
       ]),
     ]
+    if (p.qrCid) blocks.push(...bloquesQrIngreso(p.qrCid))
     if (p.detalleUrl) blocks.push(block.button('Ver mi inscripción', p.detalleUrl))
     return blocks
   },
