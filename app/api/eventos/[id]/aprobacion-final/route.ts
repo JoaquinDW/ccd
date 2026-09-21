@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getUserContext, canPerform } from '@/lib/auth/context'
 
 type AprobacionFinalBody = {
-  accion: 'publicar' | 'suspender'
+  accion: 'publicar' | 'suspender' | 'devolver'
   notas_aprobacion_final?: string | null
   casa_retiro_id?: string | null
   coordinador_asignado_id?: string | null
@@ -63,17 +63,44 @@ export async function POST(
 
   const body = (await request.json()) as AprobacionFinalBody
 
-  if (body.accion !== 'publicar' && body.accion !== 'suspender') {
-    return NextResponse.json({ error: 'Acción inválida. Debe ser "publicar" o "suspender"' }, { status: 400 })
+  // 'devolver' manda el evento un paso atrás, a que corrijan los datos de
+  // noticias (falta un flyer, un centralizador mal cargado, etc.). Sin esto la
+  // única salida de este estado era publicar o suspender, y suspender un evento
+  // por un dato mal cargado es desproporcionado.
+  const ESTADO_POR_ACCION = {
+    publicar: 'publicado',
+    suspender: 'suspendido',
+    devolver: 'pendiente_datos_noticias',
+  } as const
+
+  if (!(body.accion in ESTADO_POR_ACCION)) {
+    return NextResponse.json(
+      { error: 'Acción inválida. Debe ser "publicar", "suspender" o "devolver"' },
+      { status: 400 }
+    )
+  }
+
+  const motivo = body.notas_aprobacion_final?.trim() || null
+
+  // Quien recibe el evento de vuelta tiene que saber qué corregir.
+  if (body.accion === 'devolver' && !motivo) {
+    return NextResponse.json(
+      { error: 'Indicá en las notas qué hay que corregir antes de devolver el evento' },
+      { status: 400 }
+    )
   }
 
   const today = new Date().toISOString().split('T')[0]
 
   const updates: Record<string, unknown> = {
-    estado: body.accion === 'publicar' ? 'publicado' : 'suspendido',
-    notas_aprobacion_final: body.notas_aprobacion_final ?? null,
-    aprobacion_final_por: ctx.persona_id,
-    fecha_aprobacion_final: today,
+    estado: ESTADO_POR_ACCION[body.accion],
+    notas_aprobacion_final: motivo,
+  }
+
+  // Devolver no es una aprobación: no se sella con quién/cuándo aprobó.
+  if (body.accion !== 'devolver') {
+    updates.aprobacion_final_por = ctx.persona_id
+    updates.fecha_aprobacion_final = today
   }
 
   if (body.accion === 'publicar') {
@@ -93,6 +120,23 @@ export async function POST(
     .eq('id', id)
 
   if (updateError) return NextResponse.json({ error: updateError.message }, { status: 400 })
+
+  // La devolución queda en el historial del evento, que es donde la ve quien
+  // tiene que corregir. Si falla, no se revierte el cambio de estado: es una
+  // traza, no parte de la operación (mismo criterio que /aprobar).
+  if (body.accion === 'devolver') {
+    const { error: cambioError } = await supabase.from('evento_cambios').insert({
+      evento_id: id,
+      nivel_disc: 'eqt',
+      campo: 'estado',
+      valor_anterior: 'Pendiente de Aprobación Final',
+      valor_nuevo: `Devuelto para corregir datos — ${motivo}`,
+      modificado_por: ctx.persona_id,
+    })
+    if (cambioError) {
+      console.error('[aprobacion-final] Failed to insert evento_cambios:', cambioError.message)
+    }
+  }
 
   return NextResponse.json({ estado: updates.estado })
 }

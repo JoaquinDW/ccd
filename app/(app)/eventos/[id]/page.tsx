@@ -365,6 +365,7 @@ export default async function EventoDetailPage({
     notas: 'Notas', casa_retiro_id: 'Casa de Retiro',
     coordinador_asignado_id: 'Coordinador asignado', asesor_asignado_id: 'Asesor asignado',
     fechas_ejecucion: 'Fechas de ejecución',
+    estado: 'Estado',
   }
 
   const nivelDiscLabel: Record<string, string> = {
@@ -1121,6 +1122,7 @@ export default async function EventoDetailPage({
               }}
               casasRetiro={(casasRetiro ?? []) as { id: string; nombre: string; ciudad?: string | null; provincia?: string | null }[]}
               personas={(personasCecistas ?? []) as { id: string; nombre: string; apellido: string; email?: string | null; telefono?: string | null }[]}
+              motivoDevolucion={(evento as Record<string, unknown>).notas_aprobacion_final as string | null}
             />
           </div>
         </div>

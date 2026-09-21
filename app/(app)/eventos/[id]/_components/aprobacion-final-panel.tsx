@@ -4,6 +4,16 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Combobox } from '@/components/ui/combobox'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 
 type Centralizador = {
   personaId: string
@@ -18,6 +28,24 @@ type Persona = {
   apellido: string
   email?: string | null
   telefono?: string | null
+}
+
+type Accion = 'publicar' | 'suspender' | 'devolver'
+
+// Publicar no pide confirmación: es el camino esperado del panel.
+type AccionConfirmable = Exclude<Accion, 'publicar'>
+
+const CONFIRMACIONES: Record<AccionConfirmable, { titulo: string; descripcion: string; confirmar: string }> = {
+  suspender: {
+    titulo: '¿Suspender este evento?',
+    descripcion: 'El evento pasa a estado Suspendido. Es una salida definitiva: si lo que hay es un dato mal cargado, conviene devolverlo para corregir.',
+    confirmar: 'Suspender evento',
+  },
+  devolver: {
+    titulo: '¿Devolver el evento para corregir?',
+    descripcion: 'Vuelve a "Pendiente de Datos para Noticias" para que corrijan lo que falte. El motivo queda en el historial del evento.',
+    confirmar: 'Devolver evento',
+  },
 }
 
 type Props = {
@@ -60,8 +88,9 @@ export default function AprobacionFinalPanel({ eventoId, inicial, casasRetiro, p
     { personaId: toStr(inicial.centralizador_3_persona_id), nombre: toStr(inicial.centralizador_3_nombre), email: toStr(inicial.centralizador_3_email), telefono: toStr(inicial.centralizador_3_telefono) },
   ])
   const [notas, setNotas] = useState(toStr(inicial.notas_aprobacion_final))
-  const [loading, setLoading] = useState<'publicar' | 'suspender' | null>(null)
+  const [loading, setLoading] = useState<Accion | null>(null)
   const [error, setError] = useState('')
+  const [confirmando, setConfirmando] = useState<AccionConfirmable | null>(null)
 
   const personaOptions = personas.map(p => ({ value: p.id, label: `${p.apellido}, ${p.nombre}` }))
 
@@ -96,7 +125,7 @@ export default function AprobacionFinalPanel({ eventoId, inicial, casasRetiro, p
     })
   }
 
-  function buildPayload(accion: 'publicar' | 'suspender') {
+  function buildPayload(accion: Accion) {
     return {
       accion,
       notas_aprobacion_final: notas || null,
@@ -118,11 +147,23 @@ export default function AprobacionFinalPanel({ eventoId, inicial, casasRetiro, p
     }
   }
 
-  async function handleAccion(accion: 'publicar' | 'suspender') {
-    if (accion === 'suspender') {
-      const ok = window.confirm('¿Confirmás que querés suspender este evento? Esta acción cambiará el estado a Suspendido.')
-      if (!ok) return
+  function pedirAccion(accion: Accion) {
+    setError('')
+    // El motivo viaja en las notas y es lo único que ve quien tiene que
+    // corregir, así que no tiene sentido devolver sin explicar qué está mal.
+    if (accion === 'devolver' && !notas.trim()) {
+      setError('Escribí en las notas qué hay que corregir antes de devolver el evento.')
+      return
     }
+    if (accion === 'publicar') {
+      handleAccion(accion)
+      return
+    }
+    setConfirmando(accion)
+  }
+
+  async function handleAccion(accion: Accion) {
+    setConfirmando(null)
     setLoading(accion)
     setError('')
     try {
@@ -243,14 +284,19 @@ export default function AprobacionFinalPanel({ eventoId, inicial, casasRetiro, p
         )
       })}
 
-      {/* Notas */}
+      {/* Notas — también son el motivo cuando se devuelve el evento */}
       <div>
-        <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Notas</p>
+        <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
+          Notas / motivo de devolución
+        </p>
         <textarea
           className="w-full rounded border border-border bg-background px-3 py-2 text-sm text-foreground min-h-20"
           value={notas}
-          placeholder="Observaciones de la aprobación final..."
-          onChange={e => setNotas(e.target.value)}
+          placeholder="Observaciones de la aprobación final, o qué hay que corregir si devolvés el evento..."
+          onChange={e => {
+            setNotas(e.target.value)
+            if (error) setError('')
+          }}
         />
       </div>
 
@@ -261,7 +307,7 @@ export default function AprobacionFinalPanel({ eventoId, inicial, casasRetiro, p
           size="sm"
           variant="destructive"
           disabled={loading !== null}
-          onClick={() => handleAccion('suspender')}
+          onClick={() => pedirAccion('suspender')}
           className="flex-1"
         >
           {loading === 'suspender' ? 'Suspendiendo...' : 'Suspender Evento'}
@@ -269,12 +315,71 @@ export default function AprobacionFinalPanel({ eventoId, inicial, casasRetiro, p
         <Button
           size="sm"
           disabled={loading !== null}
-          onClick={() => handleAccion('publicar')}
+          onClick={() => pedirAccion('publicar')}
           className="flex-1 bg-green-600 hover:bg-green-700 text-white"
         >
           {loading === 'publicar' ? 'Publicando...' : 'Publicar Evento'}
         </Button>
       </div>
+
+      {/* Salida intermedia: ni publicar con un dato mal, ni suspender el evento */}
+      <Button
+        size="sm"
+        variant="outline"
+        disabled={loading !== null}
+        onClick={() => pedirAccion('devolver')}
+        className="w-full border-amber-400 text-amber-700 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-950"
+      >
+        {loading === 'devolver' ? 'Devolviendo...' : 'Devolver para corregir datos'}
+      </Button>
+      <p className="text-xs text-muted-foreground">
+        Vuelve a &quot;Pendiente de Datos para Noticias&quot; para que corrijan lo que falte. El motivo queda en el historial del evento.
+      </p>
+
+      <AlertDialog
+        open={confirmando !== null}
+        onOpenChange={open => {
+          if (!open) setConfirmando(null)
+        }}
+      >
+        <AlertDialogContent>
+          {confirmando && (
+            <>
+              <AlertDialogHeader>
+                <AlertDialogTitle>{CONFIRMACIONES[confirmando].titulo}</AlertDialogTitle>
+                <AlertDialogDescription>
+                  {CONFIRMACIONES[confirmando].descripcion}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+
+              {/* Que relea el motivo antes de mandarlo: es lo único que recibe
+                  del otro lado quien tiene que corregir. */}
+              {confirmando === 'devolver' && (
+                <div className="rounded-md border border-amber-300 bg-amber-50 p-3 dark:border-amber-900 dark:bg-amber-950/40">
+                  <p className="text-xs font-medium uppercase tracking-wide text-amber-800 dark:text-amber-400">
+                    Motivo
+                  </p>
+                  <p className="mt-1 text-sm text-amber-900 dark:text-amber-200">{notas.trim()}</p>
+                </div>
+              )}
+
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => handleAccion(confirmando)}
+                  className={
+                    confirmando === 'suspender'
+                      ? 'bg-destructive text-white hover:bg-destructive/90'
+                      : 'bg-amber-600 text-white hover:bg-amber-700'
+                  }
+                >
+                  {CONFIRMACIONES[confirmando].confirmar}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </>
+          )}
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

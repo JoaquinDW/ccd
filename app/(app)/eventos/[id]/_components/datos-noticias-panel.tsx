@@ -43,6 +43,8 @@ type Props = {
   }
   casasRetiro: { id: string; nombre: string; ciudad?: string | null; provincia?: string | null }[]
   personas: Persona[]
+  /** Motivo cargado por EqT si el evento volvió desde aprobación final */
+  motivoDevolucion?: string | null
 }
 
 function toStr(v: string | null | undefined): string {
@@ -53,7 +55,7 @@ function toNumStr(v: number | null | undefined): string {
   return v === null || v === undefined ? '' : String(v)
 }
 
-export default function DatosNoticiasPannel({ eventoId, inicial, casasRetiro, personas }: Props) {
+export default function DatosNoticiasPannel({ eventoId, inicial, casasRetiro, personas, motivoDevolucion }: Props) {
   const router = useRouter()
 
   const [casaRetiroId, setCasaRetiroId] = useState(toStr(inicial.casa_retiro_id))
@@ -189,6 +191,16 @@ export default function DatosNoticiasPannel({ eventoId, inicial, casasRetiro, pe
       <p className="text-xs text-muted-foreground">
         Completá los datos necesarios para la publicación del evento. Podés guardar un borrador y volver más tarde.
       </p>
+
+      {/* El evento puede haber vuelto desde aprobación final: acá va el motivo */}
+      {motivoDevolucion?.trim() && (
+        <div className="rounded-md border border-amber-300 bg-amber-50 p-3 dark:border-amber-900 dark:bg-amber-950/40">
+          <p className="text-xs font-medium uppercase tracking-wide text-amber-800 dark:text-amber-400">
+            Devuelto por el Equipo Timón
+          </p>
+          <p className="mt-1 text-sm text-amber-900 dark:text-amber-200">{motivoDevolucion}</p>
+        </div>
+      )}
 
       {/* Casa de Retiro */}
       <div className="space-y-1.5">

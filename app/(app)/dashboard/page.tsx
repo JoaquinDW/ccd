@@ -334,17 +334,28 @@ export default async function DashboardPage() {
       return { data, error: null }
     })(),
 
-    // 13. Pendiente Aprobación Final (solo EqT)
-    canApproveEqt
-      ? supabase
+    // 13. Pendiente Aprobación Final — la resuelve EqT, pero el Responsable de
+    // Confraternidad también tiene que ver el evento. Antes la consulta estaba
+    // limitada a EqT, así que al salir de 'pendiente_datos_noticias' el evento
+    // desaparecía del inicio del Responsable, como si se hubiera perdido.
+    (() => {
+      const select =
+        "id, nombre, tipo, fecha_inicio, organizacion:organizaciones!organizacion_id(nombre), solicitado_por_persona:personas!solicitado_por(nombre, apellido)"
+      const base = () =>
+        supabase
           .from("eventos")
-          .select(
-            "id, nombre, tipo, fecha_inicio, organizacion:organizaciones!organizacion_id(nombre), solicitado_por_persona:personas!solicitado_por(nombre, apellido)"
-          )
+          .select(select)
           .eq("estado", "pendiente_aprobacion_final")
           .order("updated_at", { ascending: true })
           .limit(10)
-      : Promise.resolve({ data: null, error: null }),
+      if (canApproveEqt) return base()
+      if (canApproveConfra) {
+        if (ctx.is_admin) return base()
+        if (ctx.org_ids.length > 0) return base().in("organizacion_id", ctx.org_ids)
+        return Promise.resolve({ data: [], error: null })
+      }
+      return Promise.resolve({ data: null, error: null })
+    })(),
   ])
 
   let totalPersonas = personasCountResult.count ?? 0
@@ -1333,15 +1344,21 @@ export default async function DashboardPage() {
       )}
 
       {/* Aprobación Final EqT */}
-      {canApproveEqt && pendienteAprobacionFinal && pendienteAprobacionFinal.length > 0 && (
+      {(canApproveEqt || canApproveConfra) &&
+        pendienteAprobacionFinal &&
+        pendienteAprobacionFinal.length > 0 && (
         <Card className="border-violet-200 dark:border-violet-900 bg-card">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-foreground">
               <AlertCircle className="h-5 w-5 text-violet-500" />
-              Aprobación Final — Equipo Timón
+              {canApproveEqt
+                ? "Aprobación Final — Equipo Timón"
+                : "En Aprobación Final — Equipo Timón"}
             </CardTitle>
             <CardDescription>
-              Eventos con datos completos esperando aprobación final para su publicación
+              {canApproveEqt
+                ? "Eventos con datos completos esperando aprobación final para su publicación"
+                : "Eventos de tu confraternidad esperando la aprobación final del Equipo Timón"}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -1368,26 +1385,37 @@ export default async function DashboardPage() {
                       </p>
                     </div>
                     <Link href={`/eventos/${evento.id}`} className="ml-3 shrink-0">
-                      <Button
-                        size="sm"
-                        className="h-7 text-xs bg-violet-600 hover:bg-violet-700 text-white"
-                      >
-                        Revisar y publicar
-                      </Button>
+                      {/* La aprobación final es de EqT; el Responsable solo mira */}
+                      {canApproveEqt ? (
+                        <Button
+                          size="sm"
+                          className="h-7 text-xs bg-violet-600 hover:bg-violet-700 text-white"
+                        >
+                          Revisar y publicar
+                        </Button>
+                      ) : (
+                        <Button size="sm" variant="outline" className="h-7 text-xs">
+                          Ver evento
+                        </Button>
+                      )}
                     </Link>
                   </div>
                 )
               })}
             </div>
-            <Link
-              href="/eventos?estado=pendiente_aprobacion_final"
-              className="block mt-4"
-            >
-              <Button variant="outline" className="w-full bg-transparent">
-                Ver todos
-                <ArrowRight className="h-4 w-4 ml-2" />
-              </Button>
-            </Link>
+            {/* /eventos no lista 'pendiente_aprobacion_final' sin este permiso:
+                sin él, el link llevaría a una lista vacía. */}
+            {canViewAllEstados && (
+              <Link
+                href="/eventos?estado=pendiente_aprobacion_final"
+                className="block mt-4"
+              >
+                <Button variant="outline" className="w-full bg-transparent">
+                  Ver todos
+                  <ArrowRight className="h-4 w-4 ml-2" />
+                </Button>
+              </Link>
+            )}
           </CardContent>
         </Card>
       )}
