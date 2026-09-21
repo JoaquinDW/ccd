@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { getUserContext } from '@/lib/auth/context'
+import { getUserContext, canPerform } from '@/lib/auth/context'
+import { esCentralizadorDeEvento } from '@/lib/eventos/cierre'
 
 export async function POST(
   request: Request,
@@ -29,12 +30,25 @@ export async function POST(
   // The event must be publishable/running to take attendance
   const { data: evento, error: eventoError } = await supabase
     .from('eventos')
-    .select('id, estado')
+    .select('id, estado, organizacion_id, centralizador_1_persona_id, centralizador_2_persona_id, centralizador_3_persona_id')
     .eq('id', id)
     .single()
 
   if (eventoError || !evento) {
     return NextResponse.json({ error: 'Evento no encontrado' }, { status: 404 })
+  }
+
+  // Esta ruta solo validaba que hubiera sesión: cualquier usuario logueado
+  // podía marcar la asistencia de un participante de cualquier evento. El
+  // control replica el de la página /eventos/[id]/asistencia.
+  if (
+    !canPerform(ctx, 'event.update', evento.organizacion_id ?? null) &&
+    !esCentralizadorDeEvento(ctx, evento)
+  ) {
+    return NextResponse.json(
+      { error: 'No tenés permiso para tomar asistencia en este evento' },
+      { status: 403 }
+    )
   }
 
   if (evento.estado !== 'publicado' && evento.estado !== 'en_curso') {

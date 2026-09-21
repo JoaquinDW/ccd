@@ -488,13 +488,21 @@ export default async function EventoDetailPage({
   timelineHistorial.sort((a, b) => a.fecha.localeCompare(b.fecha))
 
   const canEdit = ctx && canPerform(ctx, 'event.update', evento.organizacion_id ?? null)
+  // El Centralizador es quien opera el evento en el terreno: arrancarlo,
+  // tomar asistencia y finalizarlo son parte de su función aunque no tenga los
+  // permisos de catálogo event.publish/event.update, que son de conducción.
+  // Publicar y suspender siguen siendo ajenos: esas son decisiones del EqT.
+  const esCentralizador = esCentralizadorDeEvento(ctx, cierreEvento)
+
   const canPublish = ctx && evento.estado === 'aprobado' && canPerform(ctx, 'event.publish', evento.organizacion_id ?? null)
-  const canIniciar = ctx && evento.estado === 'publicado' && canPerform(ctx, 'event.publish', evento.organizacion_id ?? null)
-  const canFinalizar = ctx && evento.estado === 'en_curso' && canPerform(ctx, 'event.publish', evento.organizacion_id ?? null)
+  const canIniciar = ctx && evento.estado === 'publicado' &&
+    (canPerform(ctx, 'event.publish', evento.organizacion_id ?? null) || esCentralizador)
+  const canFinalizar = ctx && evento.estado === 'en_curso' &&
+    (canPerform(ctx, 'event.publish', evento.organizacion_id ?? null) || esCentralizador)
   // Attendance check-in available to event managers while the event is publicado/en_curso
   const canAsistencia = ctx &&
     (evento.estado === 'publicado' || evento.estado === 'en_curso') &&
-    canPerform(ctx, 'event.update', evento.organizacion_id ?? null)
+    (canPerform(ctx, 'event.update', evento.organizacion_id ?? null) || esCentralizador)
 
   // Gestión del Evento: administrador, timonel, responsable, enlace o centralizador,
   // solo mientras el evento está publicado o en curso.
@@ -503,7 +511,7 @@ export default async function EventoDetailPage({
     (
       canPerform(ctx, 'event.update', evento.organizacion_id ?? null) ||
       (evento.fraternidad_id ? canPerform(ctx, 'event.update', evento.fraternidad_id) : false) ||
-      esCentralizadorDeEvento(ctx, cierreEvento)
+      esCentralizador
     )
 
   // Datos noticias panel: visible when pendiente_datos_noticias and user has permission

@@ -4,14 +4,16 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Flag } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 
 export function FinalizarEventoButton({ eventoId }: { eventoId: string }) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [confirmando, setConfirmando] = useState(false)
 
   const handleFinalizar = async () => {
-    if (!confirm('¿Finalizar el evento? Pasará a estado "Finalizado".')) return
+    setConfirmando(false)
     setLoading(true)
     setError('')
     try {
@@ -31,7 +33,7 @@ export function FinalizarEventoButton({ eventoId }: { eventoId: string }) {
   return (
     <div className="space-y-1">
       <Button
-        onClick={handleFinalizar}
+        onClick={() => setConfirmando(true)}
         disabled={loading}
         size="sm"
         variant="outline"
@@ -41,6 +43,14 @@ export function FinalizarEventoButton({ eventoId }: { eventoId: string }) {
         {loading ? 'Finalizando...' : 'Finalizar Evento'}
       </Button>
       {error && <p className="text-xs text-destructive">{error}</p>}
+      <ConfirmDialog
+        open={confirmando}
+        onOpenChange={setConfirmando}
+        titulo="¿Finalizar el evento?"
+        descripcion='Pasará a estado "Finalizado".'
+        confirmar="Finalizar evento"
+        onConfirm={handleFinalizar}
+      />
     </div>
   )
 }

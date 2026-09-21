@@ -4,16 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Combobox } from '@/components/ui/combobox'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 
 type Centralizador = {
   personaId: string
@@ -35,16 +26,21 @@ type Accion = 'publicar' | 'suspender' | 'devolver'
 // Publicar no pide confirmación: es el camino esperado del panel.
 type AccionConfirmable = Exclude<Accion, 'publicar'>
 
-const CONFIRMACIONES: Record<AccionConfirmable, { titulo: string; descripcion: string; confirmar: string }> = {
+const CONFIRMACIONES: Record<
+  AccionConfirmable,
+  { titulo: string; descripcion: string; confirmar: string; tono: 'destructivo' | 'advertencia' }
+> = {
   suspender: {
     titulo: '¿Suspender este evento?',
     descripcion: 'El evento pasa a estado Suspendido. Es una salida definitiva: si lo que hay es un dato mal cargado, conviene devolverlo para corregir.',
     confirmar: 'Suspender evento',
+    tono: 'destructivo',
   },
   devolver: {
     titulo: '¿Devolver el evento para corregir?',
     descripcion: 'Vuelve a "Pendiente de Datos para Noticias" para que corrijan lo que falte. El motivo queda en el historial del evento.',
     confirmar: 'Devolver evento',
+    tono: 'advertencia',
   },
 }
 
@@ -336,50 +332,30 @@ export default function AprobacionFinalPanel({ eventoId, inicial, casasRetiro, p
         Vuelve a &quot;Pendiente de Datos para Noticias&quot; para que corrijan lo que falte. El motivo queda en el historial del evento.
       </p>
 
-      <AlertDialog
-        open={confirmando !== null}
-        onOpenChange={open => {
-          if (!open) setConfirmando(null)
-        }}
-      >
-        <AlertDialogContent>
-          {confirmando && (
-            <>
-              <AlertDialogHeader>
-                <AlertDialogTitle>{CONFIRMACIONES[confirmando].titulo}</AlertDialogTitle>
-                <AlertDialogDescription>
-                  {CONFIRMACIONES[confirmando].descripcion}
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-
-              {/* Que relea el motivo antes de mandarlo: es lo único que recibe
-                  del otro lado quien tiene que corregir. */}
-              {confirmando === 'devolver' && (
-                <div className="rounded-md border border-amber-300 bg-amber-50 p-3 dark:border-amber-900 dark:bg-amber-950/40">
-                  <p className="text-xs font-medium uppercase tracking-wide text-amber-800 dark:text-amber-400">
-                    Motivo
-                  </p>
-                  <p className="mt-1 text-sm text-amber-900 dark:text-amber-200">{notas.trim()}</p>
-                </div>
-              )}
-
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={() => handleAccion(confirmando)}
-                  className={
-                    confirmando === 'suspender'
-                      ? 'bg-destructive text-white hover:bg-destructive/90'
-                      : 'bg-amber-600 text-white hover:bg-amber-700'
-                  }
-                >
-                  {CONFIRMACIONES[confirmando].confirmar}
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </>
+      {confirmando && (
+        <ConfirmDialog
+          open
+          onOpenChange={open => {
+            if (!open) setConfirmando(null)
+          }}
+          titulo={CONFIRMACIONES[confirmando].titulo}
+          descripcion={CONFIRMACIONES[confirmando].descripcion}
+          confirmar={CONFIRMACIONES[confirmando].confirmar}
+          tono={CONFIRMACIONES[confirmando].tono}
+          onConfirm={() => handleAccion(confirmando)}
+        >
+          {/* Que relea el motivo antes de mandarlo: es lo único que recibe
+              del otro lado quien tiene que corregir. */}
+          {confirmando === 'devolver' && (
+            <div className="rounded-md border border-amber-300 bg-amber-50 p-3 dark:border-amber-900 dark:bg-amber-950/40">
+              <p className="text-xs font-medium uppercase tracking-wide text-amber-800 dark:text-amber-400">
+                Motivo
+              </p>
+              <p className="mt-1 text-sm text-amber-900 dark:text-amber-200">{notas.trim()}</p>
+            </div>
           )}
-        </AlertDialogContent>
-      </AlertDialog>
+        </ConfirmDialog>
+      )}
     </div>
   )
 }

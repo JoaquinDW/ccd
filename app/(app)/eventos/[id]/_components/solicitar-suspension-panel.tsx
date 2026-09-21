@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { AlertTriangle } from 'lucide-react'
 import { formatDateAR } from '@/lib/utils'
 
@@ -19,6 +20,7 @@ export default function SolicitarSuspensionPanel({ eventoId, inicial }: Props) {
   const [notas, setNotas] = useState('')
   const [loading, setLoading] = useState<'solicitar' | 'cancelar' | null>(null)
   const [error, setError] = useState('')
+  const [confirmandoCancelar, setConfirmandoCancelar] = useState(false)
 
   const tieneSolicitud = !!inicial.solicitud_suspension_fecha
 
@@ -48,8 +50,7 @@ export default function SolicitarSuspensionPanel({ eventoId, inicial }: Props) {
   }
 
   async function handleCancelar() {
-    const ok = window.confirm('¿Cancelás la solicitud de suspensión?')
-    if (!ok) return
+    setConfirmandoCancelar(false)
     setLoading('cancelar')
     setError('')
     try {
@@ -91,7 +92,7 @@ export default function SolicitarSuspensionPanel({ eventoId, inicial }: Props) {
           <Button
             size="sm"
             variant="outline"
-            onClick={handleCancelar}
+            onClick={() => setConfirmandoCancelar(true)}
             disabled={loading !== null}
             className="w-full bg-transparent border-amber-300 text-amber-700 hover:bg-amber-100 dark:border-amber-700 dark:text-amber-400"
           >
@@ -123,6 +124,16 @@ export default function SolicitarSuspensionPanel({ eventoId, inicial }: Props) {
           </Button>
         </div>
       )}
+
+      <ConfirmDialog
+        open={confirmandoCancelar}
+        onOpenChange={setConfirmandoCancelar}
+        titulo="¿Cancelar la solicitud de suspensión?"
+        descripcion="El Equipo Timón dejará de ver el pedido. Podés volver a solicitarla más adelante."
+        confirmar="Cancelar solicitud"
+        tono="advertencia"
+        onConfirm={handleCancelar}
+      />
     </div>
   )
 }

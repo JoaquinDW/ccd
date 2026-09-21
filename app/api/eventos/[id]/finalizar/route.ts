@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getUserContext, canPerform } from '@/lib/auth/context'
+import { esCentralizadorDeEvento } from '@/lib/eventos/cierre'
 
 export async function POST(
   _request: Request,
@@ -17,7 +18,7 @@ export async function POST(
 
   const { data: evento, error: eventoError } = await supabase
     .from('eventos')
-    .select('id, estado, organizacion_id')
+    .select('id, estado, organizacion_id, centralizador_1_persona_id, centralizador_2_persona_id, centralizador_3_persona_id')
     .eq('id', id)
     .single()
 
@@ -32,7 +33,11 @@ export async function POST(
     )
   }
 
-  if (!canPerform(ctx, 'event.publish', evento.organizacion_id ?? null)) {
+  // Igual que iniciar: el Centralizador cierra el evento en el terreno.
+  if (
+    !canPerform(ctx, 'event.publish', evento.organizacion_id ?? null) &&
+    !esCentralizadorDeEvento(ctx, evento)
+  ) {
     return NextResponse.json(
       { error: 'No tenés permiso para finalizar este evento' },
       { status: 403 }

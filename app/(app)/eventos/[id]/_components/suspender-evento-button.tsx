@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { OctagonX } from 'lucide-react'
 
 type Props = {
@@ -15,15 +16,19 @@ export default function SuspenderEventoButton({ eventoId }: Props) {
   const [notas, setNotas] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [confirmando, setConfirmando] = useState(false)
 
-  async function handleSuspender() {
+  function pedirConfirmacion() {
     if (!notas.trim()) {
       setError('El motivo de la suspensión es obligatorio')
       return
     }
-    const ok = window.confirm('¿Confirmás que querés suspender este evento? Esta acción es definitiva y no puede revertirse.')
-    if (!ok) return
+    setError('')
+    setConfirmando(true)
+  }
 
+  async function handleSuspender() {
+    setConfirmando(false)
     setLoading(true)
     setError('')
     try {
@@ -90,13 +95,30 @@ export default function SuspenderEventoButton({ eventoId }: Props) {
         <Button
           size="sm"
           variant="destructive"
-          onClick={handleSuspender}
+          onClick={pedirConfirmacion}
           disabled={loading}
           className="flex-1"
         >
           {loading ? 'Suspendiendo...' : 'Confirmar Suspensión'}
         </Button>
       </div>
+
+      <ConfirmDialog
+        open={confirmando}
+        onOpenChange={setConfirmando}
+        titulo="¿Suspender este evento?"
+        descripcion="Esta acción es definitiva: el evento queda en estado Suspendido y no puede reactivarse."
+        confirmar="Suspender evento"
+        tono="destructivo"
+        onConfirm={handleSuspender}
+      >
+        <div className="rounded-md border border-orange-300 bg-orange-50 p-3 dark:border-orange-900 dark:bg-orange-950/40">
+          <p className="text-xs font-medium uppercase tracking-wide text-orange-800 dark:text-orange-400">
+            Motivo
+          </p>
+          <p className="mt-1 text-sm text-orange-900 dark:text-orange-200">{notas.trim()}</p>
+        </div>
+      </ConfirmDialog>
     </div>
   )
 }

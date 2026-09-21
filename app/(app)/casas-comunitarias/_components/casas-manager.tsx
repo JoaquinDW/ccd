@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { Home, Plus, Trash2, Loader2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { translateSupabaseError } from '@/lib/errors/supabase'
@@ -29,6 +30,7 @@ export default function CasasComunitariasManager({ initial }: { initial: Casa[] 
   const [form, setForm] = useState({ codigo: '', nombre: '', tipo: '' })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [confirmandoBaja, setConfirmandoBaja] = useState<string | null>(null)
 
   async function handleCreate(e: React.SyntheticEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -57,7 +59,7 @@ export default function CasasComunitariasManager({ initial }: { initial: Casa[] 
   }
 
   async function handleDelete(id: string) {
-    if (!confirm('¿Dar de baja esta casa comunitaria?')) return
+    setConfirmandoBaja(null)
     const supabase = createClient()
     const { error } = await supabase
       .from('casas_comunitarias')
@@ -149,7 +151,7 @@ export default function CasasComunitariasManager({ initial }: { initial: Casa[] 
                     variant="ghost"
                     size="sm"
                     className="text-destructive hover:text-destructive shrink-0"
-                    onClick={() => handleDelete(c.id)}
+                    onClick={() => setConfirmandoBaja(c.id)}
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
@@ -159,6 +161,20 @@ export default function CasasComunitariasManager({ initial }: { initial: Casa[] 
           )}
         </CardContent>
       </Card>
+
+      <ConfirmDialog
+        open={confirmandoBaja !== null}
+        onOpenChange={open => {
+          if (!open) setConfirmandoBaja(null)
+        }}
+        titulo="¿Dar de baja esta casa comunitaria?"
+        descripcion="Queda inactiva y deja de aparecer en los listados. No se borra: se puede reactivar desde la base si hace falta."
+        confirmar="Dar de baja"
+        tono="destructivo"
+        onConfirm={() => {
+          if (confirmandoBaja) handleDelete(confirmandoBaja)
+        }}
+      />
     </div>
   )
 }

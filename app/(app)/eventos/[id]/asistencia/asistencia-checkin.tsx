@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 import { Camera, CameraOff, Check, Search, Loader2, Play } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import type { Html5Qrcode } from 'html5-qrcode'
 
 interface Participante {
@@ -41,6 +42,7 @@ export function AsistenciaCheckin({
   const [search, setSearch] = useState('')
   const [scanning, setScanning] = useState(false)
   const [iniciando, setIniciando] = useState(false)
+  const [confirmandoIniciar, setConfirmandoIniciar] = useState(false)
   const [pendingId, setPendingId] = useState<string | null>(null)
 
   const scannerRef = useRef<Html5Qrcode | null>(null)
@@ -145,7 +147,7 @@ export function AsistenciaCheckin({
   }, [scanning, startScanner, stopScanner])
 
   const handleIniciar = async () => {
-    if (!confirm('¿Iniciar el evento? Pasará a estado "En Curso" y dejará de mostrarse en la home pública.')) return
+    setConfirmandoIniciar(false)
     setIniciando(true)
     try {
       const res = await fetch(`/api/eventos/${eventoId}/iniciar`, { method: 'POST' })
@@ -184,7 +186,7 @@ export function AsistenciaCheckin({
               </p>
             </div>
             <Button
-              onClick={handleIniciar}
+              onClick={() => setConfirmandoIniciar(true)}
               disabled={iniciando}
               className="gap-2 bg-teal-600 hover:bg-teal-700 text-white"
             >
@@ -282,6 +284,15 @@ export function AsistenciaCheckin({
             : 'Ningún inscripto coincide con la búsqueda.'}
         </div>
       )}
+
+      <ConfirmDialog
+        open={confirmandoIniciar}
+        onOpenChange={setConfirmandoIniciar}
+        titulo="¿Iniciar el evento?"
+        descripcion='Pasará a estado "En Curso" y dejará de mostrarse en la home pública.'
+        confirmar="Iniciar evento"
+        onConfirm={handleIniciar}
+      />
     </div>
   )
 }
