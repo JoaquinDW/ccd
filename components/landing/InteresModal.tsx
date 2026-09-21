@@ -70,6 +70,8 @@ export function InteresModal({ eventoId, eventoNombre, montoInscripcion, mpDispo
     apellido: '',
     email: '',
     telefono: '',
+    tipo_documento: '',
+    documento: '',
     direccion: '',
     localidad: '',
     provincia: '',
@@ -87,7 +89,7 @@ export function InteresModal({ eventoId, eventoNombre, montoInscripcion, mpDispo
   // (Mercado Pago conectado y/o datos de transferencia cargados).
   const requierePago = (montoInscripcion ?? 0) > 0 && (mpDisponible || !!datosPago)
 
-  function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
+  function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }))
   }
 
@@ -191,7 +193,7 @@ export function InteresModal({ eventoId, eventoNombre, montoInscripcion, mpDispo
       setFile(null)
       setComprobanteEnviado(false)
       setYaRegistrado(false)
-      setForm({ nombre: '', apellido: '', email: '', telefono: '', direccion: '', localidad: '', provincia: '', pais: 'Argentina' })
+      setForm({ nombre: '', apellido: '', email: '', telefono: '', tipo_documento: '', documento: '', direccion: '', localidad: '', provincia: '', pais: 'Argentina' })
       onOpenChange(open)
       if (debeVolverAlListado) router.push(volverAlListadoHref!)
       return
@@ -216,13 +218,14 @@ export function InteresModal({ eventoId, eventoNombre, montoInscripcion, mpDispo
                 {yaRegistrado ? 'Ya estabas registrado/a' : '¡Gracias por tu interés!'}
               </p>
               <p className="mt-1 text-sm text-muted-foreground">
+                {/* La inscripción nunca queda cerrada acá: siempre la confirma
+                    un centralizador después. Decir "quedó registrada" hacía
+                    creer que ya estaba adentro de la convivencia. */}
                 {yaRegistrado
                   ? <>Ese email ya había registrado interés en <strong>{eventoNombre}</strong>. No hace falta que te registres de nuevo; si necesitás actualizar tus datos, contactanos.</>
                   : comprobanteEnviado
-                    ? <>Recibimos tu comprobante para <strong>{eventoNombre}</strong>. Lo verificaremos y nos comunicaremos pronto.</>
-                    : participanteId
-                      ? <>Tu inscripción a <strong>{eventoNombre}</strong> quedó registrada. Cuando se confirme el pago te avisaremos.</>
-                      : <>Tu interés en <strong>{eventoNombre}</strong> fue registrado. Nos comunicaremos pronto.</>}
+                    ? <>Recibimos tu comprobante para <strong>{eventoNombre}</strong>. Un centralizador lo va a verificar y se va a comunicar con vos para confirmar tu inscripción.</>
+                    : <>Recibimos tus datos para <strong>{eventoNombre}</strong>. Un centralizador se va a comunicar con vos para confirmar tu inscripción.</>}
               </p>
             </div>
             <Button onClick={() => handleClose(false)} className="mt-2">
@@ -377,7 +380,7 @@ export function InteresModal({ eventoId, eventoNombre, montoInscripcion, mpDispo
 
               <div className="grid gap-1.5">
                 <Label htmlFor="email">
-                  Email <span className="text-muted-foreground text-xs">(recomendado)</span>
+                  Email <span className="text-destructive">*</span>
                 </Label>
                 <Input
                   id="email"
@@ -385,22 +388,58 @@ export function InteresModal({ eventoId, eventoNombre, montoInscripcion, mpDispo
                   type="email"
                   value={form.email}
                   onChange={handleChange}
+                  required
                   autoComplete="email"
                   disabled={loading}
                 />
               </div>
 
               <div className="grid gap-1.5">
-                <Label htmlFor="telefono">Teléfono</Label>
+                <Label htmlFor="telefono">
+                  Teléfono <span className="text-destructive">*</span>
+                </Label>
                 <Input
                   id="telefono"
                   name="telefono"
                   type="tel"
                   value={form.telefono}
                   onChange={handleChange}
+                  required
                   autoComplete="tel"
                   disabled={loading}
                 />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="grid gap-1.5">
+                  <Label htmlFor="tipo_documento">Tipo de Documento</Label>
+                  {/* Los valores están acotados por el CHECK de personas.tipo_documento */}
+                  <select
+                    id="tipo_documento"
+                    name="tipo_documento"
+                    value={form.tipo_documento}
+                    onChange={handleChange}
+                    disabled={loading}
+                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <option value="">— Sin especificar —</option>
+                    <option value="dni">DNI</option>
+                    <option value="pasaporte">Pasaporte</option>
+                    <option value="cedula">Cédula</option>
+                    <option value="otro">Otro</option>
+                  </select>
+                </div>
+                <div className="grid gap-1.5">
+                  <Label htmlFor="documento">Número de Documento</Label>
+                  <Input
+                    id="documento"
+                    name="documento"
+                    value={form.documento}
+                    onChange={handleChange}
+                    inputMode="numeric"
+                    disabled={loading}
+                  />
+                </div>
               </div>
 
               <div className="grid gap-1.5">

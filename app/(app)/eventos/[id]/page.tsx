@@ -1112,6 +1112,8 @@ export default async function EventoDetailPage({
               eventoId={id}
               inicial={{
                 casa_retiro_id: (evento as Record<string, unknown>).casa_retiro_id as string | null,
+                precio: (evento as Record<string, unknown>).precio as number | null,
+                pension: (evento as Record<string, unknown>).pension as number | null,
                 centralizador_1_persona_id: (evento as Record<string, unknown>).centralizador_1_persona_id as string | null,
                 centralizador_1_nombre: (evento as Record<string, unknown>).centralizador_1_nombre as string | null,
                 centralizador_1_email: (evento as Record<string, unknown>).centralizador_1_email as string | null,

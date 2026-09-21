@@ -553,7 +553,7 @@ export default function EditarEventoForm({
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="precio">Precio de Inscripción</Label>
+                <Label htmlFor="precio">Valor de Inscripción</Label>
                 <Input
                   id="precio"
                   name="precio"
@@ -566,7 +566,7 @@ export default function EditarEventoForm({
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="pension">Precio de Pensión</Label>
+                <Label htmlFor="pension">Valor de Pensión</Label>
                 <Input
                   id="pension"
                   name="pension"

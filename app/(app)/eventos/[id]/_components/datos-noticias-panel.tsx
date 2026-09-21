@@ -37,6 +37,8 @@ type Props = {
     centralizador_3_nombre: string | null
     centralizador_3_email: string | null
     centralizador_3_telefono: string | null
+    precio: number | null
+    pension: number | null
     manuales_stock: number | null
     manuales_necesarios: number | null
     notas_noticias: string | null
@@ -64,6 +66,8 @@ export default function DatosNoticiasPannel({ eventoId, inicial, casasRetiro, pe
     { personaId: toStr(inicial.centralizador_2_persona_id), nombre: toStr(inicial.centralizador_2_nombre), email: toStr(inicial.centralizador_2_email), telefono: toStr(inicial.centralizador_2_telefono) },
     { personaId: toStr(inicial.centralizador_3_persona_id), nombre: toStr(inicial.centralizador_3_nombre), email: toStr(inicial.centralizador_3_email), telefono: toStr(inicial.centralizador_3_telefono) },
   ])
+  const [precio, setPrecio] = useState(toNumStr(inicial.precio))
+  const [pension, setPension] = useState(toNumStr(inicial.pension))
   const [manualesStock, setManualesStock] = useState(toNumStr(inicial.manuales_stock))
   const [manualesNecesarios, setManualesNecesarios] = useState(toNumStr(inicial.manuales_necesarios))
   const [notas, setNotas] = useState(toStr(inicial.notas_noticias))
@@ -126,6 +130,8 @@ export default function DatosNoticiasPannel({ eventoId, inicial, casasRetiro, pe
       centralizador_3_nombre: centralizadores[2].nombre || null,
       centralizador_3_email: centralizadores[2].email || null,
       centralizador_3_telefono: centralizadores[2].telefono || null,
+      precio: precio === '' ? null : Number(precio),
+      pension: pension === '' ? null : Number(pension),
       manuales_stock: manualesStock === '' ? null : Number(manualesStock),
       manuales_necesarios: manualesNecesarios === '' ? null : Number(manualesNecesarios),
       notas_noticias: notas || null,
@@ -270,6 +276,40 @@ export default function DatosNoticiasPannel({ eventoId, inicial, casasRetiro, pe
           </div>
         )
       })}
+
+      {/* Valores — se definen acá, no al solicitar el evento */}
+      <div className="space-y-2 rounded-md border border-border p-3 bg-muted/20">
+        <p className="text-xs font-medium text-foreground uppercase tracking-wide">Valores</p>
+        <div className="grid gap-2 sm:grid-cols-2">
+          <div>
+            <p className="text-xs text-muted-foreground mb-1">Valor de Inscripción</p>
+            <input
+              type="number"
+              min={0}
+              step="0.01"
+              placeholder="0.00"
+              className={inputClass}
+              value={precio}
+              onChange={e => { setPrecio(e.target.value); setSavedOk(false) }}
+            />
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground mb-1">Valor de Pensión</p>
+            <input
+              type="number"
+              min={0}
+              step="0.01"
+              placeholder="0.00"
+              className={inputClass}
+              value={pension}
+              onChange={e => { setPension(e.target.value); setSavedOk(false) }}
+            />
+          </div>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          La landing pública solo cobra el valor de inscripción. La pensión se registra y valida desde Pagos.
+        </p>
+      </div>
 
       {/* Manuales */}
       <div className="space-y-2 rounded-md border border-border p-3 bg-muted/20">

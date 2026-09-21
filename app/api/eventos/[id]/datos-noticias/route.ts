@@ -4,6 +4,8 @@ import { getUserContext, canPerform } from '@/lib/auth/context'
 
 type DatosNoticias = {
   casa_retiro_id?: string | null
+  precio?: number | null
+  pension?: number | null
   centralizador_1_persona_id?: string | null
   centralizador_1_nombre?: string | null
   centralizador_1_email?: string | null
@@ -23,6 +25,8 @@ type DatosNoticias = {
 
 const CAMPOS_NOTICIAS = [
   'casa_retiro_id',
+  // Los valores se cargan en esta etapa, ya no al solicitar el evento.
+  'precio', 'pension',
   'centralizador_1_persona_id', 'centralizador_1_nombre', 'centralizador_1_email', 'centralizador_1_telefono',
   'centralizador_2_persona_id', 'centralizador_2_nombre', 'centralizador_2_email', 'centralizador_2_telefono',
   'centralizador_3_persona_id', 'centralizador_3_nombre', 'centralizador_3_email', 'centralizador_3_telefono',

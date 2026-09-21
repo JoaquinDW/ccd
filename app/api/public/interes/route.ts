@@ -4,11 +4,23 @@ import { NextResponse } from 'next/server'
 export async function POST(request: Request) {
   const body = await request.json()
 
-  const { nombre, apellido, evento_id, email, telefono, direccion, localidad, provincia, pais, notas } = body
+  const { nombre, apellido, evento_id, email, telefono, tipo_documento, documento, direccion, localidad, provincia, pais, notas } = body
 
-  if (!nombre || !apellido || !evento_id) {
-    return NextResponse.json({ error: 'Nombre, apellido y evento son obligatorios.' }, { status: 400 })
+  if (!nombre || !apellido || !evento_id || !email || !telefono) {
+    return NextResponse.json(
+      { error: 'Nombre, apellido, email y teléfono son obligatorios.' },
+      { status: 400 }
+    )
   }
+
+  // Acotado por el CHECK de personas.tipo_documento: un valor fuera de la lista
+  // haría fallar el insert con un error de base que el visitante no entendería.
+  const TIPOS_DOCUMENTO = ['dni', 'pasaporte', 'cedula', 'otro']
+  const tipoDocNorm = tipo_documento?.trim().toLowerCase() || null
+  if (tipoDocNorm && !TIPOS_DOCUMENTO.includes(tipoDocNorm)) {
+    return NextResponse.json({ error: 'Tipo de documento inválido.' }, { status: 400 })
+  }
+  const documentoNorm = documento ? String(documento).trim() : null
 
   const supabaseAdmin = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -50,6 +62,22 @@ export async function POST(request: Request) {
     }
   }
 
+  // personas.documento es UNIQUE: si la persona ya está cargada con ese
+  // documento (típicamente un cecista), hay que reutilizar su registro. Sin
+  // esto el insert reventaría con un 23505 y el visitante vería un error.
+  if (!personaId && documentoNorm) {
+    const { data: existentePorDoc } = await supabaseAdmin
+      .from('personas')
+      .select('id')
+      .eq('documento', documentoNorm)
+      .limit(1)
+      .maybeSingle()
+    if (existentePorDoc) {
+      personaId = existentePorDoc.id
+      personaExistente = true
+    }
+  }
+
   if (!personaId) {
     const insertData: Record<string, unknown> = {
       nombre: nombre.trim(),
@@ -60,6 +88,8 @@ export async function POST(request: Request) {
     }
     if (emailNorm) insertData.email = emailNorm
     if (telefono) insertData.telefono = telefono.trim()
+    if (tipoDocNorm) insertData.tipo_documento = tipoDocNorm
+    if (documentoNorm) insertData.documento = documentoNorm
     if (direccion) insertData.direccion = direccion.trim()
     if (localidad) insertData.localidad = localidad.trim()
     if (provincia) insertData.provincia = provincia.trim()
@@ -72,17 +102,25 @@ export async function POST(request: Request) {
       .single()
 
     if (personaError || !persona) {
-      // Carrera: el email pudo haberse insertado entre la búsqueda y este insert.
-      if (personaError?.code === '23505' && emailNorm) {
-        const { data: reintento } = await supabaseAdmin
-          .from('personas')
-          .select('id')
-          .eq('email', emailNorm)
-          .limit(1)
-          .maybeSingle()
-        if (reintento) {
-          personaId = reintento.id
-          personaExistente = true
+      // Carrera: el email o el documento pudieron insertarse entre la búsqueda
+      // y este insert. Las dos columnas son UNIQUE, así que reintentamos por
+      // ambas antes de dar el registro por fallido.
+      if (personaError?.code === '23505') {
+        for (const [columna, valor] of [
+          ['email', emailNorm],
+          ['documento', documentoNorm],
+        ] as const) {
+          if (!valor || personaId) continue
+          const { data: reintento } = await supabaseAdmin
+            .from('personas')
+            .select('id')
+            .eq(columna, valor)
+            .limit(1)
+            .maybeSingle()
+          if (reintento) {
+            personaId = reintento.id
+            personaExistente = true
+          }
         }
       }
       if (!personaId) {
