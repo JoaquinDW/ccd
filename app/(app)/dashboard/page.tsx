@@ -280,44 +280,58 @@ export default async function DashboardPage() {
           .limit(5)
       : Promise.resolve({ data: null, error: null }),
 
-    // 12. Pendiente Datos Noticias — visible para solicitante, confra approver y EqT
-    (() => {
-      if (!hasPersonaId && !canApproveConfra && !canApproveEqt) {
-        return Promise.resolve({ data: null, error: null })
-      }
-      const selectSuperior = "id, nombre, tipo, fecha_inicio, organizacion:organizaciones!organizacion_id(nombre), solicitado_por_persona:personas!solicitado_por(nombre, apellido)"
-      const selectPropio = "id, nombre, tipo, fecha_inicio, organizacion:organizaciones!organizacion_id(nombre)"
-      // EqT ve todos
+    // 12. Pendiente Datos Noticias — lo ven el solicitante (Enlace), el aprobador
+    // de confra (Responsable) y EqT. Los tres pueden cargar los datos, así que a
+    // los tres les tiene que aparecer el botón.
+    //
+    // El solicitante SIEMPRE ve los eventos que pidió. Antes esto era un if/else:
+    // quien además tenía un permiso de aprobación caía en la rama por rol —que
+    // filtra por organizacion_id— y nunca llegaba al fallback del solicitante.
+    // Como el evento de un Enlace cuelga de la confraternidad (el padre de su
+    // fraternidad, y ctx.org_ids se expande hacia las hijas, no hacia el padre),
+    // su propio evento quedaba fuera del filtro y perdía el botón "Cargar datos".
+    (async () => {
+      const selectPendiente =
+        "id, nombre, tipo, fecha_inicio, fecha_aprobacion, solicitado_por, organizacion:organizaciones!organizacion_id(nombre), solicitado_por_persona:personas!solicitado_por(nombre, apellido)"
+      const base = () =>
+        supabase
+          .from("eventos")
+          .select(selectPendiente)
+          .eq("estado", "pendiente_datos_noticias")
+          .order("fecha_aprobacion", { ascending: true })
+          .limit(10)
+
+      const queries: any[] = []
+      // EqT ve todos; el aprobador de confra, los de su org y sus fraternidades
+      // hijas (ctx.org_ids ya viene expandido con las hijas en getUserContext).
       if (canApproveEqt) {
-        return supabase
-          .from("eventos")
-          .select(selectSuperior)
-          .eq("estado", "pendiente_datos_noticias")
-          .order("fecha_aprobacion", { ascending: true })
-          .limit(10)
+        queries.push(base())
+      } else if (canApproveConfra) {
+        if (ctx.is_admin) queries.push(base())
+        else if (ctx.org_ids.length > 0)
+          queries.push(base().in("organizacion_id", ctx.org_ids))
       }
-      // Responsable de Confraternidad ve los de su org y todas sus fraternidades hijas
-      if (canApproveConfra) {
-        let q = supabase
-          .from("eventos")
-          .select(selectSuperior)
-          .eq("estado", "pendiente_datos_noticias")
-          .order("fecha_aprobacion", { ascending: true })
-          .limit(10)
-        if (!ctx.is_admin) {
-          if (ctx.org_ids.length > 0) q = q.in("organizacion_id", ctx.org_ids)
-          else return Promise.resolve({ data: [], error: null })
-        }
-        return q
+      // Propios, sin importar el scope de sus permisos ni de qué org cuelgue.
+      if (hasPersonaId) {
+        queries.push(base().eq("solicitado_por", ctx.persona_id!))
       }
-      // Solicitante: solo los propios
-      return supabase
-        .from("eventos")
-        .select(selectPropio)
-        .eq("estado", "pendiente_datos_noticias")
-        .eq("solicitado_por", ctx.persona_id!)
-        .order("fecha_aprobacion", { ascending: true })
-        .limit(10)
+
+      if (queries.length === 0) return { data: null, error: null }
+
+      const results = await Promise.all(queries)
+      const porId = new Map<string, any>()
+      for (const r of results) {
+        for (const ev of (r as any).data ?? []) porId.set(ev.id, ev)
+      }
+      const data = [...porId.values()]
+        .sort((a, b) =>
+          // sin fecha_aprobacion van al final, igual que el NULLS LAST de Postgres
+          (a.fecha_aprobacion ?? "9999-12-31").localeCompare(
+            b.fecha_aprobacion ?? "9999-12-31",
+          ),
+        )
+        .slice(0, 10)
+      return { data, error: null }
     })(),
 
     // 13. Pendiente Aprobación Final (solo EqT)
@@ -475,6 +489,32 @@ export default async function DashboardPage() {
     } else {
       interesadosCentralizador = []
     }
+  }
+
+  // Eventos donde soy Coordinador o Asesor asignado — autoscopeado por persona_id.
+  // Solo desde que EqT confirma la asignación (pasa a datos para noticias): mientras
+  // el evento sigue en discernimiento la asignación es un borrador interno de EqT.
+  let misEventosCoordinadorAsesor: any[] | null = null
+  if (hasPersonaId) {
+    const { data: coordAsesorEventos } = await supabase
+      .from("eventos")
+      .select(
+        "id, nombre, estado, fecha_inicio, coordinador_asignado_id, asesor_asignado_id, organizacion:organizaciones!organizacion_id(nombre)",
+      )
+      .or(
+        `coordinador_asignado_id.eq.${ctx.persona_id},asesor_asignado_id.eq.${ctx.persona_id}`,
+      )
+      .in("estado", [
+        "pendiente_datos_noticias",
+        "pendiente_aprobacion_final",
+        "aprobado",
+        "publicado",
+        "en_curso",
+        "suspendido",
+        "finalizado",
+      ])
+      .order("fecha_inicio", { ascending: false })
+    misEventosCoordinadorAsesor = coordAsesorEventos ?? []
   }
 
   // Pagos por transferencia pendientes de verificación — scopeados a la org del usuario
@@ -781,6 +821,65 @@ export default async function DashboardPage() {
           </Card>
         )}
       </div>
+
+      {/* Eventos donde soy Coordinador o Asesor */}
+      {misEventosCoordinadorAsesor && misEventosCoordinadorAsesor.length > 0 && (
+        <Card className="border-primary/30 bg-primary/5">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-foreground">
+              <Users className="h-5 w-5 text-primary" />
+              Eventos donde soy Coordinador o Asesor
+            </CardTitle>
+            <CardDescription>
+              Tengo un rol asignado en {misEventosCoordinadorAsesor.length}{" "}
+              {misEventosCoordinadorAsesor.length === 1 ? "evento" : "eventos"}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {misEventosCoordinadorAsesor.slice(0, 5).map((evento: any) => {
+                const roles = [
+                  evento.coordinador_asignado_id === ctx.persona_id
+                    ? "Coordinador"
+                    : null,
+                  evento.asesor_asignado_id === ctx.persona_id ? "Asesor" : null,
+                ]
+                  .filter(Boolean)
+                  .join(" y ")
+                return (
+                  <Link
+                    key={evento.id}
+                    href={`/eventos/${evento.id}`}
+                    className="flex items-center justify-between rounded-lg border border-border p-3 hover:border-primary/50 transition-colors"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-foreground truncate">
+                        {evento.nombre}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {roles} · {evento.organizacion?.nombre ?? "—"}
+                        {evento.fecha_inicio
+                          ? ` · ${formatDateShort(evento.fecha_inicio)}`
+                          : ""}
+                      </p>
+                    </div>
+                    <span
+                      className={`text-xs px-2 py-1 rounded font-medium ml-3 shrink-0 ${ESTADO_EVENT_COLORS[evento.estado] ?? ""}`}
+                    >
+                      {ESTADO_LABELS[evento.estado] ?? evento.estado}
+                    </span>
+                  </Link>
+                )
+              })}
+            </div>
+            {misEventosCoordinadorAsesor.length > 5 && (
+              <p className="mt-3 text-xs text-muted-foreground text-center">
+                y {misEventosCoordinadorAsesor.length - 5} más
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Eventos donde soy Centralizador */}
       {misEventosCentralizador && misEventosCentralizador.length > 0 && (
@@ -1308,7 +1407,11 @@ export default async function DashboardPage() {
           <CardContent>
             <div className="space-y-3">
               {pendienteDatosNoticias.map((evento: any) => {
-                const solicitante = evento.solicitado_por_persona
+                // En los propios sobra el "Solicitado por <vos mismo>"
+                const solicitante =
+                  evento.solicitado_por === ctx.persona_id
+                    ? null
+                    : evento.solicitado_por_persona
                 return (
                   <div
                     key={evento.id}
